@@ -1,0 +1,22 @@
+/* Text editor specific styles */
+
+/* Style text selection in textarea to avoid confusion with backgrounds */
+.text-editor-textarea::selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+.text-editor-textarea::-moz-selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+/* Ensure no default backgrounds */
+.text-editor-textarea {
+  background-color: white !important;
+}
+
+/* Remove any focus outlines that might look like backgrounds */
+.text-editor-textarea:focus {
+  outline: none !important;
+}
