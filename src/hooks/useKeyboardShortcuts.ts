@@ -16,7 +16,8 @@ export function useKeyboardShortcuts() {
     bringToFront,
     sendToBack,
     bringForward,
-    sendBackward
+    sendBackward,
+    batchUpdateElements
   } = useSlideStore()
   
   useEffect(() => {
@@ -24,6 +25,13 @@ export function useKeyboardShortcuts() {
       // Don't trigger shortcuts when typing in inputs
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
+      }
+      
+      // Reset canvas view (Home key)
+      if (e.key === 'Home') {
+        e.preventDefault()
+        const event = new CustomEvent('canvas:reset-view')
+        window.dispatchEvent(event)
       }
       
       // Delete selected elements
@@ -69,6 +77,48 @@ export function useKeyboardShortcuts() {
         if (canRedo) {
           e.preventDefault()
           redo()
+        }
+      }
+      
+      // Arrow key movement for selected elements (4px increments)
+      if (selectedElementIds.length > 0 && currentSlideId && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        const currentSlide = slides.find(s => s.id === currentSlideId)
+        if (currentSlide) {
+          let moved = false
+          const updates: Record<string, Partial<any>> = {}
+          
+          // Get selected elements that are not locked
+          const movableElements = currentSlide.elements.filter(
+            el => selectedElementIds.includes(el.id) && !el.locked
+          )
+          
+          if (movableElements.length > 0) {
+            movableElements.forEach(element => {
+              switch (e.key) {
+                case 'ArrowUp':
+                  updates[element.id] = { y: element.y - 4 }
+                  moved = true
+                  break
+                case 'ArrowDown':
+                  updates[element.id] = { y: element.y + 4 }
+                  moved = true
+                  break
+                case 'ArrowLeft':
+                  updates[element.id] = { x: element.x - 4 }
+                  moved = true
+                  break
+                case 'ArrowRight':
+                  updates[element.id] = { x: element.x + 4 }
+                  moved = true
+                  break
+              }
+            })
+            
+            if (moved) {
+              e.preventDefault()
+              batchUpdateElements(currentSlideId, updates)
+            }
+          }
         }
       }
       
@@ -130,7 +180,7 @@ export function useKeyboardShortcuts() {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentSlideId, selectedElementIds, deleteElement, slides, clearSelection, undo, redo, canUndo, canRedo, bringToFront, sendToBack, bringForward, sendBackward])
+  }, [currentSlideId, selectedElementIds, deleteElement, slides, clearSelection, undo, redo, canUndo, canRedo, bringToFront, sendToBack, bringForward, sendBackward, batchUpdateElements])
 }
 
 export default useKeyboardShortcuts

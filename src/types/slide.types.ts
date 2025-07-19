@@ -25,9 +25,27 @@ export interface Slide {
   background: string | SlideBackground
   order: number
   templateId?: string
+  slideType?: SlideType
   notes?: string
+  metadata?: SlideMetadata
   createdAt: string
   updatedAt: string
+}
+
+export type SlideType = 
+  | 'title'
+  | 'warm-up'
+  | 'vocabulary'
+  | 'conversation'
+  | 'reading'
+  | 'review'
+  | 'end'
+  | 'custom'
+
+export interface SlideMetadata {
+  dataKeys?: Record<string, string> // Maps element IDs to data keys for template population
+  templateName?: string
+  templateDescription?: string
 }
 
 export interface SlideBackground {

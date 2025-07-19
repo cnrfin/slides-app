@@ -1,18 +1,12 @@
 // src/data/templates/index.ts
 import { blankTemplates } from './blank'
-import { titleTemplates } from './titles'
-import { contentTemplates } from './content'
-import { exerciseTemplates } from './exercises'
-import { sectionTemplates } from './sections'
+import { vocabularyTemplates } from './vocabulary'
 import type { SlideTemplate, TemplateGroup } from '@/types/template.types'
 
 // Combine all templates
 export const allTemplates: SlideTemplate[] = [
   ...blankTemplates,
-  ...titleTemplates,
-  ...contentTemplates,
-  ...exerciseTemplates,
-  ...sectionTemplates
+  ...vocabularyTemplates
 ]
 
 // Group templates by category
@@ -24,28 +18,38 @@ export const templateGroups: TemplateGroup[] = [
   },
   {
     category: 'title',
-    name: 'Title Slides',
-    templates: titleTemplates
+    name: 'Title',
+    templates: []
   },
   {
-    category: 'content',
-    name: 'Content Layouts',
-    templates: contentTemplates
+    category: 'warm-up',
+    name: 'Warm Up',
+    templates: []
   },
   {
-    category: 'section',
-    name: 'Sections',
-    templates: sectionTemplates.filter(t => t.category === 'section')
+    category: 'vocabulary',
+    name: 'Vocabulary',
+    templates: vocabularyTemplates
   },
   {
-    category: 'list',
-    name: 'Lists',
-    templates: sectionTemplates.filter(t => t.category === 'list')
+    category: 'conversation',
+    name: 'Conversation',
+    templates: []
   },
   {
-    category: 'exercise',
-    name: 'Exercises',
-    templates: exerciseTemplates
+    category: 'reading',
+    name: 'Reading',
+    templates: []
+  },
+  {
+    category: 'review',
+    name: 'Review',
+    templates: []
+  },
+  {
+    category: 'end',
+    name: 'End',
+    templates: []
   }
 ]
 

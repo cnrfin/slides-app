@@ -34,13 +34,14 @@ export default function SlideCanvas({
   
   // Canvas state
   const [canvasSize, setCanvasSize] = useState({ 
-    width: containerWidth || window.innerWidth * 0.7, 
-    height: containerHeight || window.innerHeight * 0.8 
+    width: containerWidth || window.innerWidth, 
+    height: containerHeight || window.innerHeight 
   })
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
   const [stageScale, setStageScale] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
   const [isSpacePressed, setIsSpacePressed] = useState(false)
+  const [isAltPressed, setIsAltPressed] = useState(false)
   const [isSelecting, setIsSelecting] = useState(false)
   const [selectionRect, setSelectionRect] = useState({ x: 0, y: 0, width: 0, height: 0 })
   const [hoveredElementId, setHoveredElementId] = useState<string | null>(null)
@@ -48,6 +49,11 @@ export default function SlideCanvas({
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]) // Snap guides to show
   const [marginGuides, setMarginGuides] = useState<MarginGuide[]>([]) // Margin guides to show
   const lastMousePosRef = useRef({ x: 0, y: 0 })
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const [dragOverImageId, setDragOverImageId] = useState<string | null>(null)
+  const [isDuplicating, setIsDuplicating] = useState(false)
+  const [duplicatedElementId, setDuplicatedElementId] = useState<string | null>(null)
   
   // Text editing state
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
@@ -56,27 +62,47 @@ export default function SlideCanvas({
   // Store
   const currentSlide = useCurrentSlide()
   const selectedElements = useSelectedElements()
-  const { updateElement, selectElement, selectMultipleElements, clearSelection, batchUpdateElements } = useSlideStore()
+  const { updateElement, selectElement, selectMultipleElements, clearSelection, batchUpdateElements, addElement } = useSlideStore()
   
-  // Update canvas size on window resize
+  // Update canvas size when props change
   useEffect(() => {
-    const handleResize = () => {
+    if (containerWidth && containerHeight) {
       setCanvasSize({
-        width: containerWidth || window.innerWidth * 0.7,
-        height: containerHeight || window.innerHeight * 0.8
+        width: containerWidth,
+        height: containerHeight
       })
     }
-    
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
   }, [containerWidth, containerHeight])
+  
+  // Handle reset view event
+  useEffect(() => {
+    const handleResetView = () => {
+      setStageScale(1)
+      setStagePos({ x: 0, y: 0 })
+    }
+    
+    window.addEventListener('canvas:reset-view', handleResetView)
+    return () => window.removeEventListener('canvas:reset-view', handleResetView)
+  }, [])
   
   // Handle keyboard events for panning
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat) {
+      // Don't handle space key if we're in text editing mode or if an input is focused
+      const activeElement = document.activeElement
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' || 
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.getAttribute('contenteditable') === 'true'
+      )
+      
+      if (e.code === 'Space' && !e.repeat && !isInputFocused) {
         e.preventDefault()
         setIsSpacePressed(true)
+      }
+      if (e.key === 'Alt' && !e.repeat) {
+        e.preventDefault()
+        setIsAltPressed(true)
       }
     }
     
@@ -85,6 +111,10 @@ export default function SlideCanvas({
         e.preventDefault()
         setIsSpacePressed(false)
         setIsPanning(false)
+      }
+      if (e.key === 'Alt') {
+        e.preventDefault()
+        setIsAltPressed(false)
       }
     }
     
@@ -101,14 +131,197 @@ export default function SlideCanvas({
   const initialPosition = useMemo(() => {
     const x = (canvasSize.width - CANVAS_WIDTH) / 2
     const y = (canvasSize.height - CANVAS_HEIGHT) / 2
-    return { x: Math.max(0, x), y: Math.max(0, y) }
+    return { x, y } // Remove Math.max to allow negative values for proper centering
   }, [canvasSize])
+  
+  // Set initial stage position on mount to center the slide
+  useEffect(() => {
+    if (stagePos.x === 0 && stagePos.y === 0) {
+      // Only set initial position if not already positioned
+      setStagePos({ x: 0, y: 0 })
+    }
+  }, [])
+  
+  // Handle image file processing
+  const processImageFile = useCallback((file: File): Promise<{ src: string; width: number; height: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('File is not an image'))
+        return
+      }
+      
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const src = e.target?.result as string
+        
+        // Create image to get dimensions
+        const img = new Image()
+        img.onload = () => {
+          // Scale down if image is too large
+          let width = img.width
+          let height = img.height
+          const maxSize = 400
+          
+          if (width > maxSize || height > maxSize) {
+            const scale = Math.min(maxSize / width, maxSize / height)
+            width *= scale
+            height *= scale
+          }
+          
+          resolve({ src, width, height })
+        }
+        img.onerror = () => reject(new Error('Failed to load image'))
+        img.src = src
+      }
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsDataURL(file)
+    })
+  }, [])
+  
+  // Handle drag over
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    // Check if dragging files
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingOver(true)
+      
+      if (!currentSlide) return
+      
+      // Get drop position relative to the stage
+      const stage = stageRef.current
+      if (!stage) return
+      
+      const stageBox = stage.container().getBoundingClientRect()
+      const dropX = e.clientX - stageBox.left
+      const dropY = e.clientY - stageBox.top
+      
+      // Convert to canvas coordinates
+      const canvasX = (dropX - stagePos.x - initialPosition.x) / stageScale
+      const canvasY = (dropY - stagePos.y - initialPosition.y) / stageScale
+      
+      // Check if hovering over an existing image element
+      const hoveredImage = currentSlide.elements.find(element => {
+        if (element.type !== 'image') return false
+        
+        return (
+          canvasX >= element.x &&
+          canvasX <= element.x + element.width &&
+          canvasY >= element.y &&
+          canvasY <= element.y + element.height
+        )
+      })
+      
+      setDragOverImageId(hoveredImage?.id || null)
+    }
+  }, [currentSlide, stagePos, stageScale, initialPosition])
+  
+  // Handle drag leave
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDraggingOver(false)
+    setDragOverImageId(null)
+  }, [])
+  
+  // Handle drop
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingOver(false)
+    setDragOverImageId(null)
+    
+    if (!currentSlide) return
+    
+    const files = Array.from(e.dataTransfer.files)
+    const imageFiles = files.filter(file => file.type.startsWith('image/'))
+    
+    if (imageFiles.length === 0) return
+    
+    // Get drop position relative to the stage
+    const stage = stageRef.current
+    if (!stage) return
+    
+    const stageBox = stage.container().getBoundingClientRect()
+    const dropX = e.clientX - stageBox.left
+    const dropY = e.clientY - stageBox.top
+    
+    // Convert to canvas coordinates
+    const canvasX = (dropX - stagePos.x - initialPosition.x) / stageScale
+    const canvasY = (dropY - stagePos.y - initialPosition.y) / stageScale
+    
+    // Check if dropping on an existing image element
+    const targetElement = currentSlide.elements.find(element => {
+      if (element.type !== 'image') return false
+      
+      // Check if drop position is within the element bounds
+      return (
+        canvasX >= element.x &&
+        canvasX <= element.x + element.width &&
+        canvasY >= element.y &&
+        canvasY <= element.y + element.height
+      )
+    })
+    
+    // If dropping on an existing image, replace it
+    if (targetElement && imageFiles.length === 1) {
+      try {
+        const { src } = await processImageFile(imageFiles[0])
+        
+        // Update the existing image element
+        updateElement(currentSlide.id, targetElement.id, {
+          content: {
+            src,
+            alt: imageFiles[0].name,
+            objectFit: targetElement.content?.objectFit || 'contain'
+          }
+        })
+        
+        // Select the updated element
+        selectElement(targetElement.id)
+        
+        return // Exit early, we've handled the drop
+      } catch (error) {
+        console.error('Failed to process image:', error)
+      }
+    }
+    
+    // Otherwise, proceed with normal behavior (add new images)
+    for (let i = 0; i < imageFiles.length; i++) {
+      try {
+        const { src, width, height } = await processImageFile(imageFiles[i])
+        
+        // Add image element with offset for multiple images
+        const offsetX = i * 20
+        const offsetY = i * 20
+        
+        addElement(currentSlide.id, {
+          type: 'image',
+          x: canvasX - width / 2 + offsetX, // Center on drop point
+          y: canvasY - height / 2 + offsetY,
+          width,
+          height,
+          content: {
+            src,
+            alt: imageFiles[i].name,
+            objectFit: 'contain'
+          },
+          style: {
+            borderRadius: 0
+          }
+        })
+      } catch (error) {
+        console.error('Failed to process image:', error)
+      }
+    }
+  }, [currentSlide, stagePos, stageScale, initialPosition, processImageFile, addElement, updateElement, selectElement])
   
   // Cursor style
   const getCursor = () => {
     if (editingTextId) return 'default' // Keep default cursor while editing
     if (isPanning) return 'grabbing'
     if (isSpacePressed) return 'grab'
+    if (isAltPressed && hoveredElementId) return 'copy' // Show copy cursor when hovering over elements with Alt
     return 'default'
   }
   
@@ -294,6 +507,52 @@ export default function SlideCanvas({
       return
     }
     
+    // Check if Alt key is pressed for duplication
+    const isAltPressed = e.evt.altKey
+    
+    if (isAltPressed && currentSlide) {
+      // Find the element to duplicate
+      const elementToDuplicate = currentSlide.elements.find(el => el.id === elementId)
+      if (!elementToDuplicate) return
+      
+      // Create a duplicate element with a new ID
+      const newElementId = addElement(currentSlide.id, {
+        type: elementToDuplicate.type,
+        x: elementToDuplicate.x,
+        y: elementToDuplicate.y,
+        width: elementToDuplicate.width,
+        height: elementToDuplicate.height,
+        rotation: elementToDuplicate.rotation,
+        opacity: elementToDuplicate.opacity,
+        locked: elementToDuplicate.locked,
+        visible: elementToDuplicate.visible,
+        content: JSON.parse(JSON.stringify(elementToDuplicate.content)), // Deep copy content
+        style: elementToDuplicate.style ? JSON.parse(JSON.stringify(elementToDuplicate.style)) : undefined,
+        animations: elementToDuplicate.animations,
+        interactions: elementToDuplicate.interactions,
+      })
+      
+      // Select the new element
+      selectElement(newElementId)
+      
+      // Set state to track we're duplicating
+      setIsDuplicating(true)
+      setDuplicatedElementId(newElementId)
+      
+      // Stop the drag on the original element
+      e.target.stopDrag()
+      
+      // Start dragging the new element instead
+      setTimeout(() => {
+        const newNode = layerRef.current?.findOne(`#element-${newElementId}`)
+        if (newNode) {
+          newNode.startDrag()
+        }
+      }, 0)
+      
+      return
+    }
+    
     setDraggingElementId(elementId)
     
     // If the dragged element is not selected, select only it
@@ -301,12 +560,13 @@ export default function SlideCanvas({
     if (!isSelected) {
       selectElement(elementId)
     }
-  }, [selectedElements, selectElement])
+  }, [selectedElements, selectElement, currentSlide, addElement])
 
   // Handle element drag
   const handleElementDrag = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target
-    const element = currentSlide?.elements.find(el => el.id === draggingElementId)
+    const elementId = isDuplicating && duplicatedElementId ? duplicatedElementId : draggingElementId
+    const element = currentSlide?.elements.find(el => el.id === elementId)
     if (!element) return
     
     const currentX = node.x()
@@ -364,7 +624,7 @@ export default function SlideCanvas({
     node.x(finalX)
     node.y(finalY)
     setSnapGuides(guides)
-  }, [currentSlide, draggingElementId])
+  }, [currentSlide, draggingElementId, isDuplicating, duplicatedElementId])
   
   // Handle element drag end
   const handleElementDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>, elementId: string) => {
@@ -381,7 +641,13 @@ export default function SlideCanvas({
     setDraggingElementId(null)
     setSnapGuides([])
     setMarginGuides([])
-  }, [currentSlide, updateElement])
+    
+    // Clear duplication state if we were duplicating
+    if (isDuplicating) {
+      setIsDuplicating(false)
+      setDuplicatedElementId(null)
+    }
+  }, [currentSlide, updateElement, isDuplicating])
   
   // Handle element hover
   const handleElementMouseEnter = useCallback((elementId: string) => {
@@ -604,7 +870,10 @@ export default function SlideCanvas({
     const isSelected = selectedElements.some(el => el.id === element.id)
     const isEditing = editingTextId === element.id
     const isHovered = hoveredElementId === element.id
+    const isDragTarget = dragOverImageId === element.id
     const isMultiSelect = selectedElements.length > 1
+    const dataKey = currentSlide?.metadata?.dataKeys?.[element.id]
+    const showTemplateIndicators = currentSlide?.metadata?.templateName !== undefined
     
     return (
       <ElementRenderer
@@ -613,6 +882,9 @@ export default function SlideCanvas({
         isSelected={isSelected}
         isEditing={isEditing}
         isHovered={isHovered}
+        isDragTarget={isDragTarget}
+        dataKey={dataKey}
+        showTemplateIndicators={showTemplateIndicators}
         onSelect={handleElementSelect}
         onDragStart={handleElementDragStart}
         onDrag={handleElementDrag}
@@ -623,7 +895,7 @@ export default function SlideCanvas({
         draggable={!isMultiSelect} // Disable individual dragging when multiple selected
       />
     )
-  }, [selectedElements, editingTextId, hoveredElementId, handleElementSelect, handleElementDragStart, handleElementDrag, handleElementDragEnd, handleTextDoubleClick, handleElementMouseEnter, handleElementMouseLeave])
+  }, [selectedElements, editingTextId, hoveredElementId, dragOverImageId, currentSlide, handleElementSelect, handleElementDragStart, handleElementDrag, handleElementDragEnd, handleTextDoubleClick, handleElementMouseEnter, handleElementMouseLeave])
   
   if (!currentSlide) {
     return (
@@ -637,7 +909,28 @@ export default function SlideCanvas({
     <div 
       className="relative w-full h-full bg-gray-100"
       style={{ cursor: getCursor() }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
+      {/* Drag overlay indicator */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 bg-blue-500 bg-opacity-10 border-2 border-dashed border-blue-500 flex items-center justify-center pointer-events-none">
+          <div className="bg-white rounded-lg px-6 py-4 shadow-lg">
+            {dragOverImageId ? (
+              <>
+                <p className="text-lg font-medium text-gray-800">Replace image</p>
+                <p className="text-sm text-gray-600 mt-1">Drop to replace the existing image</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-medium text-gray-800">Drop images here</p>
+                <p className="text-sm text-gray-600 mt-1">Images will be added to your slide</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <Stage
         ref={stageRef}
         width={canvasSize.width}
@@ -728,9 +1021,9 @@ export default function SlideCanvas({
               ))
             }
             
-            {/* Shape resize handlers - only show when single element selected and not locked */}
+            {/* Shape and Image resize handlers - only show when single element selected and not locked */}
             {selectedElements.length === 1 && selectedElements
-              .filter(el => el.type === 'shape' && draggingElementId !== el.id && !el.locked)
+              .filter(el => (el.type === 'shape' || el.type === 'image') && draggingElementId !== el.id && !el.locked)
               .map(element => (
                 <ShapeResizeHandler
                   key={`resize-${element.id}`}
@@ -853,7 +1146,7 @@ export default function SlideCanvas({
       })()}
       
       {/* Zoom indicator */}
-      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-md px-3 py-2 text-sm text-gray-600">
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-md px-3 py-2 text-sm text-gray-600">
         {Math.round(stageScale * 100)}%
       </div>
       
@@ -868,6 +1161,13 @@ export default function SlideCanvas({
       {isSpacePressed && !editingTextId && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white rounded-lg px-3 py-1 text-sm">
           Pan Mode (Hold Space + Drag)
+        </div>
+      )}
+      
+      {/* Duplicate mode indicator */}
+      {isAltPressed && !editingTextId && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-purple-500 text-white rounded-lg px-3 py-1 text-sm">
+          Duplicate Mode (Alt + Drag to copy)
         </div>
       )}
     </div>

@@ -15,12 +15,12 @@ export interface SlideTemplate {
 export type TemplateCategory = 
   | 'blank'
   | 'title'
-  | 'section'
-  | 'content'
-  | 'list'
-  | 'comparison'
-  | 'chart'
-  | 'exercise'
+  | 'warm-up'
+  | 'vocabulary'
+  | 'conversation'
+  | 'reading'
+  | 'review'
+  | 'end'
   | 'custom'
   | 'all'
 

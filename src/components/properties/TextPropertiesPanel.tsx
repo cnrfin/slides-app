@@ -56,7 +56,7 @@ const FONT_WEIGHTS = [
   { name: 'Black', value: '900' },
 ]
 
-const FONT_SIZES = [8, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72, 96]
+const FONT_SIZES = [8, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 64, 72, 96]
 
 type ColorMode = 'solid' | 'gradient' | 'image'
 

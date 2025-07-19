@@ -1,8 +1,8 @@
 // src/components/canvas/ElementRenderer.tsx
-import React, { useMemo } from 'react'
-import { Group, Rect, Text } from 'react-konva'
+import React, { useMemo, useState, useEffect } from 'react'
+import { Group, Rect, Text, Image } from 'react-konva'
 import { CANVAS_DIMENSIONS, CANVAS_COLORS } from '@/utils/canvas.constants'
-import type { SlideElement, TextContent, ShapeContent } from '@/types/slide.types'
+import type { SlideElement, TextContent, ShapeContent, ImageContent } from '@/types/slide.types'
 import Konva from 'konva'
 
 // Helper function to calculate gradient points based on angle
@@ -38,7 +38,10 @@ interface ElementRendererProps {
   isSelected: boolean
   isEditing?: boolean
   isHovered?: boolean
+  isDragTarget?: boolean
   draggable?: boolean
+  dataKey?: string
+  showTemplateIndicators?: boolean
   onSelect: (e: any, elementId: string) => void
   onDragStart?: (e: any, elementId: string) => void
   onDrag?: (e: any) => void
@@ -53,7 +56,10 @@ const ElementRenderer = React.memo(({
   isSelected,
   isEditing = false,
   isHovered = false,
+  isDragTarget = false,
   draggable = true,
+  dataKey,
+  showTemplateIndicators = false,
   onSelect, 
   onDragStart,
   onDrag,
@@ -62,6 +68,23 @@ const ElementRenderer = React.memo(({
   onMouseEnter,
   onMouseLeave
 }: ElementRendererProps) => {
+  // Image loading state
+  const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
+  
+  // Load image when element is an image type
+  useEffect(() => {
+    if (element.type === 'image') {
+      const imageContent = element.content as ImageContent
+      const img = new window.Image()
+      img.onload = () => {
+        setImageObj(img)
+      }
+      img.onerror = () => {
+        console.error('Failed to load image:', imageContent.src)
+      }
+      img.src = imageContent.src
+    }
+  }, [element])
   
   // Memoize boundary checks
   const isOutsideSlide = useMemo(() => {
@@ -214,17 +237,87 @@ const ElementRenderer = React.memo(({
         return <Rect {...shapeProps} />
         
       case 'image':
-        // Placeholder for image
+        const imageContent = element.content as ImageContent
+        if (!imageObj) {
+          // Show placeholder while loading
+          return (
+            <>
+              <Rect
+                {...props}
+                {...additionalProps}
+                fill="#f3f4f6"
+                stroke="#d1d5db"
+                strokeWidth={1}
+                perfectDrawEnabled={false}
+                opacity={baseOpacity * (additionalProps.opacity || 1)}
+              />
+              <Text
+                x={element.x + element.width / 2}
+                y={element.y + element.height / 2}
+                text="Loading..."
+                fontSize={14}
+                fill="#6b7280"
+                align="center"
+                verticalAlign="middle"
+                offsetX={30}
+                offsetY={7}
+                listening={false}
+              />
+            </>
+          )
+        }
+        
         return (
-          <Rect
-            {...props}
-            {...additionalProps}
-            fill="#f0f0f0"
-            stroke="#cccccc"
-            strokeWidth={1}
-            perfectDrawEnabled={false}
-            opacity={baseOpacity * (additionalProps.opacity || 1)}
-          />
+          <>
+            {/* Drag target highlight for images */}
+            {isDragTarget && (
+              <Rect
+                x={element.x - 4}
+                y={element.y - 4}
+                width={element.width + 8}
+                height={element.height + 8}
+                stroke="#10b981"
+                strokeWidth={3}
+                fill="#10b981"
+                opacity={0.2}
+                cornerRadius={(element.style?.borderRadius || 0) + 4}
+                listening={false}
+              />
+            )}
+            {/* Hover border for images */}
+            {isHovered && !isSelected && !isDragTarget && (
+              <Rect
+                x={element.x}
+                y={element.y}
+                width={element.width}
+                height={element.height}
+                stroke="#9ca3af"
+                strokeWidth={1}
+                fill="transparent"
+                listening={false}
+              />
+            )}
+            {/* Selection border for locked images */}
+            {isSelected && element.locked && (
+              <Rect
+                x={element.x}
+                y={element.y}
+                width={element.width}
+                height={element.height}
+                stroke={CANVAS_COLORS.LOCKED_SELECTION}
+                strokeWidth={1}
+                fill="transparent"
+                listening={false}
+              />
+            )}
+            <Image
+              {...props}
+              {...additionalProps}
+              image={imageObj}
+              opacity={baseOpacity * (additionalProps.opacity || 1)}
+              cornerRadius={element.style?.borderRadius || 0}
+            />
+          </>
         )
         
       default:
@@ -353,6 +446,31 @@ const ElementRenderer = React.memo(({
           fill="transparent"
           listening={false}
         />
+      )}
+      
+      {/* Template data key indicator */}
+      {showTemplateIndicators && dataKey && (
+        <Group x={element.x} y={element.y - 20}>
+          <Rect
+            width={Math.max(60, dataKey.length * 7 + 16)}
+            height={18}
+            fill="#7c3aed"
+            cornerRadius={9}
+            shadowColor="black"
+            shadowBlur={3}
+            shadowOffset={{ x: 1, y: 1 }}
+            shadowOpacity={0.2}
+          />
+          <Text
+            x={8}
+            y={3}
+            text={dataKey}
+            fontSize={11}
+            fontFamily="monospace"
+            fill="white"
+            listening={false}
+          />
+        </Group>
       )}
     </Group>
   )

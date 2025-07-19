@@ -96,6 +96,34 @@ figma-slides-app/
 - Performance optimizations with selectors
 - Batch update operations
 
+## Recent Updates (January 2025)
+
+### Template System Improvements
+- **Renamed Template Types**:
+  - "Introduction" → "Warm Up"
+  - "Exercise" → "Reading" 
+  - "Conversation Example" → "Conversation"
+- **Template Categories**: Now match slide types directly (Title, Warm Up, Vocabulary, Conversation, Reading, Review, End)
+- **Vocabulary Template**: Added "Vocabulary - 6 items" template with two-column layout for vocabulary words and meanings
+- **Template Demo**: Enhanced with multiple example datasets (Spanish Colors, French Numbers, German Greetings)
+
+### Image Handling
+- **Image Replacement**: Drag and drop an image onto an existing image element to replace it
+  - Visual feedback with green highlight when hovering over target image
+  - Preserves all properties of the original image (size, position, opacity, etc.)
+  - Dynamic overlay messages: "Drop images here" or "Replace image"
+
+### Responsive Layout
+- **Figma-like Layout**: Sidebars now overlay the canvas and maintain fixed positions
+  - Canvas uses full viewport space behind UI panels
+  - Sidebars float over content when viewport shrinks
+  - Professional responsive behavior matching design tools
+- **Canvas Improvements**:
+  - Full viewport canvas interaction area
+  - Properly centered slide on initial load
+  - Reset view button (Home icon) and keyboard shortcut
+  - Zoom indicator moved to bottom center
+
 ## Current Implementation Status
 
 ### ✅ Completed Features
@@ -103,6 +131,11 @@ figma-slides-app/
 - Zoom and pan controls
 - Text element creation and editing
 - Auto-sizing text elements (infinite expansion)
+- **NEW: Image drag-and-drop support:**
+  - Drag image files directly onto the canvas
+  - Automatic scaling for large images (max 400px)
+  - Images positioned at drop location
+  - Visual indicator while dragging over canvas
 - **NEW: Element layer ordering (z-index) with:**
   - Bring to Front - moves element to top layer
   - Send to Back - moves element to bottom layer
@@ -127,7 +160,7 @@ figma-slides-app/
 - **NEW: Text Properties Panel with:**
   - Font family selector (Inter, Arial, Helvetica, etc.)
   - Font weight selector (Thin to Black)
-  - Font size dropdown (8px to 96px)
+  - Font size dropdown (8px to 96px, including 40px)
   - Line height control (percentage based)
   - Letter spacing control (kerning)
   - Bold, italic, underline, and bullet point buttons (bullet points now functional!)
@@ -171,24 +204,54 @@ figma-slides-app/
     - Prevents element movement and resizing when locked
     - Shows purple selection border for locked elements
     - "Not-allowed" cursor appears when hovering over locked elements
+- **Image support with:**
+  - Same resizing capabilities as shapes (8-point resize handles)
+  - Proportional resize with Shift key
+  - **Drag-and-drop image replacement**
+  - Image properties panel:
+    - Opacity control (0-100%)
+    - Corner radius (0-50px)
+    - Lock/unlock toggle
+  - Automatic image scaling on import (max 400px)
+  - Loading state with placeholder
+  - Full layer ordering support
 - Shape resizing with:
   - 8-point resize handles (corners and sides)
   - Proportional resize when holding Shift key
   - Snap-to-margin while resizing
   - Snap-to-element while resizing (match dimensions of other elements)
   - Visual feedback during resize
-- Element selection and multi-selection:
+- **Element selection and multi-selection:**
   - Click and drag to create selection rectangle
   - All elements within rectangle become selected
   - Selection bounding box appears around multiple selected elements
   - Drag selection box to move all elements together
   - Resize selection box to scale all elements proportionally
   - Ctrl/Cmd + click for individual multi-selection
-- Keyboard shortcuts (Delete, Escape, Ctrl+A)
+- **Element duplication:**
+  - Alt + drag any element to create a duplicate
+  - Duplicate inherits all properties from original
+  - Works with text, shapes, and images
+  - Snapping guides work during duplication
+- Keyboard shortcuts (Delete, Escape, Ctrl+A, **Home for reset view**)
 - Slide management (add, delete, duplicate)
 - Slide thumbnails with navigation
 - Template system with modal selection
 - Pre-made templates (Title, Content, Exercise layouts)
+- **NEW: Template Designer with:**
+  - Visual template creation within the app
+  - Slide type selection (Title, Introduction, Vocabulary, etc.)
+  - Dynamic data key mapping for elements
+  - Save templates to localStorage
+  - Export as TypeScript or JSON
+  - **Minimize/Maximize feature** for easy canvas access
+  - **Non-blocking interface** - select and edit elements while designer is open
+  - **Smart keyboard handling** - Space key works in input fields
+  - **Data Key Helper** showing:
+    - Context-aware suggestions based on slide type
+    - Current data keys for selected elements
+    - Copy-to-clipboard functionality
+    - Common patterns and examples
 
 ### 🚧 In Progress
 - ~~Element resizing~~ ✅ Text and shape resizing implemented
@@ -204,7 +267,7 @@ figma-slides-app/
 - Supabase integration for persistence
 - OpenAI integration for content generation
 - Real-time collaboration
-- Image and media support
+- Video and audio support
 - Export functionality
 - Advanced templates (vocabulary tables, exercises)
 
@@ -269,6 +332,33 @@ The Figma-like editing implementation includes:
   - Re-adds bullets when saving
   - Properly measures text with bullets for accurate dimensions
 
+## Template System
+
+The application includes a comprehensive template system for creating language learning slides:
+
+### Template Categories
+- **Blank**: Basic empty slides
+- **Title**: Title page templates
+- **Warm Up**: Warm-up activity slides (icebreakers, discussions)
+- **Vocabulary**: Vocabulary teaching slides with word/meaning layouts
+- **Conversation**: Dialogue and conversation practice slides
+- **Reading**: Reading comprehension slides with passages and questions
+- **Review**: Summary and review slides
+- **End**: Closing slides
+
+### Available Templates
+- **Blank Template**: Simple white background slide
+- **Vocabulary - 6 items**: Two-column layout for 6 vocabulary words with meanings
+  - Dynamic placeholders: `{{title}}`, `{{subtitle}}`, `{{vocabulary[0].word}}`, etc.
+  - Supports data population from JSON
+
+### Template Designer Features
+- Visual template creation within the app
+- Dynamic data key mapping
+- Export templates as TypeScript or JSON
+- Minimize/maximize for easy canvas access
+- Data Key Helper with context-aware suggestions
+
 ## Usage Guide
 
 ### Text Editing and Resizing
@@ -288,9 +378,27 @@ The Figma-like editing implementation includes:
    - Hold Shift while dragging for proportional resize
 5. **Properties**: Select shape to see properties panel with color/gradient options
 
+### Working with Images
+1. **Add Images**: Simply drag and drop image files onto the canvas
+2. **Replace Images**: Drag a new image onto an existing image element
+   - Green highlight shows when hovering over replaceable image
+   - Original image properties are preserved
+3. **Multiple Images**: Drop multiple files at once - they'll be offset slightly
+4. **Select**: Click to select - shows blue border + 8 resize handles
+5. **Resize**: Same as shapes - drag handles, hold Shift for proportional
+6. **Properties**: 
+   - Adjust opacity (0-100%)
+   - Set corner radius for rounded corners
+   - Lock/unlock to prevent accidental edits
+7. **Layer Order**: Use Alt + Arrow keys to change z-index
+
 ### Canvas Navigation
 - **Pan**: Hold Space + drag mouse
 - **Zoom**: Scroll wheel (33% - 200%)
+- **Reset View**: 
+  - Click Home button in toolbar
+  - Press Home key
+  - Returns to 100% zoom and centers the slide
 - **Undo/Redo**:
   - **Undo**: Ctrl/Cmd + Z - undo last action
   - **Redo**: Ctrl/Cmd + Y - redo last undone action (following Figma's pattern)
@@ -308,6 +416,10 @@ The Figma-like editing implementation includes:
   - **Add to Selection**: Ctrl/Cmd + click individual elements
   - **Select All**: Ctrl/Cmd + A
   - **Clear Selection**: Escape key or click empty area
+- **Duplication**:
+  - **Alt + Drag**: Hold Alt while dragging any element to create a duplicate
+  - Works with all element types (text, shapes, images)
+  - Duplicates inherit all properties from the original
 - **Multi-Element Operations**:
   - **Selection Box**: When multiple elements are selected, a bounding box appears
   - **Move Together**: Drag the selection box to move all selected elements as a group
@@ -319,6 +431,13 @@ The Figma-like editing implementation includes:
   - Elements automatically snap to each other when dragging
   - Purple guides show element alignment
   - Red guides show margin alignment
+  - **Precise Positioning with Arrow Keys**:
+    - Use arrow keys to move selected elements by 4px increments
+    - Up/Down/Left/Right arrows move elements in the corresponding direction
+    - Works with multiple selected elements (moves them all together)
+    - Respects locked elements (locked elements won't move)
+    - Allows for precise spacing control between elements
+    - Combined with element snapping, makes it easy to create evenly spaced layouts
 
 ## Important Implementation Details
 
@@ -345,7 +464,7 @@ The Figma-like editing implementation includes:
   - Purple guides show element-to-element alignment
   - Works for all element types (text, shapes)
 - **Margin Snapping**:
-  - Elements snap to slide margins (50px from edges)
+  - Elements snap to slide margins (25px from edges)
   - Center alignment guides for horizontal and vertical centering
   - Red guides show margin/center alignment
 - **Visual Guides**:
@@ -414,4 +533,4 @@ When making changes:
 4. Test zoom/pan behavior after canvas changes
 5. Ensure text editing maintains auto-sizing behavior
 
-Last Updated: Updated redo shortcut to Ctrl+Y (following Figma's more ergonomic pattern)
+Last Updated: January 2025 - Template system updates, image replacement, and Figma-like responsive layout

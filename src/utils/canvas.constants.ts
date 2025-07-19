@@ -4,8 +4,8 @@
 export const CANVAS_DIMENSIONS = {
   WIDTH: 800,
   HEIGHT: 600,
-  MARGIN_H: 50,
-  MARGIN_V: 50,
+  MARGIN_H: 25,
+  MARGIN_V: 25,
 } as const
 
 export const ZOOM_LIMITS = {

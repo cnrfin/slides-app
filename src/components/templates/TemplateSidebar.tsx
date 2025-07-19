@@ -21,11 +21,13 @@ const categoryIcons: Record<string, React.ReactNode> = {
 const categories = [
   { id: 'all', name: 'All Templates' },
   { id: 'blank', name: 'Blank' },
-  { id: 'title', name: 'Title Slides' },
-  { id: 'content', name: 'Content' },
-  { id: 'section', name: 'Sections' },
-  { id: 'list', name: 'Lists' },
-  { id: 'exercise', name: 'Exercises' }
+  { id: 'title', name: 'Title' },
+  { id: 'warm-up', name: 'Warm Up' },
+  { id: 'vocabulary', name: 'Vocabulary' },
+  { id: 'conversation', name: 'Conversation' },
+  { id: 'reading', name: 'Reading' },
+  { id: 'review', name: 'Review' },
+  { id: 'end', name: 'End' }
 ]
 
 export default function TemplateSidebar({ 
