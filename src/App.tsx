@@ -10,10 +10,9 @@ import ImagePropertiesPanel from '@/components/properties/ImagePropertiesPanel'
 import TemplateDesigner from '@/components/TemplateDesigner'
 import TemplateDemo from '@/components/TemplateDemo'
 import DataKeyHelper from '@/components/DataKeyHelper'
-import { Layers, Plus, Copy, Trash2, ChevronLeft, ChevronRight, ChevronsUp, ChevronsDown, ChevronUp, ChevronDown, Undo2, Redo2, Wand2, Home } from 'lucide-react'
-import type { TextContent, ShapeContent } from '@/types/slide.types'
+import FloatingToolbar from '@/components/toolbar/FloatingToolbar'
+import { Layers, Plus, Copy, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { SlideTemplate } from '@/types/template.types'
-import { measureAutoText } from '@/utils/text.utils'
 import { useSelectedElements } from '@/stores/slideStore'
 
 function App() {
@@ -21,6 +20,7 @@ function App() {
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isTemplateDesignerOpen, setIsTemplateDesignerOpen] = useState(false)
+  const [currentZoom, setCurrentZoom] = useState(100)
   
   // Enable keyboard shortcuts
   useKeyboardShortcuts()
@@ -36,11 +36,6 @@ function App() {
     deleteSlide,
     duplicateSlide,
     setCurrentSlide,
-    addElement,
-    canUndo,
-    canRedo,
-    undo,
-    redo,
   } = useSlideStore()
   
   // Initialize with a presentation on mount
@@ -56,13 +51,25 @@ function App() {
       // Use full viewport dimensions
       setCanvasSize({
         width: window.innerWidth,
-        height: window.innerHeight - 64 // Subtract toolbar height (h-16 = 64px)
+        height: window.innerHeight
       })
     }
     
     updateSize()
     window.addEventListener('resize', updateSize)
     return () => window.removeEventListener('resize', updateSize)
+  }, [])
+  
+  // Listen for zoom changes from canvas
+  useEffect(() => {
+    const handleZoomChange = (event: Event) => {
+      const customEvent = event as CustomEvent
+      const zoom = customEvent.detail.zoom
+      setCurrentZoom(Math.round(zoom * 100))
+    }
+    
+    window.addEventListener('canvas:zoom-change', handleZoomChange)
+    return () => window.removeEventListener('canvas:zoom-change', handleZoomChange)
   }, [])
   
   const currentSlideIndex = slides.findIndex(s => s.id === currentSlideId)
@@ -80,89 +87,12 @@ function App() {
     }
   }
   
-  const handleAddText = () => {
-    if (!currentSlide) return
-    
-    const text = 'Type here' // Simple default text
-    const fontSize = 16 // Changed to 16 to match Figma's default
-    const fontFamily = 'Arial'
-    
-    // Measure text dimensions
-    const dimensions = measureAutoText({
-      text,
-      fontSize,
-      fontFamily,
-      lineHeight: 1.2,
-      padding: 0 // No padding
-    })
-    
-    const textContent: TextContent = {
-      text,
-    }
-    
-    // Add text in the center of the canvas with auto-sized dimensions
-    addElement(currentSlide.id, {
-      type: 'text',
-      x: 400 - dimensions.width / 2, // Center horizontally
-      y: 300 - dimensions.height / 2, // Center vertically
-      width: dimensions.width,
-      height: dimensions.height, // No extra padding
-      content: textContent,
-      style: {
-        fontSize,
-        fontFamily,
-        color: '#000000',
-        textAlign: 'left',
-      },
-    })
-  }
-  
-  const handleAddShape = () => {
-    if (!currentSlide) return
-    
-    const shapeContent: ShapeContent = {
-      shape: 'rectangle',
-    }
-    
-    // Add shape in the center of the canvas
-    addElement(currentSlide.id, {
-      type: 'shape',
-      x: 350,
-      y: 250,
-      width: 100,
-      height: 100,
-      content: shapeContent,
-      style: {
-        backgroundColor: '#3b82f6',
-        borderRadius: 8,
-      },
-    })
-  }
-  
-  const handleAddCircle = () => {
-    if (!currentSlide) return
-    
-    const shapeContent: ShapeContent = {
-      shape: 'circle',
-    }
-    
-    addElement(currentSlide.id, {
-      type: 'shape',
-      x: 350,
-      y: 250,
-      width: 100,
-      height: 100,
-      content: shapeContent,
-      style: {
-        backgroundColor: '#10b981',
-      },
-    })
-  }
+
   
   return (
     <div className="relative h-screen bg-gray-50 overflow-hidden">
       {/* Canvas Area - Full viewport */}
-      <div className="absolute inset-0 top-16">
+      <div className="absolute inset-0">
         <div ref={canvasContainerRef} className="w-full h-full bg-gray-100">
           <SlideCanvas 
             containerWidth={canvasSize.width}
@@ -171,167 +101,50 @@ function App() {
         </div>
       </div>
       
-      {/* Fixed Toolbar */}
-      <div className="absolute top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 flex items-center px-4 gap-4 shadow-sm z-20">
-        <h1 className="text-xl font-semibold text-gray-800">
+      {/* Floating Toolbar */}
+      <FloatingToolbar 
+        onOpenTemplateMode={() => setIsTemplateDesignerOpen(!isTemplateDesignerOpen)}
+        isTemplateMode={isTemplateDesignerOpen}
+      />
+      
+      {/* Presentation Title and Navigation - Top Center */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2 flex items-center gap-4 z-20">
+        <h1 className="text-sm font-semibold text-gray-800">
           {presentation?.title || 'Untitled Presentation'}
         </h1>
         
-        {/* Undo/Redo buttons */}
-        <div className="flex items-center gap-1 ml-4">
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className="p-2 rounded hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Undo (Ctrl+Z)"
-          >
-            <Undo2 className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={redo}
-            disabled={!canRedo}
-            className="p-2 rounded hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Redo (Ctrl+Y)"
-          >
-            <Redo2 className="w-4 h-4" />
-          </button>
-        </div>
-        
-        <div className="flex-1" />
-        
-        {/* Template Designer Toggle */}
-        <button
-          onClick={() => setIsTemplateDesignerOpen(!isTemplateDesignerOpen)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors font-medium text-sm ${
-            isTemplateDesignerOpen
-              ? 'bg-purple-600 text-white'
-              : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-          }`}
-        >
-          <Wand2 className="w-4 h-4" />
-          Template Mode
-        </button>
-        
-        {/* Layer controls - only show when element is selected */}
-        {selectedElements.length === 1 && currentSlide && (
-          <div className="flex items-center gap-1 border-r border-gray-200 pr-3 mr-3">
-            <button
-              onClick={() => {
-                const element = selectedElements[0]
-                if (element) {
-                  useSlideStore.getState().bringToFront(currentSlide.id, element.id)
-                }
-              }}
-              className="p-2 rounded hover:bg-gray-100 transition-colors" 
-              title="Bring to Front (Alt+Shift+↑)"
-            >
-              <ChevronsUp className="w-4 h-4" />
-            </button>
-            
-            <button
-              onClick={() => {
-                const element = selectedElements[0]
-                if (element) {
-                  useSlideStore.getState().bringForward(currentSlide.id, element.id)
-                }
-              }}
-              className="p-2 rounded hover:bg-gray-100 transition-colors"
-              title="Bring Forward (Alt+↑)"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
-            
-            <button
-              onClick={() => {
-                const element = selectedElements[0]
-                if (element) {
-                  useSlideStore.getState().sendBackward(currentSlide.id, element.id)
-                }
-              }}
-              className="p-2 rounded hover:bg-gray-100 transition-colors"
-              title="Send Backward (Alt+↓)"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            
-            <button
-              onClick={() => {
-                const element = selectedElements[0]
-                if (element) {
-                  useSlideStore.getState().sendToBack(currentSlide.id, element.id)
-                }
-              }}
-              className="p-2 rounded hover:bg-gray-100 transition-colors"
-              title="Send to Back (Alt+Shift+↓)"
-            >
-              <ChevronsDown className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-        
-        {/* Element controls */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleAddText}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-          >
-            Add Text
-          </button>
-          
-          <button
-            onClick={handleAddShape}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-          >
-            Add Rectangle
-          </button>
-          
-          <button
-            onClick={handleAddCircle}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-          >
-            Add Circle
-          </button>
-        </div>
-        
-        {/* Navigation */}
-        <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
-          <button
-            onClick={() => {
-              // Reset zoom and center the canvas
-              const event = new CustomEvent('canvas:reset-view')
-              window.dispatchEvent(event)
-            }}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            title="Reset View (Home)"
-          >
-            <Home className="w-4 h-4" />
-          </button>
-          
+        <div className="flex items-center gap-2 border-l border-gray-200 pl-4">
           <button
             onClick={handlePreviousSlide}
             disabled={currentSlideIndex === 0}
-            className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
           
-          <span className="text-sm text-gray-600 min-w-[60px] text-center font-medium">
+          <span className="text-xs text-gray-600 min-w-[50px] text-center font-medium">
             {currentSlideIndex + 1} / {slides.length}
           </span>
           
           <button
             onClick={handleNextSlide}
             disabled={currentSlideIndex === slides.length - 1}
-            className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
+        </div>
+        
+        {/* Zoom indicator */}
+        <div className="flex items-center gap-2 border-l border-gray-200 pl-4">
+          <span className="text-xs text-gray-600 font-medium">
+            {currentZoom}%
+          </span>
         </div>
       </div>
       
       {/* Left Sidebar - Slide Thumbnails */}
-      <div className="absolute left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm z-10">
+      <div className="absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm z-10">
         <div className="p-4 border-b border-gray-200">
           <h2 className="font-semibold text-gray-800 flex items-center gap-2">
             <Layers className="w-5 h-5" />
@@ -413,7 +226,7 @@ function App() {
       </div>
       
       {/* Right Sidebar - Properties Panel */}
-      <div className="absolute right-0 top-16 bottom-0 w-80 bg-white border-l border-gray-200 p-4 shadow-sm z-10 overflow-y-auto">
+      <div className="absolute right-0 top-0 bottom-0 w-80 bg-white border-l border-gray-200 p-4 shadow-sm z-10 overflow-y-auto">
         {selectedElements.length > 0 ? (
           selectedElements.some(el => el.type === 'text') ? (
             <TextPropertiesPanel />

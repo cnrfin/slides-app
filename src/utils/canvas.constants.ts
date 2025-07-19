@@ -24,8 +24,12 @@ export const CANVAS_COLORS = {
   TRANSFORMER_ANCHOR: '#ffffff',
   MARGIN_LINE: '#ff6b6b',
   MARGIN_LINE_ALPHA: 0.3,
+  EDGE_LINE: '#0ea5e9', // Cyan for edge snapping guides
+  EDGE_LINE_ALPHA: 0.3,
   SNAP_GUIDE: '#ff6b6b',
   SNAP_GUIDE_ALPHA: 0.8,
+  EDGE_SNAP_GUIDE: '#0ea5e9', // Cyan for edge snapping guides
+  EDGE_SNAP_GUIDE_ALPHA: 0.8,
   ELEMENT_SNAP_GUIDE: '#9333ea', // Purple for element-to-element snapping
   ELEMENT_SNAP_GUIDE_ALPHA: 0.8,
   LOCKED_SELECTION: '#9333ea', // Purple border for locked selected elements

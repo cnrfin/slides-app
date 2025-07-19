@@ -38,6 +38,8 @@ figma-slides-app/
 │   │   │   ├── SlideCanvas.tsx      # Main canvas component with zoom/pan
 │   │   │   ├── ElementRenderer.tsx   # Renders individual slide elements
 │   │   │   └── InlineTextEditor.tsx  # Inline text editing overlay
+│   │   ├── toolbar/
+│   │   │   └── FloatingToolbar.tsx   # Figma-style floating toolbar
 │   │   └── templates/
 │   │       └── VocabularyTable.tsx   # Template component example
 │   ├── stores/
@@ -122,7 +124,33 @@ figma-slides-app/
   - Full viewport canvas interaction area
   - Properly centered slide on initial load
   - Reset view button (Home icon) and keyboard shortcut
-  - Zoom indicator moved to bottom center
+  - Zoom indicator moved to top toolbar
+
+### Floating Toolbar (January 2025)
+- **Figma-style floating toolbar** positioned at bottom center of viewport
+  - **Pill-shaped design** with circular buttons
+  - **Tools included**:
+    - Select tool (cursor icon)
+    - Rectangle tool
+    - Circle tool
+    - Text tool (T icon)
+    - Image upload
+    - Undo/Redo with disabled states
+    - Canvas reset (Home icon)
+    - Lock/Unlock (appears when elements selected)
+    - Layer controls dropdown (single element selected)
+    - Template mode toggle
+  - **Visual separators** between tool groups
+  - **Tool selection states** with blue highlight
+  - **Smooth transitions** and hover effects
+- **Lock/Unlock in toolbar**: 
+  - Moved from properties panel to toolbar
+  - Smart toggle behavior for multiple selections
+  - Shows appropriate icon based on selection state
+- **Zoom indicator relocated**:
+  - Moved from canvas to top toolbar
+  - Shows next to slide navigation
+  - Updates in real-time during zoom
 
 ## Current Implementation Status
 
@@ -463,15 +491,21 @@ The application includes a comprehensive template system for creating language l
   - **While Resizing**: Elements snap to match dimensions and align with other elements
   - Purple guides show element-to-element alignment
   - Works for all element types (text, shapes)
+- **Edge Snapping**:
+  - Elements snap directly to slide edges (0px from edges)
+  - Allows precise placement at the very edge of the slide
+  - Cyan guides show edge alignment
+  - Works for both dragging and resizing
 - **Margin Snapping**:
   - Elements snap to slide margins (25px from edges)
   - Center alignment guides for horizontal and vertical centering
   - Red guides show margin/center alignment
 - **Visual Guides**:
   - **Purple lines**: Element-to-element alignment
-  - **Red lines**: Margin and center alignment
+  - **Cyan lines**: Slide edge alignment (0px from edges)
+  - **Red lines**: Margin and center alignment (25px from edges)
   - Guides appear when within snap distance (10px)
-- **Smart Priority**: Element snapping takes priority over margin snapping
+- **Smart Priority**: Element snapping takes priority over edge/margin snapping
 
 ### Performance Optimizations
 - React.memo on ElementRenderer
@@ -533,4 +567,4 @@ When making changes:
 4. Test zoom/pan behavior after canvas changes
 5. Ensure text editing maintains auto-sizing behavior
 
-Last Updated: January 2025 - Template system updates, image replacement, and Figma-like responsive layout
+Last Updated: January 2025 - Floating toolbar implementation, lock/unlock in toolbar, zoom indicator relocation

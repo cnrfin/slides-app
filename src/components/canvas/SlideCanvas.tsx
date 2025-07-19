@@ -79,6 +79,10 @@ export default function SlideCanvas({
     const handleResetView = () => {
       setStageScale(1)
       setStagePos({ x: 0, y: 0 })
+      
+      // Emit zoom change event
+      const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: 1 } })
+      window.dispatchEvent(event)
     }
     
     window.addEventListener('canvas:reset-view', handleResetView)
@@ -139,6 +143,10 @@ export default function SlideCanvas({
     if (stagePos.x === 0 && stagePos.y === 0) {
       // Only set initial position if not already positioned
       setStagePos({ x: 0, y: 0 })
+      
+      // Emit initial zoom
+      const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: 1 } })
+      window.dispatchEvent(event)
     }
   }, [])
   
@@ -440,6 +448,10 @@ export default function SlideCanvas({
       x: pointer.x - mousePointTo.x * newScale,
       y: pointer.y - mousePointTo.y * newScale
     })
+    
+    // Emit zoom change event
+    const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: newScale } })
+    window.dispatchEvent(event)
   }, [stageScale, stagePos])
   
   // Handle element selection
@@ -974,8 +986,8 @@ export default function SlideCanvas({
                 y={guide.type === 'horizontal' ? guide.position : 0}
                 width={guide.type === 'vertical' ? 1 : CANVAS_WIDTH}
                 height={guide.type === 'horizontal' ? 1 : CANVAS_HEIGHT}
-                fill={CANVAS_COLORS.MARGIN_LINE}
-                opacity={CANVAS_COLORS.MARGIN_LINE_ALPHA}
+                fill={guide.isEdge ? CANVAS_COLORS.EDGE_LINE : CANVAS_COLORS.MARGIN_LINE}
+                opacity={guide.isEdge ? CANVAS_COLORS.EDGE_LINE_ALPHA : CANVAS_COLORS.MARGIN_LINE_ALPHA}
                 dash={guide.isCenter ? [5, 5] : undefined}
                 listening={false}
               />
@@ -1066,18 +1078,25 @@ export default function SlideCanvas({
             }
             
             {/* Snap guides */}
-            {SNAP_SETTINGS.SHOW_GUIDES && snapGuides.map((guide, index) => (
-              <Rect
-                key={`snap-guide-${index}`}
-                x={guide.type === 'vertical' ? guide.position : guide.start}
-                y={guide.type === 'horizontal' ? guide.position : guide.start}
-                width={guide.type === 'vertical' ? SNAP_SETTINGS.GUIDE_WIDTH : guide.end - guide.start}
-                height={guide.type === 'horizontal' ? SNAP_SETTINGS.GUIDE_WIDTH : guide.end - guide.start}
-                fill={guide.elementId ? CANVAS_COLORS.ELEMENT_SNAP_GUIDE : CANVAS_COLORS.SNAP_GUIDE}
-                opacity={guide.elementId ? CANVAS_COLORS.ELEMENT_SNAP_GUIDE_ALPHA : CANVAS_COLORS.SNAP_GUIDE_ALPHA}
-                listening={false}
-              />
-            ))}
+            {SNAP_SETTINGS.SHOW_GUIDES && snapGuides.map((guide, index) => {
+              // Check if this guide position corresponds to an edge
+              const isEdgeGuide = guide.type === 'vertical' 
+                ? (guide.position === 0 || guide.position === CANVAS_WIDTH)
+                : (guide.position === 0 || guide.position === CANVAS_HEIGHT)
+              
+              return (
+                <Rect
+                  key={`snap-guide-${index}`}
+                  x={guide.type === 'vertical' ? guide.position : guide.start}
+                  y={guide.type === 'horizontal' ? guide.position : guide.start}
+                  width={guide.type === 'vertical' ? SNAP_SETTINGS.GUIDE_WIDTH : guide.end - guide.start}
+                  height={guide.type === 'horizontal' ? SNAP_SETTINGS.GUIDE_WIDTH : guide.end - guide.start}
+                  fill={guide.elementId ? CANVAS_COLORS.ELEMENT_SNAP_GUIDE : (isEdgeGuide ? CANVAS_COLORS.EDGE_SNAP_GUIDE : CANVAS_COLORS.SNAP_GUIDE)}
+                  opacity={guide.elementId ? CANVAS_COLORS.ELEMENT_SNAP_GUIDE_ALPHA : (isEdgeGuide ? CANVAS_COLORS.EDGE_SNAP_GUIDE_ALPHA : CANVAS_COLORS.SNAP_GUIDE_ALPHA)}
+                  listening={false}
+                />
+              )
+            })}
             
             {/* Selection rectangle */}
             {isSelecting && (
@@ -1145,10 +1164,7 @@ export default function SlideCanvas({
         )
       })()}
       
-      {/* Zoom indicator */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-md px-3 py-2 text-sm text-gray-600">
-        {Math.round(stageScale * 100)}%
-      </div>
+
       
       {/* Edit mode indicator */}
       {editingTextId && (

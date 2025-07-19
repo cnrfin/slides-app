@@ -22,6 +22,7 @@ export interface MarginGuide {
   type: 'vertical' | 'horizontal'
   position: number
   isCenter?: boolean
+  isEdge?: boolean // New property to identify edge guides
 }
 
 export interface ElementSnapPoint {
@@ -38,6 +39,14 @@ const MARGINS = {
   bottom: CANVAS_DIMENSIONS.HEIGHT - CANVAS_DIMENSIONS.MARGIN_V,
   centerX: CANVAS_DIMENSIONS.WIDTH / 2,
   centerY: CANVAS_DIMENSIONS.HEIGHT / 2,
+}
+
+// Slide edge positions (0px from edges)
+const EDGES = {
+  left: 0,
+  right: CANVAS_DIMENSIONS.WIDTH,
+  top: 0,
+  bottom: CANVAS_DIMENSIONS.HEIGHT,
 }
 
 /**
@@ -63,10 +72,15 @@ export function calculateSnapPosition(
 
   // Check horizontal snapping - find the closest snap point
   const horizontalChecks = [
+    // Edge snapping
+    { edge: x, snapTo: EDGES.left, offset: 0 }, // Left edge to slide left edge
+    { edge: x + width, snapTo: EDGES.right, offset: -width }, // Right edge to slide right edge
+    // Margin snapping
     { edge: x, snapTo: MARGINS.left, offset: 0 }, // Left edge to left margin
     { edge: x + width, snapTo: MARGINS.right, offset: -width }, // Right edge to right margin
     { edge: x, snapTo: MARGINS.right, offset: 0 }, // Left edge to right margin
     { edge: x + width, snapTo: MARGINS.left, offset: -width }, // Right edge to left margin
+    // Center snapping
     { edge: elementCenterX, snapTo: MARGINS.centerX, offset: -width / 2 }, // Center to center
   ]
 
@@ -95,10 +109,15 @@ export function calculateSnapPosition(
 
   // Check vertical snapping - find the closest snap point
   const verticalChecks = [
+    // Edge snapping
+    { edge: y, snapTo: EDGES.top, offset: 0 }, // Top edge to slide top edge
+    { edge: y + height, snapTo: EDGES.bottom, offset: -height }, // Bottom edge to slide bottom edge
+    // Margin snapping
     { edge: y, snapTo: MARGINS.top, offset: 0 }, // Top edge to top margin
     { edge: y + height, snapTo: MARGINS.bottom, offset: -height }, // Bottom edge to bottom margin
     { edge: y, snapTo: MARGINS.bottom, offset: 0 }, // Top edge to bottom margin
     { edge: y + height, snapTo: MARGINS.top, offset: -height }, // Bottom edge to top margin
+    // Center snapping
     { edge: elementCenterY, snapTo: MARGINS.centerY, offset: -height / 2 }, // Center to center
   ]
 
@@ -260,7 +279,11 @@ export function calculateResizeSnapPosition(
   let snapped = false
   let snapGuide: SnapGuide | undefined
 
-  const snapPoints = [MARGINS.left, MARGINS.right, MARGINS.centerX]
+  // Include both edge and margin snap points
+  const snapPoints = [
+    EDGES.left, EDGES.right, // Edge snapping
+    MARGINS.left, MARGINS.right, MARGINS.centerX // Margin snapping
+  ]
   let closestSnap = null
   let minDistance = SNAP_SETTINGS.THRESHOLD
 
@@ -326,7 +349,11 @@ export function calculateVerticalResizeSnapPosition(
   let snapped = false
   let snapGuide: SnapGuide | undefined
 
-  const snapPoints = [MARGINS.top, MARGINS.bottom, MARGINS.centerY]
+  // Include both edge and margin snap points
+  const snapPoints = [
+    EDGES.top, EDGES.bottom, // Edge snapping
+    MARGINS.top, MARGINS.bottom, MARGINS.centerY // Margin snapping
+  ]
   let closestSnap = null
   let minDistance = SNAP_SETTINGS.THRESHOLD
 
@@ -717,11 +744,15 @@ export function getVisibleMarginGuides(
   const elementCenterX = x + width / 2
   const elementCenterY = y + height / 2
 
-  // Check horizontal margins
+  // Check horizontal margins and edges
   const horizontalMargins = [
-    { position: MARGINS.left, isCenter: false },
-    { position: MARGINS.right, isCenter: false },
-    { position: MARGINS.centerX, isCenter: true },
+    // Edges
+    { position: EDGES.left, isCenter: false, isEdge: true },
+    { position: EDGES.right, isCenter: false, isEdge: true },
+    // Margins
+    { position: MARGINS.left, isCenter: false, isEdge: false },
+    { position: MARGINS.right, isCenter: false, isEdge: false },
+    { position: MARGINS.centerX, isCenter: true, isEdge: false },
   ]
 
   for (const margin of horizontalMargins) {
@@ -734,16 +765,21 @@ export function getVisibleMarginGuides(
       guides.push({
         type: 'vertical',
         position: margin.position,
-        isCenter: margin.isCenter
+        isCenter: margin.isCenter,
+        isEdge: margin.isEdge
       })
     }
   }
 
-  // Check vertical margins
+  // Check vertical margins and edges
   const verticalMargins = [
-    { position: MARGINS.top, isCenter: false },
-    { position: MARGINS.bottom, isCenter: false },
-    { position: MARGINS.centerY, isCenter: true },
+    // Edges
+    { position: EDGES.top, isCenter: false, isEdge: true },
+    { position: EDGES.bottom, isCenter: false, isEdge: true },
+    // Margins
+    { position: MARGINS.top, isCenter: false, isEdge: false },
+    { position: MARGINS.bottom, isCenter: false, isEdge: false },
+    { position: MARGINS.centerY, isCenter: true, isEdge: false },
   ]
 
   for (const margin of verticalMargins) {
@@ -756,7 +792,8 @@ export function getVisibleMarginGuides(
       guides.push({
         type: 'horizontal',
         position: margin.position,
-        isCenter: margin.isCenter
+        isCenter: margin.isCenter,
+        isEdge: margin.isEdge
       })
     }
   }
