@@ -23,25 +23,45 @@ import {
 import { HexColorPicker, HexColorInput } from 'react-colorful'
 import useSlideStore from '@/stores/slideStore'
 import { useSelectedElements, useCurrentSlide } from '@/stores/slideStore'
-import type { TextContent, ElementStyle } from '@/types/slide.types'
+import type { TextContent, ElementStyle, BlendMode } from '@/types/slide.types'
 import { measureAutoText } from '@/utils/text.utils'
+import { loadFont, getAvailableSystemFonts } from '@/utils/font.utils'
+import BlendModeSelector from './BlendModeSelector'
 
 interface TextPropertiesPanelProps {
   className?: string
 }
 
-// Common fonts available in most systems
-const FONT_FAMILIES = [
-  { name: 'Custom', value: 'Inter' },
-  { name: 'Inter', value: 'Inter' },
-  { name: 'Arial', value: 'Arial' },
-  { name: 'Helvetica', value: 'Helvetica' },
-  { name: 'Times New Roman', value: 'Times New Roman' },
-  { name: 'Georgia', value: 'Georgia' },
-  { name: 'Courier New', value: 'Courier New' },
-  { name: 'Verdana', value: 'Verdana' },
-  { name: 'Roboto', value: 'Roboto' },
-  { name: 'Open Sans', value: 'Open Sans' },
+// Available fonts - Mix of web fonts and system fonts
+const ALL_FONT_FAMILIES = [
+  // Google Fonts (loaded via HTML)
+  { name: 'Inter', value: 'Inter', category: 'sans-serif' },
+  { name: 'Roboto', value: 'Roboto', category: 'sans-serif' },
+  { name: 'Open Sans', value: 'Open Sans', category: 'sans-serif' },
+  { name: 'Montserrat', value: 'Montserrat', category: 'sans-serif' },
+  { name: 'Poppins', value: 'Poppins', category: 'sans-serif' },
+  { name: 'Lato', value: 'Lato', category: 'sans-serif' },
+  { name: 'Raleway', value: 'Raleway', category: 'sans-serif' },
+  { name: 'Source Sans Pro', value: 'Source Sans Pro', category: 'sans-serif' },
+  
+  // Serif fonts
+  { name: 'Playfair Display', value: 'Playfair Display', category: 'serif' },
+  { name: 'Merriweather', value: 'Merriweather', category: 'serif' },
+  { name: 'Georgia', value: 'Georgia', category: 'serif' },
+  { name: 'Times New Roman', value: 'Times New Roman', category: 'serif' },
+  
+  // System fonts
+  { name: 'Arial', value: 'Arial', category: 'sans-serif' },
+  { name: 'Helvetica', value: 'Helvetica', category: 'sans-serif' },
+  { name: 'Verdana', value: 'Verdana', category: 'sans-serif' },
+  { name: 'Tahoma', value: 'Tahoma', category: 'sans-serif' },
+  { name: 'Trebuchet MS', value: 'Trebuchet MS', category: 'sans-serif' },
+  { name: 'Segoe UI', value: 'Segoe UI', category: 'sans-serif' },
+  
+  // Monospace fonts
+  { name: 'Courier New', value: 'Courier New', category: 'monospace' },
+  { name: 'Consolas', value: 'Consolas', category: 'monospace' },
+  { name: 'Monaco', value: 'Monaco', category: 'monospace' },
 ]
 
 const FONT_WEIGHTS = [
@@ -65,9 +85,20 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
   const currentSlide = useCurrentSlide()
   const updateElement = useSlideStore((state) => state.updateElement)
   
-  const textElement = selectedElements.find(el => el.type === 'text')
-  const textContent = textElement?.content as TextContent | undefined
-  const style = textElement?.style || {}
+  // Get available fonts (filters out fonts not available on the system)
+  const [availableFonts, setAvailableFonts] = useState(ALL_FONT_FAMILIES)
+  
+  useEffect(() => {
+    // Filter fonts to only show available ones
+    const fonts = getAvailableSystemFonts(ALL_FONT_FAMILIES)
+    setAvailableFonts(fonts)
+  }, [])
+  
+  // Get all selected text elements
+  const textElements = selectedElements.filter(el => el.type === 'text')
+  const firstTextElement = textElements[0]
+  const textContent = firstTextElement?.content as TextContent | undefined
+  const style = firstTextElement?.style || {}
   
   const [colorMode, setColorMode] = useState<ColorMode>(
     style.gradientStart && style.gradientEnd ? 'gradient' : 'solid'
@@ -81,13 +112,15 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
   const [activeGradientStop, setActiveGradientStop] = useState<'start' | 'end'>('start')
   const [gradientAngle, setGradientAngle] = useState(style.gradientAngle || 0)
   const [isDragging, setIsDragging] = useState(false)
-  const [opacityValue, setOpacityValue] = useState(Math.round((textElement?.opacity || 1) * 100))
+  const [opacityValue, setOpacityValue] = useState(Math.round((firstTextElement?.opacity || 1) * 100))
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const solidColorButtonRef = useRef<HTMLButtonElement>(null)
+  const gradientColorButtonRef = useRef<HTMLButtonElement>(null)
   
   // Update opacity value when element changes
   useEffect(() => {
-    setOpacityValue(Math.round((textElement?.opacity || 1) * 100))
-  }, [textElement?.id, textElement?.opacity])
+    setOpacityValue(Math.round((firstTextElement?.opacity || 1) * 100))
+  }, [firstTextElement?.id, firstTextElement?.opacity])
   
   // Update color mode when switching elements
   useEffect(() => {
@@ -101,7 +134,7 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
     } else {
       setColorMode('solid')
     }
-  }, [textElement?.id, style.gradientStart, style.gradientEnd, style.gradientAngle, style.gradientStartPosition, style.gradientEndPosition])
+  }, [firstTextElement?.id, style.gradientStart, style.gradientEnd, style.gradientAngle, style.gradientStartPosition, style.gradientEndPosition])
   
   // Cleanup on unmount
   useEffect(() => {
@@ -131,8 +164,8 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
     }
   }, [showColorPicker, showGradientPicker])
   
-  // If no text element is selected, return null
-  if (!textElement || !currentSlide) {
+  // If no text elements are selected, return null
+  if (textElements.length === 0 || !currentSlide) {
     return null
   }
   
@@ -164,34 +197,45 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
     }, 50)
   }
   
-  const updateStyle = (updates: Partial<ElementStyle>, skipMeasure = false) => {
-    const newStyle = { ...style, ...updates }
-    updateElement(currentSlide.id, textElement.id, { style: newStyle })
-    
-    // Remeasure text if font properties changed (skip for gradient-only updates)
-    if (!skipMeasure && (updates.fontSize || updates.fontFamily || updates.lineHeight || updates.letterSpacing || updates.listStyle !== undefined)) {
-      // Add bullets to text if enabled
-      let textToMeasure = textContent?.text || ''
-      if (newStyle.listStyle === 'bullet') {
-        const lines = textToMeasure.split('\n')
-        textToMeasure = lines.map(line => line.trim() ? `• ${line}` : line).join('\n')
-      }
-      
-      const dimensions = measureAutoText({
-        text: textToMeasure,
-        fontSize: newStyle.fontSize || 16,
-        fontFamily: newStyle.fontFamily || 'Arial',
-        lineHeight: newStyle.lineHeight || 1.2,
-        letterSpacing: newStyle.letterSpacing || 0,
-        width: textElement.width, // Keep current width
-        padding: 0
-      })
-      
-      // Update height based on wrapped text
-      updateElement(currentSlide.id, textElement.id, { 
-        height: dimensions.height 
-      })
+  const updateStyle = async (updates: Partial<ElementStyle>, skipMeasure = false) => {
+    // Load font if font family changed
+    if (updates.fontFamily) {
+      await loadFont(updates.fontFamily, updates.fontWeight || style.fontWeight || '400')
     }
+    
+    // Update all selected text elements
+    textElements.forEach(element => {
+      const elementStyle = element.style || {}
+      const newStyle = { ...elementStyle, ...updates }
+      
+      updateElement(currentSlide.id, element.id, { style: newStyle })
+      
+      // Remeasure text if font properties changed (skip for gradient-only updates)
+      if (!skipMeasure && (updates.fontSize || updates.fontFamily || updates.lineHeight || updates.letterSpacing || updates.listStyle !== undefined)) {
+        const elementContent = element.content as TextContent
+        // Add bullets to text if enabled
+        let textToMeasure = elementContent?.text || ''
+        if (newStyle.listStyle === 'bullet') {
+          const lines = textToMeasure.split('\n')
+          textToMeasure = lines.map(line => line.trim() ? `• ${line}` : line).join('\n')
+        }
+        
+        const dimensions = measureAutoText({
+          text: textToMeasure,
+          fontSize: newStyle.fontSize || 16,
+          fontFamily: newStyle.fontFamily || 'Arial',
+          lineHeight: newStyle.lineHeight || 1.2,
+          letterSpacing: newStyle.letterSpacing || 0,
+          width: element.width, // Keep current width
+          padding: 0
+        })
+        
+        // Update height based on wrapped text
+        updateElement(currentSlide.id, element.id, { 
+          height: dimensions.height 
+        })
+      }
+    })
   }
   
   const toggleBold = () => {
@@ -229,41 +273,13 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
   return (
     <div className={`space-y-1 ${className}`}>
       <div className="pb-3 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h3 className="text-gray-800 font-medium flex items-center gap-2">
-            <Type className="w-4 h-4" />
-            Text
-          </h3>
-          <button
-            onClick={() => {
-              // Lock/unlock all selected elements
-              selectedElements.forEach(el => {
-                updateElement(currentSlide.id, el.id, { locked: !textElement.locked })
-              })
-            }}
-            className="p-1.5 rounded hover:bg-gray-100 transition-colors flex items-center gap-1"
-            title={
-              selectedElements.length > 1
-                ? textElement.locked 
-                  ? `Unlock ${selectedElements.length} selected elements` 
-                  : `Lock ${selectedElements.length} selected elements`
-                : textElement.locked 
-                  ? "Unlock element" 
-                  : "Lock element"
-            }
-          >
-            {textElement.locked ? (
-              <Lock className="w-4 h-4 text-gray-600" />
-            ) : (
-              <Unlock className="w-4 h-4 text-gray-600" />
-            )}
-            {selectedElements.length > 1 && (
-              <span className="text-xs text-gray-600 font-medium">
-                {selectedElements.length}
-              </span>
-            )}
-          </button>
-        </div>
+        <h3 className="text-gray-800 font-medium flex items-center gap-2">
+          <Type className="w-4 h-4" />
+          Text
+          {textElements.length > 1 && (
+            <span className="text-sm font-normal text-gray-500">({textElements.length} selected)</span>
+          )}
+        </h3>
       </div>
       
       {/* Font Family */}
@@ -273,12 +289,29 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
             value={style.fontFamily || 'Inter'}
             onChange={(e) => updateStyle({ fontFamily: e.target.value })}
             className="w-full px-3 py-2 bg-white text-gray-800 rounded-lg border border-gray-200 appearance-none cursor-pointer hover:bg-gray-50 focus:outline-none focus:border-blue-500"
+            style={{ fontFamily: style.fontFamily || 'Inter' }}
           >
-            {FONT_FAMILIES.map(font => (
-              <option key={font.value} value={font.value}>
-                {font.name}
-              </option>
-            ))}
+            <optgroup label="Sans Serif">
+              {availableFonts.filter(f => f.category === 'sans-serif').map(font => (
+                <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                  {font.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Serif">
+              {availableFonts.filter(f => f.category === 'serif').map(font => (
+                <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                  {font.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Monospace">
+              {availableFonts.filter(f => f.category === 'monospace').map(font => (
+                <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                  {font.name}
+                </option>
+              ))}
+            </optgroup>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
         </div>
@@ -481,6 +514,7 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
           <div className="space-y-2">
             <div className="relative">
               <button
+                ref={solidColorButtonRef}
                 onClick={() => setShowColorPicker(!showColorPicker)}
                 className="w-full h-10 rounded-lg border border-gray-200 relative overflow-hidden hover:border-gray-300 transition-colors"
                 style={{ 
@@ -494,7 +528,27 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
               
               {showColorPicker && (
                 <div className="relative">
-                  <div className="absolute top-12 right-0 z-50 p-3 bg-white rounded-lg shadow-xl border border-gray-200 color-picker-container">
+                  <div 
+                    className="fixed z-50 p-3 bg-white rounded-lg shadow-xl border border-gray-200 color-picker-container"
+                    style={{
+                      // Use fixed positioning relative to viewport
+                      ...(solidColorButtonRef.current && (() => {
+                        const rect = solidColorButtonRef.current.getBoundingClientRect()
+                        const spaceBelow = window.innerHeight - rect.bottom
+                        const spaceAbove = rect.top
+                        
+                        // Position below if there's enough space, otherwise above
+                        if (spaceBelow >= 320) {
+                          return { top: `${rect.bottom + 8}px`, left: `${Math.min(rect.left, window.innerWidth - 280)}px` }
+                        } else if (spaceAbove >= 320) {
+                          return { bottom: `${window.innerHeight - rect.top + 8}px`, left: `${Math.min(rect.left, window.innerWidth - 280)}px` }
+                        } else {
+                          // If neither has enough space, position to the left of the button
+                          return { top: `${Math.max(8, rect.top)}px`, right: `${window.innerWidth - rect.left + 8}px` }
+                        }
+                      })())
+                    }}
+                  >
                     <div className="gradient-picker-wrapper">
                       <HexColorPicker
                         color={style.color || '#000000'}
@@ -525,6 +579,7 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
         {colorMode === 'gradient' && (
           <div className="space-y-2">
             <button
+              ref={gradientColorButtonRef}
               onClick={() => setShowGradientPicker(!showGradientPicker)}
               className="w-full h-10 rounded-lg border border-gray-200 relative overflow-hidden hover:border-gray-300 transition-colors"
               style={{ 
@@ -535,7 +590,29 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
             {/* Integrated Gradient Picker */}
             {showGradientPicker && (
               <div className="relative">
-                <div className="absolute top-2 right-0 z-50 bg-white rounded-lg shadow-2xl border border-gray-200 w-72 color-picker-container select-none">
+                <div 
+                  className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 w-72 color-picker-container select-none"
+                  style={{
+                    // Use fixed positioning relative to viewport
+                    ...(gradientColorButtonRef.current && (() => {
+                      const rect = gradientColorButtonRef.current.getBoundingClientRect()
+                      const spaceBelow = window.innerHeight - rect.bottom
+                      const spaceAbove = rect.top
+                      const pickerHeight = 450 // Approximate height of gradient picker
+                      const pickerWidth = 288 // w-72 = 18rem = 288px
+                      
+                      // Position below if there's enough space, otherwise above
+                      if (spaceBelow >= pickerHeight) {
+                        return { top: `${rect.bottom + 8}px`, left: `${Math.min(rect.left, window.innerWidth - pickerWidth - 8)}px` }
+                      } else if (spaceAbove >= pickerHeight) {
+                        return { bottom: `${window.innerHeight - rect.top + 8}px`, left: `${Math.min(rect.left, window.innerWidth - pickerWidth - 8)}px` }
+                      } else {
+                        // If neither has enough space, position to the left of the button
+                        return { top: `${Math.max(8, rect.top)}px`, right: `${window.innerWidth - rect.left + 8}px` }
+                      }
+                    })())
+                  }}
+                >
                   {/* Gradient Preview with Stops */}
                   <div className="p-4 border-b border-gray-200">
                     <div 
@@ -872,8 +949,11 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
             onChange={(e) => {
               const value = Number(e.target.value)
               setOpacityValue(value)
-              updateElement(currentSlide.id, textElement.id, { 
-                opacity: value / 100 
+              // Update all selected text elements
+              textElements.forEach(element => {
+                updateElement(currentSlide.id, element.id, { 
+                  opacity: value / 100 
+                })
               })
             }}
             className="flex-1 slider-light"
@@ -885,8 +965,11 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
               onChange={(e) => {
                 const value = Math.max(0, Math.min(100, Number(e.target.value)))
                 setOpacityValue(value)
-                updateElement(currentSlide.id, textElement.id, { 
-                  opacity: value / 100 
+                // Update all selected text elements
+                textElements.forEach(element => {
+                  updateElement(currentSlide.id, element.id, { 
+                    opacity: value / 100 
+                  })
                 })
               }}
               className="w-16 px-2 py-1 bg-white text-gray-800 text-sm rounded border border-gray-200 appearance-none hover:bg-gray-50 focus:outline-none focus:border-blue-500 text-center"
@@ -897,6 +980,42 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
             <span className="text-sm text-gray-600">%</span>
           </div>
         </div>
+      </div>
+      
+      {/* Blend Mode */}
+      <BlendModeSelector
+        value={style.blendMode}
+        onChange={(blendMode: BlendMode) => updateStyle({ blendMode })}
+        className="pt-3"
+      />
+      
+      {/* Actions */}
+      <div className="pt-4">
+        <button
+          onClick={() => {
+            const newLocked = !firstTextElement.locked
+            textElements.forEach(el => {
+              updateElement(currentSlide.id, el.id, { locked: newLocked })
+            })
+          }}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+            firstTextElement.locked
+              ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          {firstTextElement.locked ? (
+            <>
+              <Lock className="w-4 h-4" />
+              Locked {textElements.length > 1 && `(${textElements.length})`}
+            </>
+          ) : (
+            <>
+              <Unlock className="w-4 h-4" />
+              Unlocked {textElements.length > 1 && `(${textElements.length})`}
+            </>
+          )}
+        </button>
       </div>
     </div>
   )

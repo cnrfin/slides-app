@@ -19,7 +19,7 @@ export default function TemplateDesigner({ isOpen, onClose }: TemplateDesignerPr
   
   const [templateName, setTemplateName] = useState('')
   const [templateDescription, setTemplateDescription] = useState('')
-  const [slideType, setSlideType] = useState<SlideType>('custom')
+  const [slideType, setSlideType] = useState<SlideType>('objectives')
   const [dataKeys, setDataKeys] = useState<Record<string, string>>({})
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
   const [isMinimized, setIsMinimized] = useState(false)
@@ -27,7 +27,7 @@ export default function TemplateDesigner({ isOpen, onClose }: TemplateDesignerPr
   // Initialize state when slide changes
   useEffect(() => {
     if (currentSlide) {
-      setSlideType(currentSlide.slideType || 'custom')
+      setSlideType(currentSlide.slideType || 'objectives')
       setDataKeys(currentSlide.metadata?.dataKeys || {})
       setTemplateName(currentSlide.metadata?.templateName || '')
       setTemplateDescription(currentSlide.metadata?.templateDescription || '')
@@ -87,7 +87,7 @@ export default function TemplateDesigner({ isOpen, onClose }: TemplateDesignerPr
     const template: SlideTemplate = {
       id: `template-${Date.now()}`,
       name: templateName,
-      category: 'custom',
+      category: 'objectives',
       description: templateDescription,
       background: currentSlide.background,
       elements: currentSlide.elements.map(el => ({
@@ -182,7 +182,7 @@ export default function TemplateDesigner({ isOpen, onClose }: TemplateDesignerPr
     { value: 'reading', label: 'Reading' },
     { value: 'review', label: 'Review' },
     { value: 'end', label: 'End Page' },
-    { value: 'custom', label: 'Custom' },
+    { value: 'objectives', label: 'Objectives' },
   ]
   
   return (

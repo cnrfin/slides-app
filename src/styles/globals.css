@@ -2,6 +2,160 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide scrollbar utilities */
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+/* CSS Custom Properties for Color Palette */
+:root {
+  /* Black/Font Color */
+  --color-black: #000000;
+  --color-black-50: #f9fafb;
+  --color-black-100: #f3f4f6;
+  --color-black-200: #e5e7eb;
+  --color-black-300: #d1d5db;
+  --color-black-400: #9ca3af;
+  --color-black-500: #6b7280;
+  --color-black-600: #4b5563;
+  --color-black-700: #374151;
+  --color-black-800: #1f2937;
+  --color-black-900: #111827;
+  --color-black-950: #030712;
+  
+  /* White (Background/Card) */
+  --color-white: #fafafa;
+  --color-white-pure: #ffffff;
+  --color-white-50: #ffffff;
+  --color-white-100: #fefefe;
+  --color-white-200: #fdfdfd;
+  --color-white-300: #fcfcfc;
+  --color-white-400: #fbfbfb;
+  --color-white-500: #fafafa;
+  --color-white-600: #f5f5f5;
+  --color-white-700: #f0f0f0;
+  --color-white-800: #e8e8e8;
+  --color-white-900: #e0e0e0;
+  
+  /* Light Gray (Secondary Background) */
+  --color-light-gray: #f2f2f2;
+  --color-light-gray-50: #fafafa;
+  --color-light-gray-100: #f7f7f7;
+  --color-light-gray-200: #f5f5f5;
+  --color-light-gray-300: #f2f2f2;
+  --color-light-gray-400: #eeeeee;
+  --color-light-gray-500: #e8e8e8;
+  --color-light-gray-600: #e0e0e0;
+  --color-light-gray-700: #d6d6d6;
+  --color-light-gray-800: #cccccc;
+  --color-light-gray-900: #bfbfbf;
+  
+  /* Gray */
+  --color-gray: #d0d0d0;
+  --color-gray-50: #f6f6f6;
+  --color-gray-100: #eeeeee;
+  --color-gray-200: #e5e5e5;
+  --color-gray-300: #d9d9d9;
+  --color-gray-400: #d0d0d0;
+  --color-gray-500: #c4c4c4;
+  --color-gray-600: #b8b8b8;
+  --color-gray-700: #a8a8a8;
+  --color-gray-800: #999999;
+  --color-gray-900: #8a8a8a;
+  
+  /* Dark Gray */
+  --color-dark-gray: #7f7f7f;
+  --color-dark-gray-50: #e8e8e8;
+  --color-dark-gray-100: #d1d1d1;
+  --color-dark-gray-200: #bababa;
+  --color-dark-gray-300: #a3a3a3;
+  --color-dark-gray-400: #8c8c8c;
+  --color-dark-gray-500: #7f7f7f;
+  --color-dark-gray-600: #6b6b6b;
+  --color-dark-gray-700: #575757;
+  --color-dark-gray-800: #434343;
+  --color-dark-gray-900: #2f2f2f;
+  
+  /* Green */
+  --color-green: #54cb56;
+  --color-green-50: #f0fbf0;
+  --color-green-100: #dcf5dd;
+  --color-green-200: #baeabb;
+  --color-green-300: #97df99;
+  --color-green-400: #75d477;
+  --color-green-500: #54cb56;
+  --color-green-600: #3fb842;
+  --color-green-700: #339936;
+  --color-green-800: #287a2a;
+  --color-green-900: #1f5b21;
+  --color-green-950: #0f2e10;
+  
+  /* Purple (Main Accent) */
+  --color-purple: #9771ff;
+  --color-purple-50: #f5f3ff;
+  --color-purple-100: #ede8ff;
+  --color-purple-200: #ddd4ff;
+  --color-purple-300: #c4b0ff;
+  --color-purple-400: #a888ff;
+  --color-purple-500: #9771ff;
+  --color-purple-600: #7c4fff;
+  --color-purple-700: #6939eb;
+  --color-purple-800: #5730c7;
+  --color-purple-900: #472aa3;
+  --color-purple-950: #2d1971;
+  
+  /* Yellow */
+  --color-yellow: #f0ba2c;
+  --color-yellow-50: #fefaec;
+  --color-yellow-100: #fdf2ca;
+  --color-yellow-200: #fbe798;
+  --color-yellow-300: #f7d55c;
+  --color-yellow-400: #f4c744;
+  --color-yellow-500: #f0ba2c;
+  --color-yellow-600: #e09a14;
+  --color-yellow-700: #bb7714;
+  --color-yellow-800: #975b17;
+  --color-yellow-900: #7b4a17;
+  --color-yellow-950: #462608;
+  
+  /* Red */
+  --color-red: #fe6d66;
+  --color-red-50: #fff0ef;
+  --color-red-100: #ffdddb;
+  --color-red-200: #ffc1bd;
+  --color-red-300: #ff998f;
+  --color-red-400: #ff8078;
+  --color-red-500: #fe6d66;
+  --color-red-600: #fc3b31;
+  --color-red-700: #e72218;
+  --color-red-800: #c01c15;
+  --color-red-900: #9e1d18;
+  --color-red-950: #560907;
+  
+  /* Blue */
+  --color-blue: #345fd8;
+  --color-blue-50: #f0f5ff;
+  --color-blue-100: #e0eaff;
+  --color-blue-200: #bad4ff;
+  --color-blue-300: #85b3ff;
+  --color-blue-400: #4d8fff;
+  --color-blue-500: #345fd8;
+  --color-blue-600: #2448d1;
+  --color-blue-700: #1936b8;
+  --color-blue-800: #182e96;
+  --color-blue-900: #192b78;
+  --color-blue-950: #121c49;
+}
+
 /* Hide number input spinners */
 /* Chrome, Safari, Edge, Opera */
 input[type="number"]::-webkit-outer-spin-button,
@@ -18,16 +172,19 @@ input[type="number"] {
 @layer base {
   html {
     @apply antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
   }
   
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-app-white text-app-black;
   }
 }
 
 @layer components {
   .slide-canvas {
-    @apply w-full h-full bg-white shadow-lg rounded-lg;
+    @apply w-full h-full bg-app-white-pure shadow-lg rounded-lg;
   }
 }
 
@@ -42,7 +199,7 @@ input[type="number"] {
 .slider::-webkit-slider-track {
   width: 100%;
   height: 2px;
-  background: #374151;
+  background: var(--color-dark-gray-700);
   border-radius: 1px;
 }
 
@@ -51,8 +208,8 @@ input[type="number"] {
   appearance: none;
   width: 12px;
   height: 12px;
-  background: #ffffff;
-  border: 2px solid #1f2937;
+  background: var(--color-white-pure);
+  border: 2px solid var(--color-black-800);
   border-radius: 50%;
   cursor: pointer;
   margin-top: -5px;
@@ -61,15 +218,15 @@ input[type="number"] {
 .slider::-moz-range-track {
   width: 100%;
   height: 2px;
-  background: #374151;
+  background: var(--color-dark-gray-700);
   border-radius: 1px;
 }
 
 .slider::-moz-range-thumb {
   width: 12px;
   height: 12px;
-  background: #ffffff;
-  border: 2px solid #1f2937;
+  background: var(--color-white-pure);
+  border: 2px solid var(--color-black-800);
   border-radius: 50%;
   cursor: pointer;
   border: none;
@@ -77,11 +234,11 @@ input[type="number"] {
 
 /* Hover states */
 .slider:hover::-webkit-slider-thumb {
-  background: #f3f4f6;
+  background: var(--color-white-100);
 }
 
 .slider:hover::-moz-range-thumb {
-  background: #f3f4f6;
+  background: var(--color-white-100);
 }
 
 /* Light theme slider */
@@ -89,7 +246,7 @@ input[type="number"] {
   -webkit-appearance: none;
   width: 100%;
   height: 4px;
-  background: #e5e7eb;
+  background: var(--color-light-gray-500);
   border-radius: 2px;
   outline: none;
   position: relative;
@@ -99,7 +256,7 @@ input[type="number"] {
 .slider-light::-webkit-slider-track {
   width: 100%;
   height: 4px;
-  background: #e5e7eb;
+  background: var(--color-light-gray-500);
   border-radius: 2px;
 }
 
@@ -108,8 +265,8 @@ input[type="number"] {
   appearance: none;
   width: 16px;
   height: 16px;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background: var(--color-white-pure);
+  border: 1px solid var(--color-gray-400);
   border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -120,7 +277,7 @@ input[type="number"] {
 .slider-light::-moz-range-track {
   width: 100%;
   height: 4px;
-  background: #e5e7eb;
+  background: var(--color-light-gray-500);
   border-radius: 2px;
   border: none;
 }
@@ -128,8 +285,8 @@ input[type="number"] {
 .slider-light::-moz-range-thumb {
   width: 16px;
   height: 16px;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background: var(--color-white-pure);
+  border: 1px solid var(--color-gray-400);
   border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -147,20 +304,20 @@ input[type="number"] {
 }
 
 .slider-light::-ms-fill-lower {
-  background: #e5e7eb;
+  background: var(--color-light-gray-500);
   border-radius: 2px;
 }
 
 .slider-light::-ms-fill-upper {
-  background: #e5e7eb;
+  background: var(--color-light-gray-500);
   border-radius: 2px;
 }
 
 .slider-light::-ms-thumb {
   width: 16px;
   height: 16px;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background: var(--color-white-pure);
+  border: 1px solid var(--color-gray-400);
   border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -169,36 +326,36 @@ input[type="number"] {
 
 /* Light theme hover states */
 .slider-light:hover::-webkit-slider-thumb {
-  border-color: #9ca3af;
+  border-color: var(--color-dark-gray-400);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .slider-light:hover::-moz-range-thumb {
-  border-color: #9ca3af;
+  border-color: var(--color-dark-gray-400);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .slider-light:hover::-ms-thumb {
-  border-color: #9ca3af;
+  border-color: var(--color-dark-gray-400);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 /* Active/dragging state */
 .slider-light:active::-webkit-slider-thumb {
-  background: #f9fafb;
-  border-color: #6b7280;
+  background: var(--color-white-600);
+  border-color: var(--color-dark-gray-600);
   transform: scale(0.95);
 }
 
 .slider-light:active::-moz-range-thumb {
-  background: #f9fafb;
-  border-color: #6b7280;
+  background: var(--color-white-600);
+  border-color: var(--color-dark-gray-600);
   transform: scale(0.95);
 }
 
 .slider-light:active::-ms-thumb {
-  background: #f9fafb;
-  border-color: #6b7280;
+  background: var(--color-white-600);
+  border-color: var(--color-dark-gray-600);
   transform: scale(0.95);
 }
 
@@ -208,13 +365,13 @@ input[type="number"] {
 }
 
 .slider-light:focus::-webkit-slider-thumb {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--color-blue-500);
+  box-shadow: 0 0 0 3px rgba(52, 95, 216, 0.1);
 }
 
 .slider-light:focus::-moz-range-thumb {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--color-blue-500);
+  box-shadow: 0 0 0 3px rgba(52, 95, 216, 0.1);
 }
 
 /* Gradient Color Picker Styles */
@@ -237,4 +394,27 @@ input[type="number"] {
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
   -ms-user-select: none !important;
+}
+
+/* Canvas and editor specific styles */
+.konvajs-content {
+  outline: none !important;
+}
+
+/* Cursor styles for canvas pan mode */
+[style*="cursor: grab"] {
+  cursor: -webkit-grab !important;
+  cursor: -moz-grab !important;
+  cursor: grab !important;
+}
+
+[style*="cursor: grabbing"] {
+  cursor: -webkit-grabbing !important;
+  cursor: -moz-grabbing !important;
+  cursor: grabbing !important;
+}
+
+/* Blend mode preview styles */
+.blend-mode-preview {
+  isolation: isolate;
 }

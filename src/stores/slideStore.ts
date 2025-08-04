@@ -13,15 +13,23 @@ interface SlideStore {
   presentation: Presentation | null
   slides: Slide[]
   currentSlideId: string | null
+  selectedSlideId: string | null // For slide selection
   selectedElementIds: string[]
+  showOutsideElements: boolean
+  clipboard: SlideElement[] | null // For copy/paste functionality
+  lastSaved: string | null // ISO string of last save time
   
   // Actions
   createPresentation: (title: string) => void
+  updatePresentationTitle: (title: string) => void
   addSlide: (template?: SlideTemplate) => string
   deleteSlide: (slideId: string) => void
+  deleteSelectedSlide: () => void
   duplicateSlide: (slideId: string) => string
+  duplicateSelectedSlide: () => void
   
   setCurrentSlide: (slideId: string) => void
+  selectSlide: (slideId: string | null) => void
   updateSlide: (slideId: string, updates: Partial<Slide>) => void
   
   addElement: (slideId: string, element: Omit<SlideElement, 'id' | 'createdAt' | 'updatedAt'>) => string
@@ -41,6 +49,14 @@ interface SlideStore {
   // Batch operations for performance
   batchUpdateElements: (slideId: string, updates: Record<string, Partial<SlideElement>>) => void
   
+  // View settings
+  toggleOutsideElements: () => void
+  
+  // Copy/Paste operations
+  copyElements: () => void
+  pasteElements: () => void
+  canPaste: boolean
+  
   // Undo/Redo support
   canUndo: boolean
   canRedo: boolean
@@ -58,6 +74,7 @@ interface HistoryState {
   presentation: Presentation | null
   slides: Slide[]
   currentSlideId: string | null
+  selectedSlideId: string | null
   selectedElementIds: string[]
 }
 
@@ -77,6 +94,7 @@ function createStateSnapshot(state: any): HistoryState {
     presentation: state.presentation ? JSON.parse(JSON.stringify(state.presentation)) : null,
     slides: JSON.parse(JSON.stringify(state.slides)),
     currentSlideId: state.currentSlideId,
+    selectedSlideId: state.selectedSlideId,
     selectedElementIds: [...state.selectedElementIds]
   }
 }
@@ -96,6 +114,9 @@ function saveToHistory(state: any) {
   } else {
     historyManager.currentIndex++
   }
+  
+  // Update last saved time
+  state.lastSaved = new Date().toISOString()
 }
 
 // Helper to restore state from history
@@ -103,6 +124,7 @@ function restoreFromHistory(state: any, historyState: HistoryState) {
   state.presentation = historyState.presentation ? JSON.parse(JSON.stringify(historyState.presentation)) : null
   state.slides = JSON.parse(JSON.stringify(historyState.slides))
   state.currentSlideId = historyState.currentSlideId
+  state.selectedSlideId = historyState.selectedSlideId
   state.selectedElementIds = [...historyState.selectedElementIds]
 }
 
@@ -123,9 +145,14 @@ const useSlideStore = create<SlideStore>()(
       presentation: null,
       slides: [],
       currentSlideId: null,
+      selectedSlideId: null,
       selectedElementIds: [],
+      showOutsideElements: true,
+      clipboard: null,
+      canPaste: false,
       canUndo: historyManager.currentIndex > 0,
       canRedo: historyManager.currentIndex < historyManager.history.length - 1,
+      lastSaved: new Date().toISOString(),
       
       debouncedSaveHistory: () => debouncedHistorySave(get, set),
 
@@ -153,11 +180,20 @@ const useSlideStore = create<SlideStore>()(
         }]
         
         state.currentSlideId = firstSlideId
+        state.selectedSlideId = firstSlideId
         
         // Save initial state to history
         saveToHistory(state)
         state.canUndo = historyManager.currentIndex > 0
         state.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+      }),
+
+      updatePresentationTitle: (title) => set((state) => {
+        if (state.presentation) {
+          state.presentation.title = title
+          state.presentation.updatedAt = new Date().toISOString()
+          state.lastSaved = new Date().toISOString()
+        }
       }),
 
       addSlide: (template) => {
@@ -170,11 +206,12 @@ const useSlideStore = create<SlideStore>()(
           if (template && template.elements.length > 0) {
             // Generate elements from template
             template.elements.forEach(templateElement => {
-              // For text elements, measure their dimensions
+              // Use template dimensions if provided, otherwise measure text for auto-sizing
               let width = templateElement.width || 100
               let height = templateElement.height || 50
               
-              if (templateElement.type === 'text' && templateElement.content) {
+              // Only auto-measure text if dimensions aren't explicitly set in the template
+              if (templateElement.type === 'text' && templateElement.content && (!templateElement.width || !templateElement.height)) {
                 const textContent = templateElement.content as any
                 // Add bullets to text if enabled
                 let textToMeasure = textContent.text || ''
@@ -189,8 +226,9 @@ const useSlideStore = create<SlideStore>()(
                   lineHeight: templateElement.style?.lineHeight || 1.2,
                   padding: 0 // No padding for tight fit
                 })
-                width = dimensions.width
-                height = dimensions.height // No extra padding
+                // Only override if template didn't specify dimensions
+                if (!templateElement.width) width = dimensions.width
+                if (!templateElement.height) height = dimensions.height
               }
               
               const newElement: SlideElement = {
@@ -229,6 +267,7 @@ const useSlideStore = create<SlideStore>()(
           
           state.slides.push(newSlide)
           state.currentSlideId = slideId
+          state.selectedSlideId = slideId
           
           if (state.presentation) {
             state.presentation.slides.push(slideId)
@@ -263,6 +302,19 @@ const useSlideStore = create<SlideStore>()(
           if (state.currentSlideId === slideId) {
             const newIndex = Math.max(0, index - 1)
             state.currentSlideId = state.slides[newIndex]?.id || null
+          }
+          
+          // Handle selected slide deletion
+          if (state.selectedSlideId === slideId) {
+            // Select the slide that takes the deleted slide's position
+            // This allows consecutive deletion by pressing backspace repeatedly
+            if (state.slides.length > 0) {
+              // If we deleted the last slide, select the new last slide
+              const newIndex = Math.min(index, state.slides.length - 1)
+              state.selectedSlideId = state.slides[newIndex]?.id || null
+            } else {
+              state.selectedSlideId = null
+            }
           }
         })
         
@@ -303,6 +355,7 @@ const useSlideStore = create<SlideStore>()(
           }
           
           state.currentSlideId = newSlideId
+          state.selectedSlideId = newSlideId
         })
         
         // Save to history
@@ -322,6 +375,28 @@ const useSlideStore = create<SlideStore>()(
           state.selectedElementIds = []
         }
       }),
+
+      selectSlide: (slideId) => set((state) => {
+        state.selectedSlideId = slideId
+        // Clear element selection when selecting a slide
+        if (slideId) {
+          state.selectedElementIds = []
+        }
+      }),
+
+      deleteSelectedSlide: () => {
+        const state = get()
+        if (state.selectedSlideId && state.slides.length > 1) {
+          get().deleteSlide(state.selectedSlideId)
+        }
+      },
+
+      duplicateSelectedSlide: () => {
+        const state = get()
+        if (state.selectedSlideId) {
+          get().duplicateSlide(state.selectedSlideId)
+        }
+      },
 
       updateSlide: (slideId, updates) => set((state) => {
         const slide = state.slides.find(s => s.id === slideId)
@@ -512,7 +587,81 @@ const useSlideStore = create<SlideStore>()(
 
       clearSelection: () => set((state) => {
         state.selectedElementIds = []
+        state.selectedSlideId = null
       }),
+
+      toggleOutsideElements: () => set((state) => {
+        state.showOutsideElements = !state.showOutsideElements
+      }),
+
+      copyElements: () => {
+        const state = get()
+        if (state.selectedElementIds.length === 0 || !state.currentSlideId) return
+        
+        const currentSlide = state.slides.find(s => s.id === state.currentSlideId)
+        if (!currentSlide) return
+        
+        // Get selected elements
+        const selectedElements = currentSlide.elements.filter(el => 
+          state.selectedElementIds.includes(el.id)
+        )
+        
+        // Deep copy the elements to clipboard
+        const copiedElements = selectedElements.map(el => ({
+          ...JSON.parse(JSON.stringify(el)),
+          id: '' // Clear ID so it gets new one on paste
+        }))
+        
+        set(state => {
+          state.clipboard = copiedElements
+          state.canPaste = copiedElements.length > 0
+        })
+      },
+
+      pasteElements: () => {
+        const state = get()
+        if (!state.clipboard || state.clipboard.length === 0 || !state.currentSlideId) return
+        
+        const currentSlide = state.slides.find(s => s.id === state.currentSlideId)
+        if (!currentSlide) return
+        
+        const pastedElementIds: string[] = []
+        
+        set((draft) => {
+          const slide = draft.slides.find(s => s.id === draft.currentSlideId)
+          if (!slide) return
+          
+          // Paste each element from clipboard
+          state.clipboard!.forEach((element) => {
+            const newId = nanoid()
+            pastedElementIds.push(newId)
+            
+            const newElement: SlideElement = {
+              ...element,
+              id: newId,
+              // Keep exact same position as original
+              x: element.x,
+              y: element.y,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+            
+            slide.elements.push(newElement)
+          })
+          
+          slide.updatedAt = new Date().toISOString()
+          
+          // Select the pasted elements
+          draft.selectedElementIds = pastedElementIds
+        })
+        
+        // Save to history after paste
+        saveToHistory(get())
+        set(s => {
+          s.canUndo = historyManager.currentIndex > 0
+          s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+        })
+      },
 
       batchUpdateElements: (slideId, updates) => {
         set((state) => {

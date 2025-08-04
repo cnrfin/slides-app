@@ -4,169 +4,74 @@ import type { TextContent } from '@/types/slide.types'
 
 export const titleTemplates: SlideTemplate[] = [
   {
-    id: 'title-center',
-    name: 'Title Slide (Center)',
+    id: 'title-simple',
+    name: 'Title',
     category: 'title',
-    description: 'Centered title and subtitle',
+    description: 'Title Page with Centered Text',
     background: '#ffffff',
     elements: [
       {
         type: 'text',
-        x: 200,
-        y: 200,
-        width: 400,
-        height: 80,
+        x: 25,
+        y: 280,
+        width: 750,
+        height: 40,
+        visible: true,
         content: {
-          text: 'Your Title Here',
-          placeholder: 'Click to edit title'
+          text: '{{title}}',
+          placeholder: 'Course Title'
         } as TextContent,
         style: {
-          fontSize: 48,
-          fontWeight: 'bold',
+          fontSize: 40,
           fontFamily: 'Arial',
-          color: '#1f2937',
-          textAlign: 'center'
+          color: '#000000',
+          textAlign: 'center',
+          fontWeight: '700',
+          lineHeight: 1
         }
       },
       {
         type: 'text',
-        x: 200,
-        y: 300,
-        width: 400,
-        height: 50,
+        x: 25,
+        y: 344,
+        width: 750,
+        height: 28,
+        visible: true,
         content: {
-          text: 'Your subtitle or author name',
-          placeholder: 'Click to edit subtitle'
+          text: '{{subtitle}}',
+          placeholder: 'Lesson subtitle'
         } as TextContent,
         style: {
-          fontSize: 24,
+          fontSize: 28,
           fontFamily: 'Arial',
-          color: '#6b7280',
-          textAlign: 'center'
-        }
-      }
-    ],
-    tags: ['title', 'presentation', 'intro']
-  },
-  {
-    id: 'title-left',
-    name: 'Title Slide (Left)',
-    category: 'title',
-    description: 'Left-aligned title with accent',
-    background: '#ffffff',
-    elements: [
-      {
-        type: 'shape',
-        x: 0,
-        y: 0,
-        width: 5,
-        height: 600,
-        content: {
-          shape: 'rectangle'
-        },
-        style: {
-          backgroundColor: '#3b82f6'
+          color: '#000000',
+          textAlign: 'center',
+          fontWeight: '700',
+          lineHeight: 1
         }
       },
       {
         type: 'text',
-        x: 60,
-        y: 200,
-        width: 500,
-        height: 80,
+        x: 400,
+        y: 559,
+        width: 375,
+        height: 16,
+        visible: true,
         content: {
-          text: 'Your Title Here',
-          placeholder: 'Click to edit title'
-        } as TextContent,
-        style: {
-          fontSize: 48,
-          fontWeight: 'bold',
-          fontFamily: 'Arial',
-          color: '#1f2937',
-          textAlign: 'left'
-        }
-      },
-      {
-        type: 'text',
-        x: 60,
-        y: 300,
-        width: 500,
-        height: 50,
-        content: {
-          text: 'Your subtitle or description',
-          placeholder: 'Click to edit subtitle'
-        } as TextContent,
-        style: {
-          fontSize: 24,
-          fontFamily: 'Arial',
-          color: '#6b7280',
-          textAlign: 'left'
-        }
-      },
-      {
-        type: 'text',
-        x: 60,
-        y: 480,
-        width: 300,
-        height: 30,
-        content: {
-          text: 'Author Name | Date',
-          placeholder: 'Click to edit author'
+          text: '{{school}}',
+          placeholder: 'Dynamic content'
         } as TextContent,
         style: {
           fontSize: 16,
           fontFamily: 'Arial',
-          color: '#9ca3af',
-          textAlign: 'left'
+          color: '#000000',
+          textAlign: 'right',
+          fontWeight: '400',
+          lineHeight: 1,
+          letterSpacing: 1
         }
       }
     ],
-    tags: ['title', 'presentation', 'intro', 'modern']
-  },
-  {
-    id: 'title-bold',
-    name: 'Bold Title',
-    category: 'title',
-    description: 'Bold title with colored background',
-    background: '#2563eb',
-    elements: [
-      {
-        type: 'text',
-        x: 100,
-        y: 220,
-        width: 600,
-        height: 100,
-        content: {
-          text: 'BOLD TITLE',
-          placeholder: 'Click to edit title'
-        } as TextContent,
-        style: {
-          fontSize: 72,
-          fontWeight: 'bold',
-          fontFamily: 'Arial',
-          color: '#ffffff',
-          textAlign: 'center',
-          letterSpacing: 2
-        }
-      },
-      {
-        type: 'text',
-        x: 200,
-        y: 340,
-        width: 400,
-        height: 40,
-        content: {
-          text: 'Impactful subtitle here',
-          placeholder: 'Click to edit subtitle'
-        } as TextContent,
-        style: {
-          fontSize: 20,
-          fontFamily: 'Arial',
-          color: '#e0e7ff',
-          textAlign: 'center'
-        }
-      }
-    ],
-    tags: ['title', 'bold', 'impact', 'colorful']
+    tags: ['title', 'dynamic']
   }
 ]

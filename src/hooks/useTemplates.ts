@@ -1,10 +1,12 @@
 // src/hooks/useTemplates.ts
 import { useState, useCallback } from 'react'
 import useSlideStore from '@/stores/slideStore'
-import { getTemplateById } from '@/data/templates'
+import { getTemplateById, allTemplates } from '@/data/templates'
 import type { SlideTemplate } from '@/types/template.types'
 
-export default function useTemplates() {
+export const useTemplates = () => {
+
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [recentTemplates, setRecentTemplates] = useState<string[]>([])
   const addSlide = useSlideStore(state => state.addSlide)
@@ -45,6 +47,9 @@ export default function useTemplates() {
     closeTemplateModal,
     applyTemplate,
     getRecentTemplates,
-    recentTemplateIds: recentTemplates
+    recentTemplateIds: recentTemplates,
+    templates: allTemplates
   }
 }
+
+export default useTemplates

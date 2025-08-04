@@ -8,12 +8,15 @@ import {
   ChevronDown,
   RectangleHorizontal,
   Lock,
-  Unlock
+  Unlock,
+  Shapes
 } from 'lucide-react'
 import { HexColorPicker, HexColorInput } from 'react-colorful'
 import useSlideStore from '@/stores/slideStore'
 import { useSelectedElements, useCurrentSlide } from '@/stores/slideStore'
-import type { ElementStyle, ShapeContent } from '@/types/slide.types'
+import type { ElementStyle, ShapeContent, BlendMode } from '@/types/slide.types'
+import { getShapeById } from '@/utils/svg-shapes'
+import BlendModeSelector from './BlendModeSelector'
 
 interface ShapePropertiesPanelProps {
   className?: string
@@ -26,9 +29,11 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
   const currentSlide = useCurrentSlide()
   const updateElement = useSlideStore((state) => state.updateElement)
   
-  const shapeElement = selectedElements.find(el => el.type === 'shape')
-  const shapeContent = shapeElement?.content as ShapeContent | undefined
-  const style = shapeElement?.style || {}
+  // Get all selected shape elements
+  const shapeElements = selectedElements.filter(el => el.type === 'shape')
+  const firstShapeElement = shapeElements[0]
+  const shapeContent = firstShapeElement?.content as ShapeContent | undefined
+  const style = firstShapeElement?.style || {}
   
   const [colorMode, setColorMode] = useState<ColorMode>(
     style.gradientStart && style.gradientEnd ? 'gradient' : 'solid'
@@ -42,8 +47,10 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
   const [activeGradientStop, setActiveGradientStop] = useState<'start' | 'end'>('start')
   const [gradientAngle, setGradientAngle] = useState(style.gradientAngle || 0)
   const [isDragging, setIsDragging] = useState(false)
-  const [opacityValue, setOpacityValue] = useState(Math.round((shapeElement?.opacity || 1) * 100))
+  const [opacityValue, setOpacityValue] = useState(Math.round((firstShapeElement?.opacity || 1) * 100))
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const solidColorButtonRef = useRef<HTMLButtonElement>(null)
+  const gradientColorButtonRef = useRef<HTMLButtonElement>(null)
   
   // Use refs to avoid stale closures
   const gradientStopsRef = useRef(gradientStops)
@@ -51,8 +58,8 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
   
   // Update opacity value when element changes
   useEffect(() => {
-    setOpacityValue(Math.round((shapeElement?.opacity || 1) * 100))
-  }, [shapeElement?.id, shapeElement?.opacity])
+    setOpacityValue(Math.round((firstShapeElement?.opacity || 1) * 100))
+  }, [firstShapeElement?.id, firstShapeElement?.opacity])
   
   // Update color mode when switching elements
   useEffect(() => {
@@ -66,7 +73,7 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
     } else {
       setColorMode('solid')
     }
-  }, [shapeElement?.id, style.gradientStart, style.gradientEnd, style.gradientAngle, style.gradientStartPosition, style.gradientEndPosition])
+  }, [firstShapeElement?.id, style.gradientStart, style.gradientEnd, style.gradientAngle, style.gradientStartPosition, style.gradientEndPosition])
   
   // Cleanup on unmount
   useEffect(() => {
@@ -94,8 +101,8 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
     }
   }, [showColorPicker, showGradientPicker])
   
-  // If no shape element is selected, return null
-  if (!shapeElement || !currentSlide) {
+  // If no shape elements are selected, return null
+  if (shapeElements.length === 0 || !currentSlide) {
     return null
   }
   
@@ -124,13 +131,26 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
   }
   
   const updateStyle = (updates: Partial<ElementStyle>) => {
-    const newStyle = { ...style, ...updates }
-    updateElement(currentSlide.id, shapeElement.id, { style: newStyle })
+    // Update all selected shape elements
+    shapeElements.forEach(element => {
+      const newStyle = { ...element.style, ...updates }
+      updateElement(currentSlide.id, element.id, { style: newStyle })
+    })
   }
   
   const getShapeIcon = () => {
     if (shapeContent?.shape === 'circle') {
       return <Circle className="w-4 h-4" />
+    } else if (shapeContent?.shape === 'svg' && shapeContent.svgId) {
+      const svgShape = getShapeById(shapeContent.svgId)
+      if (svgShape) {
+        return (
+          <svg width="16" height="16" viewBox={svgShape.viewBox || '0 0 100 100'} className="w-4 h-4">
+            <path d={svgShape.path} fill="currentColor" />
+          </svg>
+        )
+      }
+      return <Shapes className="w-4 h-4" />
     }
     return <Square className="w-4 h-4" />
   }
@@ -138,6 +158,9 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
   const getShapeName = () => {
     if (shapeContent?.shape === 'circle') {
       return 'Circle'
+    } else if (shapeContent?.shape === 'svg' && shapeContent.svgId) {
+      const svgShape = getShapeById(shapeContent.svgId)
+      return svgShape?.name || 'SVG Shape'
     }
     return 'Rectangle'
   }
@@ -145,41 +168,13 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
   return (
     <div className={`space-y-1 ${className}`}>
       <div className="pb-3 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h3 className="text-gray-800 font-medium flex items-center gap-2">
-            {getShapeIcon()}
-            {getShapeName()}
-          </h3>
-          <button
-            onClick={() => {
-              // Lock/unlock all selected elements
-              selectedElements.forEach(el => {
-                updateElement(currentSlide.id, el.id, { locked: !shapeElement.locked })
-              })
-            }}
-            className="p-1.5 rounded hover:bg-gray-100 transition-colors flex items-center gap-1"
-            title={
-              selectedElements.length > 1
-                ? shapeElement.locked 
-                  ? `Unlock ${selectedElements.length} selected elements` 
-                  : `Lock ${selectedElements.length} selected elements`
-                : shapeElement.locked 
-                  ? "Unlock element" 
-                  : "Lock element"
-            }
-          >
-            {shapeElement.locked ? (
-              <Lock className="w-4 h-4 text-gray-600" />
-            ) : (
-              <Unlock className="w-4 h-4 text-gray-600" />
-            )}
-            {selectedElements.length > 1 && (
-              <span className="text-xs text-gray-600 font-medium">
-                {selectedElements.length}
-              </span>
-            )}
-          </button>
-        </div>
+        <h3 className="text-gray-800 font-medium flex items-center gap-2">
+          {getShapeIcon()}
+          {getShapeName()}
+          {shapeElements.length > 1 && (
+            <span className="text-sm font-normal text-gray-500">({shapeElements.length} selected)</span>
+          )}
+        </h3>
       </div>
       
       {/* Fill Section */}
@@ -224,6 +219,7 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
           <div className="space-y-2">
             <div className="relative">
               <button
+                ref={solidColorButtonRef}
                 onClick={() => setShowColorPicker(!showColorPicker)}
                 className="w-full h-10 rounded-lg border border-gray-200 relative overflow-hidden hover:border-gray-300 transition-colors"
                 style={{ 
@@ -235,7 +231,27 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
               
               {showColorPicker && (
                 <div className="relative">
-                  <div className="absolute top-12 right-0 z-50 p-3 bg-white rounded-lg shadow-xl border border-gray-200 color-picker-container">
+                  <div 
+                    className="fixed z-50 p-3 bg-white rounded-lg shadow-xl border border-gray-200 color-picker-container"
+                    style={{
+                      // Use fixed positioning relative to viewport
+                      ...(solidColorButtonRef.current && (() => {
+                        const rect = solidColorButtonRef.current.getBoundingClientRect()
+                        const spaceBelow = window.innerHeight - rect.bottom
+                        const spaceAbove = rect.top
+                        
+                        // Position below if there's enough space, otherwise above
+                        if (spaceBelow >= 320) {
+                          return { top: `${rect.bottom + 8}px`, left: `${Math.min(rect.left, window.innerWidth - 280)}px` }
+                        } else if (spaceAbove >= 320) {
+                          return { bottom: `${window.innerHeight - rect.top + 8}px`, left: `${Math.min(rect.left, window.innerWidth - 280)}px` }
+                        } else {
+                          // If neither has enough space, position to the left of the button
+                          return { top: `${Math.max(8, rect.top)}px`, right: `${window.innerWidth - rect.left + 8}px` }
+                        }
+                      })())
+                    }}
+                  >
                     <div className="gradient-picker-wrapper">
                       <HexColorPicker
                         color={style.backgroundColor || '#cccccc'}
@@ -266,6 +282,7 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
         {colorMode === 'gradient' && (
           <div className="space-y-2">
             <button
+              ref={gradientColorButtonRef}
               onClick={() => setShowGradientPicker(!showGradientPicker)}
               className="w-full h-10 rounded-lg border border-gray-200 relative overflow-hidden hover:border-gray-300 transition-colors"
               style={{ 
@@ -276,7 +293,29 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
             {/* Integrated Gradient Picker */}
             {showGradientPicker && (
               <div className="relative">
-                <div className="absolute top-2 right-0 z-50 bg-white rounded-lg shadow-2xl border border-gray-200 w-72 color-picker-container select-none">
+                <div 
+                  className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 w-72 color-picker-container select-none"
+                  style={{
+                    // Use fixed positioning relative to viewport
+                    ...(gradientColorButtonRef.current && (() => {
+                      const rect = gradientColorButtonRef.current.getBoundingClientRect()
+                      const spaceBelow = window.innerHeight - rect.bottom
+                      const spaceAbove = rect.top
+                      const pickerHeight = 450 // Approximate height of gradient picker
+                      const pickerWidth = 288 // w-72 = 18rem = 288px
+                      
+                      // Position below if there's enough space, otherwise above
+                      if (spaceBelow >= pickerHeight) {
+                        return { top: `${rect.bottom + 8}px`, left: `${Math.min(rect.left, window.innerWidth - pickerWidth - 8)}px` }
+                      } else if (spaceAbove >= pickerHeight) {
+                        return { bottom: `${window.innerHeight - rect.top + 8}px`, left: `${Math.min(rect.left, window.innerWidth - pickerWidth - 8)}px` }
+                      } else {
+                        // If neither has enough space, position to the left of the button
+                        return { top: `${Math.max(8, rect.top)}px`, right: `${window.innerWidth - rect.left + 8}px` }
+                      }
+                    })())
+                  }}
+                >
                   {/* Gradient Preview with Stops */}
                   <div className="p-4 border-b border-gray-200">
                     <div 
@@ -603,8 +642,8 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
       
 
       
-      {/* Border Radius - Only show for rectangles */}
-      {shapeContent?.shape === 'rectangle' && (
+      {/* Border Radius - Only show for rectangles and SVG shapes without fixed aspect ratio */}
+      {(shapeContent?.shape === 'rectangle' || (shapeContent?.shape === 'svg' && !shapeContent.aspectRatio)) && (
         <div className="pt-3 border-t border-gray-200">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-gray-800 text-sm font-medium flex items-center gap-2">
@@ -656,8 +695,11 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
             onChange={(e) => {
               const value = Number(e.target.value)
               setOpacityValue(value)
-              updateElement(currentSlide.id, shapeElement.id, { 
-                opacity: value / 100 
+              // Update all selected shape elements
+              shapeElements.forEach(element => {
+                updateElement(currentSlide.id, element.id, { 
+                  opacity: value / 100 
+                })
               })
             }}
             className="flex-1 slider-light"
@@ -669,8 +711,11 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
               onChange={(e) => {
                 const value = Math.max(0, Math.min(100, Number(e.target.value)))
                 setOpacityValue(value)
-                updateElement(currentSlide.id, shapeElement.id, { 
-                  opacity: value / 100 
+                // Update all selected shape elements
+                shapeElements.forEach(element => {
+                  updateElement(currentSlide.id, element.id, { 
+                    opacity: value / 100 
+                  })
                 })
               }}
               className="w-16 px-2 py-1 bg-white text-gray-800 text-sm rounded border border-gray-200 appearance-none hover:bg-gray-50 focus:outline-none focus:border-blue-500 text-center"
@@ -681,6 +726,42 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
             <span className="text-sm text-gray-600">%</span>
           </div>
         </div>
+      </div>
+      
+      {/* Blend Mode */}
+      <BlendModeSelector
+        value={style.blendMode}
+        onChange={(blendMode: BlendMode) => updateStyle({ blendMode })}
+        className="pt-3"
+      />
+      
+      {/* Actions */}
+      <div className="pt-4">
+        <button
+          onClick={() => {
+            const newLocked = !firstShapeElement.locked
+            shapeElements.forEach(el => {
+              updateElement(currentSlide.id, el.id, { locked: newLocked })
+            })
+          }}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+            firstShapeElement.locked
+              ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          {firstShapeElement.locked ? (
+            <>
+              <Lock className="w-4 h-4" />
+              Locked {shapeElements.length > 1 && `(${shapeElements.length})`}
+            </>
+          ) : (
+            <>
+              <Unlock className="w-4 h-4" />
+              Unlocked {shapeElements.length > 1 && `(${shapeElements.length})`}
+            </>
+          )}
+        </button>
       </div>
     </div>
   )

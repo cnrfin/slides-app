@@ -40,7 +40,7 @@ export type SlideType =
   | 'reading'
   | 'review'
   | 'end'
-  | 'custom'
+  | 'objectives'
 
 export interface SlideMetadata {
   dataKeys?: Record<string, string> // Maps element IDs to data keys for template population
@@ -77,6 +77,8 @@ export type ElementType =
   | 'text'
   | 'image'
   | 'shape'
+  | 'blurb'
+  | 'line'
   | 'video'
   | 'audio'
   | 'table'
@@ -88,6 +90,8 @@ export type ElementContent =
   | TextContent
   | ImageContent
   | ShapeContent
+  | BlurbContent
+  | LineContent
   | VideoContent
   | AudioContent
   | TableContent
@@ -105,11 +109,31 @@ export interface ImageContent {
   src: string
   alt?: string
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down'
+  isPlaceholder?: boolean // Flag to indicate this is a placeholder image
+  // For object-fit: cover positioning
+  offsetX?: number // Horizontal offset of the image within the frame (0-1, 0.5 = centered)
+  offsetY?: number // Vertical offset of the image within the frame (0-1, 0.5 = centered)
+  scale?: number // Scale factor for the image (1 = fit to cover, >1 = zoomed in)
 }
 
 export interface ShapeContent {
-  shape: 'rectangle' | 'circle' | 'triangle' | 'star' | 'arrow'
+  shape: 'rectangle' | 'circle' | 'triangle' | 'star' | 'arrow' | 'svg'
+  svgPath?: string // SVG path data for svg shapes
+  svgId?: string // Reference to SVG shape library
+  aspectRatio?: number // Optional aspect ratio to maintain
+  viewBox?: string // Custom viewBox for tight bounds
   points?: number[] // For custom shapes
+}
+
+export interface BlurbContent {
+  text: string
+  tailPosition?: 'bottom-left' | 'bottom-center' | 'bottom-right' | 'top-left' | 'top-center' | 'top-right' | 'left-center' | 'right-center'
+  placeholder?: string
+}
+
+export interface LineContent {
+  points: [number, number, number, number] // [x1, y1, x2, y2]
+  lineCap?: 'butt' | 'round' | 'square'
 }
 
 export interface VideoContent {
@@ -236,10 +260,31 @@ export interface ElementStyle {
   // Shadow
   shadow?: Shadow
   
+  // Blend mode
+  blendMode?: BlendMode
+  
   // Other
   padding?: number | { top: number; right: number; bottom: number; left: number }
   zIndex?: number
 }
+
+export type BlendMode = 
+  | 'normal'
+  | 'multiply'
+  | 'screen'
+  | 'overlay'
+  | 'darken'
+  | 'lighten'
+  | 'color-dodge'
+  | 'color-burn'
+  | 'hard-light'
+  | 'soft-light'
+  | 'difference'
+  | 'exclusion'
+  | 'hue'
+  | 'saturation'
+  | 'color'
+  | 'luminosity'
 
 export interface Shadow {
   x: number

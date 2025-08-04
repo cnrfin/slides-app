@@ -1,5 +1,5 @@
 // src/components/templates/TemplateSidebar.tsx
-import { Layout, Type, FileText, Brain, BarChart3, Grid3x3 } from 'lucide-react'
+import { Layout, Type, FileText, Brain, BarChart3, Grid3x3, Target } from 'lucide-react'
 import type { TemplateCategory } from '@/types/template.types'
 
 interface TemplateSidebarProps {
@@ -12,10 +12,13 @@ const categoryIcons: Record<string, React.ReactNode> = {
   all: <Layout className="w-4 h-4" />,
   blank: <FileText className="w-4 h-4" />,
   title: <Type className="w-4 h-4" />,
-  content: <FileText className="w-4 h-4" />,
-  exercise: <Brain className="w-4 h-4" />,
-  chart: <BarChart3 className="w-4 h-4" />,
-  comparison: <Grid3x3 className="w-4 h-4" />
+  'warm-up': <Brain className="w-4 h-4" />,
+  objectives: <Target className="w-4 h-4" />,
+  vocabulary: <Type className="w-4 h-4" />,
+  conversation: <FileText className="w-4 h-4" />,
+  reading: <FileText className="w-4 h-4" />,
+  review: <Grid3x3 className="w-4 h-4" />,
+  end: <FileText className="w-4 h-4" />
 }
 
 const categories = [
@@ -23,6 +26,7 @@ const categories = [
   { id: 'blank', name: 'Blank' },
   { id: 'title', name: 'Title' },
   { id: 'warm-up', name: 'Warm Up' },
+  { id: 'objectives', name: 'Objectives' },
   { id: 'vocabulary', name: 'Vocabulary' },
   { id: 'conversation', name: 'Conversation' },
   { id: 'reading', name: 'Reading' },

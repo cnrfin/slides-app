@@ -1,12 +1,36 @@
 // src/data/templates/index.ts
-import { blankTemplates } from './blank'
-import { vocabularyTemplates } from './vocabulary'
+import { BlankTemplate } from './blank.template'
+import { ConversationQuestionsTemplate } from './conversation-questions.template'
+import { EndingTemplate } from './ending.template'
+import { GapFillExerciseTemplate } from './gap-fill-exercise.template'
+import { LessonOverviewTemplate } from './lesson-overview.template'
+import { LessonReviewTemplate } from './lesson-review.template'
+import { MakeaSentenceTemplate } from './make-a-sentence.template'
+import { ReadandDiscussTemplate } from './read-and-discuss.template'
+import { ReadingExerciseTemplate } from './reading-exercise.template'
+import { SynonymsExerciseTemplate } from './synonyms-exercise.template'
+import { TitleTemplate } from './title.template'
+import { UsefulPhrasesTemplate } from './useful-phrases.template'
+import { VocabularyTemplate } from './vocabulary.template'
+import { WarmUpQuestionsTemplate } from './warm-up-questions.template'
 import type { SlideTemplate, TemplateGroup } from '@/types/template.types'
 
 // Combine all templates
 export const allTemplates: SlideTemplate[] = [
-  ...blankTemplates,
-  ...vocabularyTemplates
+  BlankTemplate,
+  ConversationQuestionsTemplate,
+  EndingTemplate,
+  GapFillExerciseTemplate,
+  LessonOverviewTemplate,
+  LessonReviewTemplate,
+  MakeaSentenceTemplate,
+  ReadandDiscussTemplate,
+  ReadingExerciseTemplate,
+  SynonymsExerciseTemplate,
+  TitleTemplate,
+  UsefulPhrasesTemplate,
+  VocabularyTemplate,
+  WarmUpQuestionsTemplate
 ]
 
 // Group templates by category
@@ -14,42 +38,57 @@ export const templateGroups: TemplateGroup[] = [
   {
     category: 'blank',
     name: 'Blank',
-    templates: blankTemplates
+    templates: [BlankTemplate]
   },
   {
     category: 'title',
     name: 'Title',
-    templates: []
+    templates: [TitleTemplate]
   },
   {
     category: 'warm-up',
     name: 'Warm Up',
+    templates: [WarmUpQuestionsTemplate]
+  },
+  {
+    category: 'objectives',
+    name: 'Objectives',
+    templates: [LessonOverviewTemplate]
+  },
+  {
+    category: 'content',
+    name: 'Content',
     templates: []
   },
   {
     category: 'vocabulary',
     name: 'Vocabulary',
-    templates: vocabularyTemplates
+    templates: [VocabularyTemplate, GapFillExerciseTemplate, SynonymsExerciseTemplate, MakeaSentenceTemplate, UsefulPhrasesTemplate]
   },
   {
     category: 'conversation',
     name: 'Conversation',
-    templates: []
+    templates: [ConversationQuestionsTemplate]
   },
   {
     category: 'reading',
     name: 'Reading',
+    templates: [ReadandDiscussTemplate, ReadingExerciseTemplate]
+  },
+  {
+    category: 'exercise',
+    name: 'Exercise',
     templates: []
   },
   {
     category: 'review',
     name: 'Review',
-    templates: []
+    templates: [LessonReviewTemplate]
   },
   {
     category: 'end',
     name: 'End',
-    templates: []
+    templates: [EndingTemplate]
   }
 ]
 

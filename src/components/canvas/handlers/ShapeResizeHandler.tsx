@@ -13,6 +13,8 @@ interface ShapeResizeHandlerProps {
   width: number
   height: number
   elementId: string
+  elementType?: 'shape' | 'image' | 'blurb'
+  aspectRatio?: number // Fixed aspect ratio for certain shapes
   otherElements?: SlideElement[]
   visible: boolean
   onResize: (newProps: {
@@ -29,7 +31,9 @@ const HANDLE_SIZE = 8
 const BORDER_COLOR = '#0c8ce9'
 const HANDLE_COLOR = '#ffffff'
 const HANDLE_STROKE = '#0c8ce9'
-const MIN_SIZE = 20
+const DEFAULT_MIN_SIZE = 20
+const BLURB_MIN_WIDTH = 150
+const BLURB_MIN_HEIGHT = 50
 
 const ShapeResizeHandler = React.memo(function ShapeResizeHandler({
   x,
@@ -37,12 +41,17 @@ const ShapeResizeHandler = React.memo(function ShapeResizeHandler({
   width,
   height,
   elementId,
+  elementType = 'shape',
+  aspectRatio,
   otherElements = [],
   visible,
   onResize,
   onResizeStart,
   onResizeEnd
 }: ShapeResizeHandlerProps) {
+  // Set minimum size based on element type
+  const MIN_WIDTH = elementType === 'blurb' ? BLURB_MIN_WIDTH : DEFAULT_MIN_SIZE
+  const MIN_HEIGHT = elementType === 'blurb' ? BLURB_MIN_HEIGHT : DEFAULT_MIN_SIZE
   const [isResizing, setIsResizing] = useState(false)
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null)
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([])
@@ -101,7 +110,7 @@ const ShapeResizeHandler = React.memo(function ShapeResizeHandler({
     resizeData.current = {
       handle,
       shiftPressed: e.evt.shiftKey,
-      aspectRatio: width / height
+      aspectRatio: aspectRatio || (width / height)
     }
     
     // Set cursor based on handle
@@ -132,117 +141,128 @@ const ShapeResizeHandler = React.memo(function ShapeResizeHandler({
     let newWidth = initial.width
     let newHeight = initial.height
     
+    // Only maintain aspect ratio when shift is pressed
+    // Exception: arrows and certain decorative shapes always maintain ratio
+    const alwaysMaintainRatio = aspectRatio !== undefined && (
+      elementType === 'arrow' || // This would need to be passed in
+      // For now, check if aspectRatio is one of the arrow ratios
+      aspectRatio === 0.6 || aspectRatio === 1.67 ||
+      // Or one of the decorative shapes that should keep ratio
+      aspectRatio === 1.08 || aspectRatio === 1.25 || aspectRatio === 0.75
+    )
+    const maintainAspectRatio = alwaysMaintainRatio || data.shiftPressed
+    
     // Handle resize based on which handle is being dragged
     switch (data.handle) {
       case 'top-left':
-        if (data.shiftPressed) {
+        if (maintainAspectRatio) {
           // Proportional resize from opposite corner
           const scaleFactor = Math.max(
             (initial.width - dx) / initial.width,
             (initial.height - dy) / initial.height
           )
-          newWidth = Math.max(MIN_SIZE, initial.width * scaleFactor)
-          newHeight = Math.max(MIN_SIZE, initial.height * scaleFactor)
+          newWidth = Math.max(MIN_WIDTH, initial.width * scaleFactor)
+          newHeight = Math.max(MIN_HEIGHT, initial.height * scaleFactor)
           newX = initial.x + initial.width - newWidth
           newY = initial.y + initial.height - newHeight
         } else {
-          newWidth = Math.max(MIN_SIZE, initial.width - dx)
-          newHeight = Math.max(MIN_SIZE, initial.height - dy)
+          newWidth = Math.max(MIN_WIDTH, initial.width - dx)
+          newHeight = Math.max(MIN_HEIGHT, initial.height - dy)
           newX = initial.x + dx
           newY = initial.y + dy
           // Constrain position if size hits minimum
-          if (newWidth === MIN_SIZE) newX = initial.x + initial.width - MIN_SIZE
-          if (newHeight === MIN_SIZE) newY = initial.y + initial.height - MIN_SIZE
+          if (newWidth === MIN_WIDTH) newX = initial.x + initial.width - MIN_WIDTH
+          if (newHeight === MIN_HEIGHT) newY = initial.y + initial.height - MIN_HEIGHT
         }
         break
         
       case 'top':
-        newHeight = Math.max(MIN_SIZE, initial.height - dy)
+        newHeight = Math.max(MIN_HEIGHT, initial.height - dy)
         newY = initial.y + dy
-        if (newHeight === MIN_SIZE) newY = initial.y + initial.height - MIN_SIZE
-        if (data.shiftPressed) {
+        if (newHeight === MIN_HEIGHT) newY = initial.y + initial.height - MIN_HEIGHT
+        if (maintainAspectRatio) {
           // Maintain aspect ratio
-          newWidth = newHeight * data.aspectRatio
+          newWidth = Math.max(MIN_WIDTH, newHeight * data.aspectRatio)
           newX = initial.x + (initial.width - newWidth) / 2
         }
         break
         
       case 'top-right':
-        if (data.shiftPressed) {
+        if (maintainAspectRatio) {
           // Proportional resize
           const scaleFactor = Math.max(
             (initial.width + dx) / initial.width,
             (initial.height - dy) / initial.height
           )
-          newWidth = Math.max(MIN_SIZE, initial.width * scaleFactor)
-          newHeight = Math.max(MIN_SIZE, initial.height * scaleFactor)
+          newWidth = Math.max(MIN_WIDTH, initial.width * scaleFactor)
+          newHeight = Math.max(MIN_HEIGHT, initial.height * scaleFactor)
           newY = initial.y + initial.height - newHeight
         } else {
-          newWidth = Math.max(MIN_SIZE, initial.width + dx)
-          newHeight = Math.max(MIN_SIZE, initial.height - dy)
+          newWidth = Math.max(MIN_WIDTH, initial.width + dx)
+          newHeight = Math.max(MIN_HEIGHT, initial.height - dy)
           newY = initial.y + dy
-          if (newHeight === MIN_SIZE) newY = initial.y + initial.height - MIN_SIZE
+          if (newHeight === MIN_HEIGHT) newY = initial.y + initial.height - MIN_HEIGHT
         }
         break
         
       case 'right':
-        newWidth = Math.max(MIN_SIZE, initial.width + dx)
-        if (data.shiftPressed) {
+        newWidth = Math.max(MIN_WIDTH, initial.width + dx)
+        if (maintainAspectRatio) {
           // Maintain aspect ratio
-          newHeight = newWidth / data.aspectRatio
+          newHeight = Math.max(MIN_HEIGHT, newWidth / data.aspectRatio)
           newY = initial.y + (initial.height - newHeight) / 2
         }
         break
         
       case 'bottom-right':
-        if (data.shiftPressed) {
+        if (maintainAspectRatio) {
           // Proportional resize
           const scaleFactor = Math.max(
             (initial.width + dx) / initial.width,
             (initial.height + dy) / initial.height
           )
-          newWidth = Math.max(MIN_SIZE, initial.width * scaleFactor)
-          newHeight = Math.max(MIN_SIZE, initial.height * scaleFactor)
+          newWidth = Math.max(MIN_WIDTH, initial.width * scaleFactor)
+          newHeight = Math.max(MIN_HEIGHT, initial.height * scaleFactor)
         } else {
-          newWidth = Math.max(MIN_SIZE, initial.width + dx)
-          newHeight = Math.max(MIN_SIZE, initial.height + dy)
+          newWidth = Math.max(MIN_WIDTH, initial.width + dx)
+          newHeight = Math.max(MIN_HEIGHT, initial.height + dy)
         }
         break
         
       case 'bottom':
-        newHeight = Math.max(MIN_SIZE, initial.height + dy)
-        if (data.shiftPressed) {
+        newHeight = Math.max(MIN_HEIGHT, initial.height + dy)
+        if (maintainAspectRatio) {
           // Maintain aspect ratio
-          newWidth = newHeight * data.aspectRatio
+          newWidth = Math.max(MIN_WIDTH, newHeight * data.aspectRatio)
           newX = initial.x + (initial.width - newWidth) / 2
         }
         break
         
       case 'bottom-left':
-        if (data.shiftPressed) {
+        if (maintainAspectRatio) {
           // Proportional resize
           const scaleFactor = Math.max(
             (initial.width - dx) / initial.width,
             (initial.height + dy) / initial.height
           )
-          newWidth = Math.max(MIN_SIZE, initial.width * scaleFactor)
-          newHeight = Math.max(MIN_SIZE, initial.height * scaleFactor)
+          newWidth = Math.max(MIN_WIDTH, initial.width * scaleFactor)
+          newHeight = Math.max(MIN_HEIGHT, initial.height * scaleFactor)
           newX = initial.x + initial.width - newWidth
         } else {
-          newWidth = Math.max(MIN_SIZE, initial.width - dx)
-          newHeight = Math.max(MIN_SIZE, initial.height + dy)
+          newWidth = Math.max(MIN_WIDTH, initial.width - dx)
+          newHeight = Math.max(MIN_HEIGHT, initial.height + dy)
           newX = initial.x + dx
-          if (newWidth === MIN_SIZE) newX = initial.x + initial.width - MIN_SIZE
+          if (newWidth === MIN_WIDTH) newX = initial.x + initial.width - MIN_WIDTH
         }
         break
         
       case 'left':
-        newWidth = Math.max(MIN_SIZE, initial.width - dx)
+        newWidth = Math.max(MIN_WIDTH, initial.width - dx)
         newX = initial.x + dx
-        if (newWidth === MIN_SIZE) newX = initial.x + initial.width - MIN_SIZE
-        if (data.shiftPressed) {
+        if (newWidth === MIN_WIDTH) newX = initial.x + initial.width - MIN_WIDTH
+        if (maintainAspectRatio) {
           // Maintain aspect ratio
-          newHeight = newWidth / data.aspectRatio
+          newHeight = Math.max(MIN_HEIGHT, newWidth / data.aspectRatio)
           newY = initial.y + (initial.height - newHeight) / 2
         }
         break

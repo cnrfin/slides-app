@@ -1,8 +1,182 @@
 // src/data/templates/content.ts
 import type { SlideTemplate } from '@/types/template.types'
-import type { TextContent, ShapeContent } from '@/types/slide.types'
+import type { TextContent, ShapeContent, LineContent } from '@/types/slide.types'
 
 export const contentTemplates: SlideTemplate[] = [
+  {
+    id: 'objectives',
+    name: 'Objectives',
+    category: 'content',
+    description: 'Objectives Page with 4 Goals',
+    background: '#ffffff',
+    elements: [
+      {
+        type: 'shape',
+        x: 411,
+        y: 0,
+        width: 389,
+        height: 600,
+        opacity: 1,
+        locked: true,
+        content: {
+          shape: 'rectangle'
+        } as ShapeContent,
+        style: {
+          backgroundColor: '#f6f6f6',
+          borderRadius: 0
+        }
+      },
+      {
+        type: 'text',
+        x: 25,
+        y: 264,
+        width: 342.4791117672448,
+        height: 40,
+        content: {
+          text: 'Lesson Objectives'
+        } as TextContent,
+        style: {
+          fontSize: 40,
+          fontFamily: 'Arial',
+          color: '#000000',
+          textAlign: 'left',
+          lineHeight: 1,
+          fontWeight: '500'
+        }
+      },
+      {
+        type: 'line',
+        x: 25,
+        y: 315,
+        width: 342.4791117672448,
+        height: 1,
+        content: {
+          points: [0, 0, 342.4791117672448, 0],
+          lineCap: 'round'
+        } as LineContent,
+        style: {
+          borderColor: '#000000',
+          borderWidth: 1.5
+        }
+      },
+      {
+        type: 'text',
+        x: 25,
+        y: 336,
+        width: 342.4791117672448,
+        height: 19.92,
+        content: {
+          text: "What we're learning today"
+        } as TextContent,
+        style: {
+          fontSize: 24,
+          fontFamily: 'Arial',
+          color: '#000000',
+          textAlign: 'left',
+          lineHeight: 1,
+          letterSpacing: 0.5
+        }
+      },
+      {
+        type: 'text',
+        x: 464,
+        y: 153,
+        width: 311,
+        height: 24,
+        content: {
+          text: '{{objective[0]}}',
+          placeholder: 'Dynamic content'
+        } as TextContent,
+        style: {
+          fontSize: 24,
+          fontFamily: 'Arial',
+          color: '#000000',
+          textAlign: 'left',
+          listStyle: 'bullet',
+          lineHeight: 1
+        }
+      },
+      {
+        type: 'text',
+        x: 464,
+        y: 237,
+        width: 311,
+        height: 24,
+        content: {
+          text: '{{objective[1]}}',
+          placeholder: 'Dynamic content'
+        } as TextContent,
+        style: {
+          fontSize: 24,
+          fontFamily: 'Arial',
+          color: '#000000',
+          textAlign: 'left',
+          listStyle: 'bullet',
+          lineHeight: 1
+        }
+      },
+      {
+        type: 'text',
+        x: 464,
+        y: 321,
+        width: 311,
+        height: 24,
+        content: {
+          text: '{{objective[2]}}',
+          placeholder: 'Dynamic content'
+        } as TextContent,
+        style: {
+          fontSize: 24,
+          fontFamily: 'Arial',
+          color: '#000000',
+          textAlign: 'left',
+          listStyle: 'bullet',
+          lineHeight: 1
+        }
+      },
+      {
+        type: 'text',
+        x: 464,
+        y: 405,
+        width: 311,
+        height: 24,
+        content: {
+          text: '{{objective[3]}}',
+          placeholder: 'Dynamic content'
+        } as TextContent,
+        style: {
+          fontSize: 24,
+          fontFamily: 'Arial',
+          color: '#000000',
+          textAlign: 'left',
+          listStyle: 'bullet',
+          lineHeight: 1
+        }
+      },
+      {
+        type: 'text',
+        x: 400,
+        y: 559,
+        width: 375,
+        height: 16,
+        visible: true,
+        content: {
+          text: '{{school}}',
+          placeholder: 'Dynamic content'
+        } as TextContent,
+        style: {
+          fontSize: 16,
+          fontFamily: 'Arial',
+          color: '#000000',
+          textAlign: 'right',
+          fontWeight: '400',
+          lineHeight: 1,
+          letterSpacing: 1
+        }
+      }
+    ],
+    tags: ['objectives', 'dynamic']
+  },
   {
     id: 'content-two-column',
     name: 'Two Column',

@@ -1,15 +1,66 @@
 // src/utils/text.utils.ts
 import Konva from 'konva'
+import { loadFont } from './font.utils'
 
 interface MeasureTextOptions {
   text: string
   fontSize: number
   fontFamily: string
+  fontWeight?: string
   width?: number
   lineHeight?: number
   letterSpacing?: number
   padding?: number
   wrap?: 'word' | 'char' | 'none'
+}
+
+/**
+ * Synchronous version of measureAutoText for immediate use
+ * Note: May be less accurate if font is not yet loaded
+ */
+export function measureAutoText({
+  text,
+  fontSize,
+  fontFamily,
+  fontWeight,
+  lineHeight = 1.2,
+  letterSpacing = 0,
+  padding = 0,
+  width
+}: MeasureTextOptions): { width: number; height: number } {
+  // Handle empty text
+  if (!text || text.trim() === '') {
+    return {
+      width: width || 100,
+      height: fontSize * lineHeight
+    }
+  }
+  
+  // Create a text node to measure
+  const tempText = new Konva.Text({
+    text,
+    fontSize,
+    fontFamily,
+    fontStyle: fontWeight || 'normal',
+    letterSpacing,
+    padding,
+    wrap: width ? 'word' : 'none',
+    width: width || undefined,
+    lineHeight,
+    perfectDrawEnabled: false
+  })
+  
+  // Get measured dimensions
+  const measuredWidth = tempText.width()
+  const measuredHeight = tempText.height()
+  
+  // Clean up
+  tempText.destroy()
+  
+  return {
+    width: width || Math.max(measuredWidth, 50), // Minimum width if not constrained
+    height: Math.max(measuredHeight, fontSize * lineHeight) // At least one line height
+  }
 }
 
 /**
@@ -19,6 +70,7 @@ export function measureText({
   text,
   fontSize,
   fontFamily,
+  fontWeight,
   width,
   lineHeight = 1.2,
   letterSpacing = 0,
@@ -30,6 +82,7 @@ export function measureText({
     text,
     fontSize,
     fontFamily,
+    fontStyle: fontWeight || 'normal',
     width: width || 'auto',
     lineHeight,
     letterSpacing,
@@ -52,48 +105,34 @@ export function measureText({
 }
 
 /**
- * Measure text dimensions for auto-sizing (no width constraint)
+ * Async version that ensures font is loaded before measuring
  */
-export function measureAutoText({
+export async function measureTextAsync({
   text,
   fontSize,
   fontFamily,
+  fontWeight = '400',
+  width,
   lineHeight = 1.2,
   letterSpacing = 0,
-  padding = 0 // Changed default to 0
-}: Omit<MeasureTextOptions, 'width' | 'wrap'>): { width: number; height: number } {
-  // Handle empty text
-  if (!text || text.trim() === '') {
-    return {
-      width: 100,
-      height: fontSize * lineHeight
-    }
-  }
+  padding = 0,
+  wrap = 'word'
+}: MeasureTextOptions): Promise<{ width: number; height: number }> {
+  // Ensure font is loaded before measuring
+  await loadFont(fontFamily, fontWeight)
   
-  // Create a single text node to measure without wrapping
-  const tempText = new Konva.Text({
+  // Use sync version after font is loaded
+  return measureText({
     text,
     fontSize,
     fontFamily,
+    fontWeight,
+    width,
+    lineHeight,
     letterSpacing,
     padding,
-    wrap: 'none',
-    lineHeight,
-    // Ensure accurate measurement
-    perfectDrawEnabled: false
+    wrap
   })
-  
-  // Get measured dimensions
-  const measuredWidth = tempText.width()
-  const measuredHeight = tempText.height()
-  
-  // Clean up
-  tempText.destroy()
-  
-  return {
-    width: Math.max(measuredWidth, 50), // Minimum width
-    height: Math.max(measuredHeight, fontSize * lineHeight) // At least one line height
-  }
 }
 
 /**
@@ -103,6 +142,7 @@ export function measureWrappedText({
   text,
   fontSize,
   fontFamily,
+  fontWeight,
   width,
   lineHeight = 1.2,
   letterSpacing = 0,
@@ -122,6 +162,7 @@ export function measureWrappedText({
     text,
     fontSize,
     fontFamily,
+    fontStyle: fontWeight || 'normal',
     width,
     letterSpacing,
     padding,
@@ -149,6 +190,7 @@ export function measureTextNatural({
   text,
   fontSize,
   fontFamily,
+  fontWeight,
   lineHeight = 1.2,
   letterSpacing = 0,
   padding = 0 // Changed default to 0
@@ -161,7 +203,8 @@ export function measureTextNatural({
   const context = canvas.getContext('2d')
   if (!context) return { width: 100, height: fontSize * lineHeight, lines }
   
-  context.font = `${fontSize}px ${fontFamily}`
+  const fontStylePrefix = fontWeight && fontWeight !== '400' && fontWeight !== 'normal' ? `${fontWeight} ` : ''
+  context.font = `${fontStylePrefix}${fontSize}px ${fontFamily}`
   
   // Find the widest line
   let maxWidth = 0

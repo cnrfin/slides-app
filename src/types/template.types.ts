@@ -21,7 +21,8 @@ export type TemplateCategory =
   | 'reading'
   | 'review'
   | 'end'
-  | 'custom'
+  | 'objectives'
+  | 'content'
   | 'all'
 
 export interface TemplateGroup {

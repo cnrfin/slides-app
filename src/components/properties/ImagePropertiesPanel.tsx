@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react'
 import { Image as ImageIcon, Lock, Unlock, Eye, EyeOff, CornerDownRight } from 'lucide-react'
 import useSlideStore, { useCurrentSlide, useSelectedElements } from '@/stores/slideStore'
-import type { SlideElement, ImageContent } from '@/types/slide.types'
+import type { SlideElement, ImageContent, BlendMode } from '@/types/slide.types'
+import BlendModeSelector from './BlendModeSelector'
 
 export default function ImagePropertiesPanel() {
   const currentSlide = useCurrentSlide()
@@ -18,6 +19,7 @@ export default function ImagePropertiesPanel() {
   const [opacity, setOpacity] = useState(100)
   const [cornerRadius, setCornerRadius] = useState(0)
   const [isLocked, setIsLocked] = useState(false)
+  const [blendMode, setBlendMode] = useState<BlendMode>('normal')
   
   // Initialize state from first selected image
   useEffect(() => {
@@ -25,6 +27,7 @@ export default function ImagePropertiesPanel() {
       setOpacity(Math.round((firstImage.opacity ?? 1) * 100))
       setCornerRadius(firstImage.style?.borderRadius || 0)
       setIsLocked(firstImage.locked || false)
+      setBlendMode(firstImage.style?.blendMode || 'normal')
     }
   }, [firstImage])
   
@@ -67,6 +70,22 @@ export default function ImagePropertiesPanel() {
     selectedImages.forEach(image => {
       updateElement(currentSlide.id, image.id, {
         locked: newLocked
+      })
+    })
+  }
+  
+  // Handle blend mode change
+  const handleBlendModeChange = (value: BlendMode) => {
+    setBlendMode(value)
+    
+    if (!currentSlide) return
+    
+    selectedImages.forEach(image => {
+      updateElement(currentSlide.id, image.id, {
+        style: {
+          ...image.style,
+          blendMode: value
+        }
       })
     })
   }
@@ -164,8 +183,15 @@ export default function ImagePropertiesPanel() {
         />
       </div>
       
+      {/* Blend Mode */}
+      <BlendModeSelector
+        value={blendMode}
+        onChange={handleBlendModeChange}
+        className="mt-4"
+      />
+      
       {/* Actions */}
-      <div className="pt-4 border-t border-gray-200">
+      <div className="pt-4">
         <button
           onClick={toggleLock}
           className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${

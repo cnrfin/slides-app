@@ -22,4 +22,7 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'konva', 'react-konva'],
   },
+  server: {
+    host: '127.0.0.1'
+  },
 })

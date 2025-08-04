@@ -1,12 +1,16 @@
 // src/utils/template.utils.ts
 import type { SlideElement, TextContent } from '@/types/slide.types'
 import { nanoid } from 'nanoid'
-import { measureAutoText } from './text.utils'
+import { measureWrappedText } from './text.utils'
 
 /**
  * Parse a data key path and get value from data object
  * Supports dot notation and array access
  * Examples: "title", "vocabulary[0].word", "metadata.author"
+ * 
+ * Special handling for vocabulary template:
+ * If path is "vocabulary[index]" and the value is an object with a 'word' property,
+ * return the word value instead of the entire object
  */
 export function getValueFromDataPath(data: any, path: string): any {
   if (!data || !path) return null
@@ -21,6 +25,13 @@ export function getValueFromDataPath(data: any, path: string): any {
   for (const part of parts) {
     if (current === null || current === undefined) return null
     current = current[part]
+  }
+  
+  // Special handling for vocabulary items
+  // If we're accessing vocabulary[index] (not vocabulary[index].something)
+  // and the result is an object with a 'word' property, return just the word
+  if (path.match(/^vocabulary\[\d+\]$/) && current && typeof current === 'object' && 'word' in current) {
+    return current.word
   }
   
   return current
@@ -81,22 +92,26 @@ export function populateTemplate(
         // Replace content with data value
         textContent.text = String(value)
         
-        // Recalculate dimensions for new text
+        // Recalculate HEIGHT ONLY for new text, keeping the original width
         let textToMeasure = textContent.text
         if (element.style?.listStyle === 'bullet') {
           const lines = textToMeasure.split('\n')
           textToMeasure = lines.map(line => line.trim() ? `• ${line}` : line).join('\n')
         }
         
-        const dimensions = measureAutoText({
+        const dimensions = measureWrappedText({
           text: textToMeasure,
           fontSize: element.style?.fontSize || 16,
           fontFamily: element.style?.fontFamily || 'Arial',
+          fontWeight: element.style?.fontWeight,
           lineHeight: element.style?.lineHeight || 1.2,
-          padding: 0
+          letterSpacing: element.style?.letterSpacing || 0,
+          width: element.width, // Use the template's width constraint
+          padding: 0,
+          wrap: 'word'
         })
         
-        element.width = dimensions.width
+        // Only update height, keep original width
         element.height = dimensions.height
       }
     }
@@ -109,22 +124,26 @@ export function populateTemplate(
       if (replacedText !== textContent.text) {
         textContent.text = replacedText
         
-        // Recalculate dimensions
+        // Recalculate HEIGHT ONLY, keeping the original width
         let textToMeasure = replacedText
         if (element.style?.listStyle === 'bullet') {
           const lines = textToMeasure.split('\n')
           textToMeasure = lines.map(line => line.trim() ? `• ${line}` : line).join('\n')
         }
         
-        const dimensions = measureAutoText({
+        const dimensions = measureWrappedText({
           text: textToMeasure,
           fontSize: element.style?.fontSize || 16,
           fontFamily: element.style?.fontFamily || 'Arial',
+          fontWeight: element.style?.fontWeight,
           lineHeight: element.style?.lineHeight || 1.2,
-          padding: 0
+          letterSpacing: element.style?.letterSpacing || 0,
+          width: element.width, // Use the template's width constraint
+          padding: 0,
+          wrap: 'word'
         })
         
-        element.width = dimensions.width
+        // Only update height, keep original width
         element.height = dimensions.height
       }
     }

@@ -5,8 +5,11 @@ import useSlideStore from '@/stores/slideStore'
 export function useKeyboardShortcuts() {
   const { 
     currentSlideId, 
+    selectedSlideId,
     selectedElementIds, 
     deleteElement, 
+    deleteSelectedSlide,
+    duplicateSelectedSlide,
     slides,
     clearSelection,
     undo,
@@ -17,7 +20,10 @@ export function useKeyboardShortcuts() {
     sendToBack,
     bringForward,
     sendBackward,
-    batchUpdateElements
+    batchUpdateElements,
+    copyElements,
+    pasteElements,
+    canPaste
   } = useSlideStore()
   
   useEffect(() => {
@@ -34,16 +40,39 @@ export function useKeyboardShortcuts() {
         window.dispatchEvent(event)
       }
       
-      // Delete selected elements
+      // Line tool (L key)
+      if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault()
+        const event = new CustomEvent('canvas:start-line-mode')
+        window.dispatchEvent(event)
+      }
+      
+      // Delete selected elements or slide
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedElementIds.length > 0 && currentSlideId) {
-          e.preventDefault()
+        e.preventDefault()
+        
+        // If a slide is selected and no elements are selected, delete the slide
+        if (selectedSlideId && selectedElementIds.length === 0) {
+          deleteSelectedSlide()
+        }
+        // Otherwise delete selected elements
+        else if (selectedElementIds.length > 0 && currentSlideId) {
           const currentSlide = slides.find(s => s.id === currentSlideId)
           if (currentSlide) {
             selectedElementIds.forEach(elementId => {
               deleteElement(currentSlideId, elementId)
             })
           }
+        }
+      }
+      
+      // Duplicate slide (Ctrl/Cmd + D)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault()
+        
+        // If a slide is selected and no elements are selected, duplicate the slide
+        if (selectedSlideId && selectedElementIds.length === 0) {
+          duplicateSelectedSlide()
         }
       }
       
@@ -77,6 +106,22 @@ export function useKeyboardShortcuts() {
         if (canRedo) {
           e.preventDefault()
           redo()
+        }
+      }
+      
+      // Copy (Ctrl/Cmd + C)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !e.shiftKey) {
+        if (selectedElementIds.length > 0) {
+          e.preventDefault()
+          copyElements()
+        }
+      }
+      
+      // Paste (Ctrl/Cmd + V)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !e.shiftKey) {
+        if (canPaste) {
+          e.preventDefault()
+          pasteElements()
         }
       }
       
@@ -180,7 +225,7 @@ export function useKeyboardShortcuts() {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentSlideId, selectedElementIds, deleteElement, slides, clearSelection, undo, redo, canUndo, canRedo, bringToFront, sendToBack, bringForward, sendBackward, batchUpdateElements])
+  }, [currentSlideId, selectedSlideId, selectedElementIds, deleteElement, deleteSelectedSlide, duplicateSelectedSlide, slides, clearSelection, undo, redo, canUndo, canRedo, bringToFront, sendToBack, bringForward, sendBackward, batchUpdateElements, copyElements, pasteElements, canPaste])
 }
 
 export default useKeyboardShortcuts

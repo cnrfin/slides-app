@@ -7,7 +7,8 @@ import {
   Image, 
   Undo2, 
   Redo2, 
-  Home,
+  Eye,
+  EyeOff,
   Wand2,
   Layers,
   ChevronsUp,
@@ -15,11 +16,15 @@ import {
   ChevronUp,
   ChevronDown as ChevronDownIcon,
   Lock,
-  Unlock
+  Unlock,
+  Shapes,
+  Minus
 } from 'lucide-react'
 import useSlideStore, { useSelectedElements } from '@/stores/slideStore'
-import type { TextContent, ShapeContent } from '@/types/slide.types'
+import type { TextContent, ShapeContent, BlurbContent } from '@/types/slide.types'
 import { measureAutoText } from '@/utils/text.utils'
+import ShapePicker from './ShapePicker'
+import { getShapeById } from '@/utils/svg-shapes'
 
 interface FloatingToolbarProps {
   onOpenTemplateMode: () => void
@@ -28,9 +33,11 @@ interface FloatingToolbarProps {
 
 export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: FloatingToolbarProps) {
   const [showLayerMenu, setShowLayerMenu] = useState(false)
-  const [selectedTool, setSelectedTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'image'>('select')
+  const [showShapeMenu, setShowShapeMenu] = useState(false)
+  const [selectedTool, setSelectedTool] = useState<'select' | 'rectangle' | 'circle' | 'text' | 'blurb' | 'image' | 'line'>('select')
+  const [lastUsedShape, setLastUsedShape] = useState<{ type: 'rectangle' | 'circle' | 'blurb' | 'svg'; svgId?: string }>({ type: 'rectangle' })
   const layersButtonRef = useRef<HTMLButtonElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const shapeButtonRef = useRef<HTMLButtonElement>(null)
   
   const {
     slides,
@@ -40,7 +47,21 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
     canRedo,
     undo,
     redo,
+    showOutsideElements,
+    toggleOutsideElements,
+    selectedElementIds,
+    selectElement,
   } = useSlideStore()
+  
+  // Listen for exit line mode event to reset tool selection
+  useEffect(() => {
+    const handleExitLineMode = () => {
+      setSelectedTool('select')
+    }
+    
+    window.addEventListener('canvas:exit-line-mode', handleExitLineMode)
+    return () => window.removeEventListener('canvas:exit-line-mode', handleExitLineMode)
+  }, [])
   
   const currentSlide = slides.find(s => s.id === currentSlideId)
   const selectedElements = useSelectedElements()
@@ -50,6 +71,9 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
     const handleClickOutside = (event: MouseEvent) => {
       if (layersButtonRef.current && !layersButtonRef.current.contains(event.target as Node)) {
         setShowLayerMenu(false)
+      }
+      if (shapeButtonRef.current && !shapeButtonRef.current.contains(event.target as Node)) {
+        setShowShapeMenu(false)
       }
     }
     
@@ -92,26 +116,153 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
     })
   }
   
-  const handleAddShape = (shape: 'rectangle' | 'circle') => {
+  const handleAddShape = (shape: 'rectangle' | 'circle' | 'blurb' | 'svg', svgData?: { id: string; path: string; aspectRatio?: number; viewBox?: string }) => {
     if (!currentSlide) return
     
-    const shapeContent: ShapeContent = {
-      shape,
+    if (shape === 'blurb') {
+      handleAddBlurb()
+      return
+    }
+    
+    if (shape === 'svg' && svgData) {
+      // Add SVG shape
+      let width = 150
+      let height = 150
+      
+      // Special handling for edge wave shapes - make them larger by default
+      if (svgData.id && svgData.id.startsWith('wave-')) {
+        if (svgData.id === 'wave-bottom' || svgData.id === 'wave-top' || 
+            svgData.id === 'wave-bottom-gentle' || svgData.id === 'wave-top-gentle') {
+          width = 300
+          height = 100
+        } else if (svgData.id === 'wave-left' || svgData.id === 'wave-right') {
+          width = 100
+          height = 300
+        } else if (svgData.id === 'wave-corner') {
+          width = 200
+          height = 200
+        }
+      } else if (svgData.aspectRatio) {
+        height = width / svgData.aspectRatio
+      }
+      
+      const shapeContent: ShapeContent = {
+        shape: 'svg',
+        svgPath: svgData.path,
+        svgId: svgData.id,
+        aspectRatio: svgData.aspectRatio,
+        viewBox: svgData.viewBox
+      }
+      
+      addElement(currentSlide.id, {
+        type: 'shape',
+        x: 400 - width / 2,
+        y: 300 - height / 2,
+        width,
+        height,
+        content: shapeContent,
+        style: {
+          backgroundColor: '#3b82f6',
+        },
+      })
+      
+      setLastUsedShape({ type: 'svg', svgId: svgData.id })
+    } else {
+      // Add basic shape
+      const shapeContent: ShapeContent = {
+        shape: shape as 'rectangle' | 'circle',
+      }
+      
+      addElement(currentSlide.id, {
+        type: 'shape',
+        x: 350,
+        y: 250,
+        width: 100,
+        height: 100,
+        content: shapeContent,
+        style: {
+          backgroundColor: shape === 'rectangle' ? '#3b82f6' : '#10b981',
+          borderRadius: shape === 'rectangle' ? 8 : undefined,
+        },
+      })
+      
+      setLastUsedShape({ type: shape as 'rectangle' | 'circle' })
+    }
+    
+    setSelectedTool('select')
+    setShowShapeMenu(false)
+  }
+  
+  const handleAddBlurb = () => {
+    if (!currentSlide) return
+    
+    const blurbContent: BlurbContent = {
+      text: 'Type here',
+      tailPosition: 'bottom-left',
     }
     
     addElement(currentSlide.id, {
-      type: 'shape',
+      type: 'blurb',
+      x: 325,  // Center on canvas (800/2 - 150/2 = 325)
+      y: 262.5,  // Center on canvas (600/2 - 75/2 = 262.5)
+      width: 150,
+      height: 75,
+      content: blurbContent,
+      style: {
+        backgroundColor: '#3b82f6',
+        color: '#ffffff',
+        fontSize: 16,
+        fontFamily: 'Arial',
+        borderRadius: 25,
+      },
+    })
+    
+    setLastUsedShape({ type: 'blurb' })
+    setSelectedTool('select')
+    setShowShapeMenu(false)
+  }
+  
+  const handleAddPlaceholderImage = () => {
+    if (!currentSlide) return
+    
+    // Add a placeholder image element
+    const elementId = addElement(currentSlide.id, {
+      type: 'image',
       x: 350,
       y: 250,
       width: 100,
       height: 100,
-      content: shapeContent,
-      style: {
-        backgroundColor: shape === 'rectangle' ? '#3b82f6' : '#10b981',
-        borderRadius: shape === 'rectangle' ? 8 : undefined,
+      content: {
+        src: 'data:image/svg+xml;base64,' + btoa(`
+          <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="200" height="200" fill="#f9fafb" stroke="#e5e7eb" stroke-width="2" stroke-dasharray="8,4" rx="8"/>
+            <g transform="translate(100, 90)">
+              <!-- Image icon -->
+              <path d="M-35,-35 L35,-35 Q40,-35 40,-30 L40,20 Q40,25 35,25 L-35,25 Q-40,25 -40,20 L-40,-30 Q-40,-35 -35,-35 Z" 
+                    fill="none" stroke="#9ca3af" stroke-width="3"/>
+              <!-- Mountain/landscape inside -->
+              <path d="M-35,5 L-10,-10 L5,0 L20,-15 L35,5 L35,20 L-35,20 Z" fill="#e5e7eb"/>
+              <!-- Sun/circle -->
+              <circle cx="-18" cy="-15" r="7" fill="#d1d5db"/>
+            </g>
+            <text x="100" y="145" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" 
+                  font-size="16" font-weight="500" fill="#6b7280">Drop image here</text>
+            <text x="100" y="165" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" 
+                  font-size="14" fill="#9ca3af">or resize placeholder</text>
+          </svg>
+        `),
+        alt: 'Placeholder image',
+        isPlaceholder: true,
+        objectFit: 'cover',
+        offsetX: 0.5,
+        offsetY: 0.5,
+        scale: 1
       },
+      style: {},
     })
     
+    // Select the new element
+    selectElement(elementId)
     setSelectedTool('select')
   }
   
@@ -162,23 +313,12 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
     setSelectedTool('select')
   }
   
-  const handleResetView = () => {
-    const event = new CustomEvent('canvas:reset-view')
-    window.dispatchEvent(event)
+  const handleToggleOutsideElements = () => {
+    toggleOutsideElements()
   }
   
   return (
     <>
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        onChange={handleImageUpload}
-        className="hidden"
-      />
-      
       {/* Floating Toolbar */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30">
         <div className="bg-white rounded-full shadow-xl border border-gray-200/50 flex items-center p-1.5 gap-0.5 backdrop-blur-sm">
@@ -198,37 +338,50 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
           {/* Divider */}
           <div className="w-px h-8 bg-gray-200 mx-1" />
           
-          {/* Rectangle Tool */}
-          <button
-            onClick={() => {
-              handleAddShape('rectangle')
-              setSelectedTool('rectangle')
-            }}
-            className={`p-3 rounded-full transition-all ${
-              selectedTool === 'rectangle' 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'hover:bg-gray-100 text-gray-700'
-            }`}
-            title="Rectangle (R)"
-          >
-            <Square className="w-5 h-5" />
-          </button>
-          
-          {/* Circle Tool */}
-          <button
-            onClick={() => {
-              handleAddShape('circle')
-              setSelectedTool('circle')
-            }}
-            className={`p-3 rounded-full transition-all ${
-              selectedTool === 'circle' 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'hover:bg-gray-100 text-gray-700'
-            }`}
-            title="Circle (O)"
-          >
-            <Circle className="w-5 h-5" />
-          </button>
+          {/* Shape Tool */}
+          <div className="relative" ref={shapeButtonRef}>
+            <button
+              onClick={() => setShowShapeMenu(!showShapeMenu)}
+              className={`p-3 rounded-full transition-all ${
+                ['rectangle', 'circle', 'blurb', 'svg'].includes(selectedTool) 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'hover:bg-gray-100 text-gray-700'
+              }`}
+              title="Shape Tool"
+            >
+              {lastUsedShape.type === 'rectangle' && <Square className="w-5 h-5" />}
+              {lastUsedShape.type === 'circle' && <Circle className="w-5 h-5" />}
+              {lastUsedShape.type === 'blurb' && (
+                <svg width="20" height="20" viewBox="0 0 48 48" className="w-5 h-5">
+                  <path 
+                    d="M8 8 L40 8 Q44 8 44 12 L44 28 Q44 32 40 32 L20 32 L12 40 L12 32 L8 32 Q4 32 4 28 L4 12 Q4 8 8 8 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="3"
+                  />
+                </svg>
+              )}
+              {lastUsedShape.type === 'svg' && (() => {
+                const shape = lastUsedShape.svgId ? getShapeById(lastUsedShape.svgId) : null
+                if (shape) {
+                  return (
+                    <svg width="20" height="20" viewBox={shape.viewBox || '0 0 100 100'} className="w-5 h-5">
+                      <path d={shape.path} fill="currentColor" />
+                    </svg>
+                  )
+                }
+                return <Shapes className="w-5 h-5" />
+              })()}
+            </button>
+            
+            {/* Shape Picker */}
+            {showShapeMenu && (
+              <ShapePicker
+                onSelectShape={handleAddShape}
+                onClose={() => setShowShapeMenu(false)}
+              />
+            )}
+          </div>
           
           {/* Text Tool */}
           <button
@@ -246,10 +399,28 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
             <Type className="w-5 h-5" />
           </button>
           
+          {/* Line Tool */}
+          <button
+            onClick={() => {
+              setSelectedTool('line')
+              // Emit event to start line drawing mode
+              const event = new CustomEvent('canvas:start-line-mode')
+              window.dispatchEvent(event)
+            }}
+            className={`p-3 rounded-full transition-all ${
+              selectedTool === 'line' 
+                ? 'bg-blue-100 text-blue-700' 
+                : 'hover:bg-gray-100 text-gray-700'
+            }`}
+            title="Line Tool (L)"
+          >
+            <Minus className="w-5 h-5" />
+          </button>
+          
           {/* Image Tool */}
           <button
             onClick={() => {
-              fileInputRef.current?.click()
+              handleAddPlaceholderImage()
               setSelectedTool('image')
             }}
             className={`p-3 rounded-full transition-all ${
@@ -288,13 +459,17 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
           {/* Divider */}
           <div className="w-px h-8 bg-gray-200 mx-1" />
           
-          {/* Reset View */}
+          {/* Toggle Outside Elements Visibility */}
           <button
-            onClick={handleResetView}
-            className="p-3 rounded-full transition-all hover:bg-gray-100 text-gray-700"
-            title="Reset View (Home)"
+            onClick={handleToggleOutsideElements}
+            className={`p-3 rounded-full transition-all ${
+              showOutsideElements 
+                ? 'hover:bg-gray-100 text-gray-700' 
+                : 'bg-gray-100 text-gray-500'
+            }`}
+            title={showOutsideElements ? "Hide elements outside slide" : "Show elements outside slide"}
           >
-            <Home className="w-5 h-5" />
+            {showOutsideElements ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
           </button>
           
           {/* Lock/Unlock - only show when element(s) selected */}
