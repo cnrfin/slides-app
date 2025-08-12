@@ -13,7 +13,7 @@ interface ShapeResizeHandlerProps {
   width: number
   height: number
   elementId: string
-  elementType?: 'shape' | 'image' | 'blurb'
+  elementType?: 'shape' | 'image' | 'blurb' | 'table' | 'icon'
   aspectRatio?: number // Fixed aspect ratio for certain shapes
   otherElements?: SlideElement[]
   visible: boolean

@@ -1,11 +1,13 @@
 // src/components/canvas/ElementRenderer.tsx
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { Group, Rect, Text, Image, Shape, Path, Line } from 'react-konva'
 import { CANVAS_DIMENSIONS, CANVAS_COLORS } from '@/utils/canvas.constants'
-import type { SlideElement, TextContent, ShapeContent, ImageContent, BlurbContent, LineContent } from '@/types/slide.types'
+import type { SlideElement, TextContent, ShapeContent, ImageContent, BlurbContent, LineContent, IconContent } from '@/types/slide.types'
 import Konva from 'konva'
 import useSlideStore from '@/stores/slideStore'
 import { loadFont } from '@/utils/font.utils'
+import { measureWrappedText } from '@/utils/text.utils'
+import { getIconPath, getIconBounds } from '@/utils/icon.utils'
 
 // Helper function to parse viewBox string
 const parseViewBox = (viewBox: string) => {
@@ -531,6 +533,174 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
           </>
         )
         
+      case 'icon':
+        const iconContent = element.content as IconContent
+        const iconData = getIconPath(iconContent.iconId)
+        
+        return (
+          <Group
+            {...props}
+            {...additionalProps}
+            opacity={baseOpacity * (additionalProps.opacity || 1)}
+          >
+            <Path
+              data={iconData.path}
+              x={element.width / 2}
+              y={element.height / 2}
+              offsetX={12} // Half of the original 24px viewBox
+              offsetY={12} // Half of the original 24px viewBox
+              scaleX={element.width / 24}
+              scaleY={element.height / 24}
+              fill={iconData.filled ? (element.style?.color || '#000000') : 'transparent'}
+              stroke={element.style?.color || '#000000'}
+              strokeWidth={iconData.filled ? 0 : ((element.style?.strokeWidth || 5) / (element.width / 24))}
+              lineCap="round"
+              lineJoin="round"
+              perfectDrawEnabled={false}
+            />
+          </Group>
+        )
+        
+      case 'table':
+        const tableContent = element.content as import('@/types/slide.types').TableContent
+        const cellPadding = 8
+        
+        return (
+          <>
+            {/* Hover border for table */}
+            {isHovered && !isSelected && (
+              <Rect
+                x={element.x}
+                y={element.y}
+                width={element.width}
+                height={element.height}
+                stroke="#9ca3af"
+                strokeWidth={1}
+                fill="transparent"
+                listening={false}
+              />
+            )}
+            {/* Selection border for locked tables */}
+            {isSelected && element.locked && (
+              <Rect
+                x={element.x}
+                y={element.y}
+                width={element.width}
+                height={element.height}
+                stroke={CANVAS_COLORS.LOCKED_SELECTION}
+                strokeWidth={1}
+                fill="transparent"
+                listening={false}
+              />
+            )}
+            <Group
+              {...props}
+              {...additionalProps}
+              opacity={baseOpacity * (additionalProps.opacity || 1)}
+            >
+              {/* Table background */}
+              <Rect
+                x={0}
+                y={0}
+                width={element.width}
+                height={element.height}
+                fill={element.style?.backgroundColor || '#ffffff'}
+                stroke={element.style?.borderColor || '#d1d5db'}
+                strokeWidth={element.style?.borderWidth || 1}
+              />
+              
+              {/* Draw cells */}
+              {tableContent.cells.map((row, rowIndex) => {
+                // Calculate row y position and height
+                const rowY = tableContent.rowHeights
+                  ? tableContent.rowHeights.slice(0, rowIndex).reduce((sum, h) => sum + h, 0)
+                  : (element.height / tableContent.rows) * rowIndex
+                const rowHeight = tableContent.rowHeights
+                  ? tableContent.rowHeights[rowIndex]
+                  : element.height / tableContent.rows
+                  
+                return row.map((cell, colIndex) => {
+                  // Calculate column x position and width
+                  const colX = tableContent.columnWidths
+                    ? tableContent.columnWidths.slice(0, colIndex).reduce((sum, w) => sum + w, 0)
+                    : (element.width / tableContent.columns) * colIndex
+                  const colWidth = tableContent.columnWidths
+                    ? tableContent.columnWidths[colIndex]
+                    : element.width / tableContent.columns
+                  
+                  const isHeaderRow = tableContent.headerRow && rowIndex === 0
+                  const isHeaderCol = tableContent.headerColumn && colIndex === 0
+                  const isHeader = isHeaderRow || isHeaderCol
+                  
+                  return (
+                    <Group key={`cell-${rowIndex}-${colIndex}`}>
+                      {/* Cell background */}
+                      <Rect
+                        x={colX}
+                        y={rowY}
+                        width={colWidth}
+                        height={rowHeight}
+                        fill={cell.style?.background || (isHeader ? '#f9fafb' : '#ffffff')}
+                        stroke={element.style?.borderColor || '#d1d5db'}
+                        strokeWidth={element.style?.borderWidth || 1}
+                      />
+                      
+                      {/* Cell text */}
+                      <Text
+                        x={colX + cellPadding}
+                        y={rowY + cellPadding}
+                        width={colWidth - cellPadding * 2}
+                        height={rowHeight - cellPadding * 2}
+                        text={cell.text || ''}
+                        fontSize={cell.style?.fontSize || element.style?.fontSize || 14}
+                        fontFamily={element.style?.fontFamily || 'Arial'}
+                        fontStyle={`${cell.style?.fontWeight || (isHeader ? 'bold' : 'normal')} normal`}
+                        fill={cell.style?.color || element.style?.color || '#000000'}
+                        align={cell.style?.textAlign || 'center'}
+                        verticalAlign={cell.style?.verticalAlign || 'middle'}
+                        wrap="word"
+                        ellipsis={true}
+                        listening={false}
+                      />
+                    </Group>
+                  )
+                })
+              })}
+              
+              {/* Draw grid lines on top for better visibility */}
+              {/* Vertical lines */}
+              {Array.from({ length: tableContent.columns - 1 }, (_, i) => {
+                const x = tableContent.columnWidths
+                  ? tableContent.columnWidths.slice(0, i + 1).reduce((sum, w) => sum + w, 0)
+                  : (element.width / tableContent.columns) * (i + 1)
+                return (
+                  <Line
+                    key={`vline-${i}`}
+                    points={[x, 0, x, element.height]}
+                    stroke={element.style?.borderColor || '#d1d5db'}
+                    strokeWidth={element.style?.borderWidth || 1}
+                  />
+                )
+              })}
+              
+              {/* Horizontal lines */}
+              {Array.from({ length: tableContent.rows - 1 }, (_, i) => {
+                const y = tableContent.rowHeights
+                  ? tableContent.rowHeights.slice(0, i + 1).reduce((sum, h) => sum + h, 0)
+                  : (element.height / tableContent.rows) * (i + 1)
+                return (
+                  <Line
+                    key={`hline-${i}`}
+                    points={[0, y, element.width, y]}
+                    stroke={element.style?.borderColor || '#d1d5db'}
+                    strokeWidth={element.style?.borderWidth || 1}
+                  />
+                )
+              })}
+            </Group>
+          </>
+        )
+        
       case 'image':
         const imageContent = element.content as ImageContent
         
@@ -980,7 +1150,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
       <Group>
         {renderShape(commonProps, { opacity: outsideOpacity })}
         {/* Selection border with full opacity - hide when editing */}
-        {isSelected && !isEditing && (element.type !== 'text' || element.locked) && (
+        {isSelected && !isEditing && (element.type !== 'text' || element.locked) && element.type !== 'icon' && (
           <Rect
             x={element.x}
             y={element.y}
@@ -994,7 +1164,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
           />
         )}
         {/* Hover border */}
-        {isHovered && !isSelected && element.type !== 'text' && (
+        {isHovered && !isSelected && element.type !== 'text' && element.type !== 'icon' && (
           <Rect
             x={element.x}
             y={element.y}
@@ -1031,7 +1201,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
         </Group>
         
         {/* Selection border with full opacity - hide when editing */}
-        {isSelected && !isEditing && (element.type !== 'text' || element.locked) && (
+        {isSelected && !isEditing && (element.type !== 'text' || element.locked) && element.type !== 'icon' && (
           <Rect
             x={element.x}
             y={element.y}
@@ -1046,7 +1216,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
         )}
         
         {/* Hover border */}
-        {isHovered && !isSelected && element.type !== 'text' && (
+        {isHovered && !isSelected && element.type !== 'text' && element.type !== 'icon' && (
           <Rect
             x={element.x}
             y={element.y}
@@ -1069,7 +1239,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
       {renderShape(commonProps)}
       
       {/* Selection border - hide when editing - for non-text elements or locked text */}
-      {isSelected && !isEditing && (element.type !== 'text' || element.locked) && element.type !== 'image' && (
+      {isSelected && !isEditing && (element.type !== 'text' || element.locked) && element.type !== 'image' && element.type !== 'table' && element.type !== 'icon' && (
         <Rect
           x={element.x}
           y={element.y}
@@ -1084,7 +1254,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
       )}
       
       {/* Hover border - for non-text elements */}
-      {isHovered && !isSelected && element.type !== 'text' && (
+      {isHovered && !isSelected && element.type !== 'text' && element.type !== 'table' && element.type !== 'icon' && (
         <Rect
           x={element.x}
           y={element.y}

@@ -1,21 +1,17 @@
 // src/components/properties/ShapePropertiesPanel.tsx
 import { useState, useEffect, useRef } from 'react'
 import { 
-  Square,
-  Circle,
   Palette,
   Grid3x3,
   ChevronDown,
   RectangleHorizontal,
   Lock,
-  Unlock,
-  Shapes
+  Unlock
 } from 'lucide-react'
 import { HexColorPicker, HexColorInput } from 'react-colorful'
 import useSlideStore from '@/stores/slideStore'
 import { useSelectedElements, useCurrentSlide } from '@/stores/slideStore'
 import type { ElementStyle, ShapeContent, BlendMode } from '@/types/slide.types'
-import { getShapeById } from '@/utils/svg-shapes'
 import BlendModeSelector from './BlendModeSelector'
 
 interface ShapePropertiesPanelProps {
@@ -138,47 +134,10 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
     })
   }
   
-  const getShapeIcon = () => {
-    if (shapeContent?.shape === 'circle') {
-      return <Circle className="w-4 h-4" />
-    } else if (shapeContent?.shape === 'svg' && shapeContent.svgId) {
-      const svgShape = getShapeById(shapeContent.svgId)
-      if (svgShape) {
-        return (
-          <svg width="16" height="16" viewBox={svgShape.viewBox || '0 0 100 100'} className="w-4 h-4">
-            <path d={svgShape.path} fill="currentColor" />
-          </svg>
-        )
-      }
-      return <Shapes className="w-4 h-4" />
-    }
-    return <Square className="w-4 h-4" />
-  }
-  
-  const getShapeName = () => {
-    if (shapeContent?.shape === 'circle') {
-      return 'Circle'
-    } else if (shapeContent?.shape === 'svg' && shapeContent.svgId) {
-      const svgShape = getShapeById(shapeContent.svgId)
-      return svgShape?.name || 'SVG Shape'
-    }
-    return 'Rectangle'
-  }
-  
   return (
     <div className={`space-y-1 ${className}`}>
-      <div className="pb-3 border-b border-gray-200">
-        <h3 className="text-gray-800 font-medium flex items-center gap-2">
-          {getShapeIcon()}
-          {getShapeName()}
-          {shapeElements.length > 1 && (
-            <span className="text-sm font-normal text-gray-500">({shapeElements.length} selected)</span>
-          )}
-        </h3>
-      </div>
-      
       {/* Fill Section */}
-      <div className="pt-3">
+      <div>
         <h4 className="text-gray-800 text-sm font-medium mb-3">Fill</h4>
         
         {/* Color Mode Selector */}

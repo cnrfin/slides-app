@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Square, Circle } from 'lucide-react'
 import { SVG_SHAPES, getShapesByCategory, type SVGShapeDefinition } from '@/utils/svg-shapes'
 
@@ -17,6 +17,17 @@ const CATEGORIES = [
 
 export default function ShapePicker({ onSelectShape, onClose }: ShapePickerProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('basic')
+  const [isAnimating, setIsAnimating] = useState(false)
+  
+  // Trigger animation on mount
+  useEffect(() => {
+    // Use requestAnimationFrame to ensure the component renders first
+    const animationFrame = requestAnimationFrame(() => {
+      setIsAnimating(true)
+    })
+    
+    return () => cancelAnimationFrame(animationFrame)
+  }, [])
   
   const renderBasicShapes = () => (
     <div className="grid grid-cols-3 gap-3 p-4">
@@ -93,7 +104,11 @@ export default function ShapePicker({ onSelectShape, onClose }: ShapePickerProps
   )
   
   return (
-    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border border-gray-200/50 backdrop-blur-sm transform transition-all duration-200 ease-out origin-bottom">
+    <div 
+      className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border border-gray-200/50 backdrop-blur-sm transition-all duration-200 ease-out origin-bottom ${
+        isAnimating ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'
+      }`}
+    >
       <div className="w-[380px]">
         {/* Category tabs */}
         <div className="flex border-b border-gray-200">

@@ -14,7 +14,6 @@ import {
   ChevronDown,
   Lock,
   Unlock,
-  MessageSquare,
   Rows,
   MoveHorizontal
 } from 'lucide-react'
@@ -149,19 +148,8 @@ export default function BlurbPropertiesPanel({ className = '' }: BlurbProperties
   
   return (
     <div className={`${className}`}>
-      {/* Header */}
-      <div className="flex items-center gap-2 pb-3 border-b border-gray-200">
-        <MessageSquare className="w-5 h-5 text-gray-600" />
-        <h3 className="font-semibold text-gray-800">
-          Speech
-          {blurbElements.length > 1 && (
-            <span className="text-sm font-normal text-gray-500 ml-2">({blurbElements.length} selected)</span>
-          )}
-        </h3>
-      </div>
-      
       {/* Tail Position - New Circular Selector */}
-      <div className="pt-4">
+      <div>
         <h4 className="text-gray-800 text-sm font-medium mb-3">Tail Position</h4>
         <CircularTailSelector
           value={blurbContent?.tailPosition || 'bottom-center'}

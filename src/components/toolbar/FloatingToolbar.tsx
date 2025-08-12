@@ -332,7 +332,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
             }`}
             title="Select Tool (V)"
           >
-            <MousePointer2 className="w-5 h-5" />
+            <MousePointer2 className="w-5 h-5" strokeWidth={1} />
           </button>
           
           {/* Divider */}
@@ -349,8 +349,8 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
               }`}
               title="Shape Tool"
             >
-              {lastUsedShape.type === 'rectangle' && <Square className="w-5 h-5" />}
-              {lastUsedShape.type === 'circle' && <Circle className="w-5 h-5" />}
+              {lastUsedShape.type === 'rectangle' && <Square className="w-5 h-5" strokeWidth={1} />}
+              {lastUsedShape.type === 'circle' && <Circle className="w-5 h-5" strokeWidth={1} />}
               {lastUsedShape.type === 'blurb' && (
                 <svg width="20" height="20" viewBox="0 0 48 48" className="w-5 h-5">
                   <path 
@@ -370,7 +370,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
                     </svg>
                   )
                 }
-                return <Shapes className="w-5 h-5" />
+                return <Shapes className="w-5 h-5" strokeWidth={1} />
               })()}
             </button>
             
@@ -396,7 +396,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
             }`}
             title="Text (T)"
           >
-            <Type className="w-5 h-5" />
+            <Type className="w-5 h-5" strokeWidth={1} />
           </button>
           
           {/* Line Tool */}
@@ -414,7 +414,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
             }`}
             title="Line Tool (L)"
           >
-            <Minus className="w-5 h-5" />
+            <Minus className="w-5 h-5" strokeWidth={1} />
           </button>
           
           {/* Image Tool */}
@@ -430,7 +430,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
             }`}
             title="Add Image"
           >
-            <Image className="w-5 h-5" />
+            <Image className="w-5 h-5" strokeWidth={1} />
           </button>
           
           {/* Divider */}
@@ -443,7 +443,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
             className="p-3 rounded-full transition-all hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-gray-700"
             title="Undo (Ctrl+Z)"
           >
-            <Undo2 className="w-5 h-5" />
+            <Undo2 className="w-5 h-5" strokeWidth={1} />
           </button>
           
           {/* Redo */}
@@ -453,7 +453,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
             className="p-3 rounded-full transition-all hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-gray-700"
             title="Redo (Ctrl+Y)"
           >
-            <Redo2 className="w-5 h-5" />
+            <Redo2 className="w-5 h-5" strokeWidth={1} />
           </button>
           
           {/* Divider */}
@@ -469,7 +469,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
             }`}
             title={showOutsideElements ? "Hide elements outside slide" : "Show elements outside slide"}
           >
-            {showOutsideElements ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+            {showOutsideElements ? <Eye className="w-5 h-5" strokeWidth={1} /> : <EyeOff className="w-5 h-5" strokeWidth={1} />}
           </button>
           
           {/* Lock/Unlock - only show when element(s) selected */}
@@ -498,9 +498,9 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
                 }
               >
                 {selectedElements.every(el => el.locked) ? (
-                  <Unlock className="w-5 h-5" />
+                  <Unlock className="w-5 h-5" strokeWidth={1} />
                 ) : (
-                  <Lock className="w-5 h-5" />
+                  <Lock className="w-5 h-5" strokeWidth={1} />
                 )}
               </button>
             </>
@@ -517,7 +517,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
                   className="p-3 rounded-full transition-all hover:bg-gray-100 text-gray-700"
                   title="Layer Controls"
                 >
-                  <Layers className="w-5 h-5" />
+                  <Layers className="w-5 h-5" strokeWidth={1} />
                 </button>
                 
                 {/* Layer Dropdown */}
@@ -533,7 +533,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition-colors text-sm"
                     >
-                      <ChevronsUp className="w-4 h-4" />
+                      <ChevronsUp className="w-4 h-4" strokeWidth={1} />
                       Bring to Front
                     </button>
                     
@@ -547,7 +547,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition-colors text-sm"
                     >
-                      <ChevronUp className="w-4 h-4" />
+                      <ChevronUp className="w-4 h-4" strokeWidth={1} />
                       Bring Forward
                     </button>
                     
@@ -561,7 +561,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition-colors text-sm"
                     >
-                      <ChevronDownIcon className="w-4 h-4" />
+                      <ChevronDownIcon className="w-4 h-4" strokeWidth={1} />
                       Send Backward
                     </button>
                     
@@ -575,7 +575,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition-colors text-sm"
                     >
-                      <ChevronsDown className="w-4 h-4" />
+                      <ChevronsDown className="w-4 h-4" strokeWidth={1} />
                       Send to Back
                     </button>
                   </div>
@@ -597,7 +597,7 @@ export default function FloatingToolbar({ onOpenTemplateMode, isTemplateMode }: 
             }`}
             title="Template Mode"
           >
-            <Wand2 className="w-5 h-5" />
+            <Wand2 className="w-5 h-5" strokeWidth={1} />
           </button>
         </div>
       </div>

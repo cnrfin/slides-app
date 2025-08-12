@@ -1,6 +1,6 @@
 // src/components/properties/ImagePropertiesPanel.tsx
 import { useState, useEffect } from 'react'
-import { Image as ImageIcon, Lock, Unlock, Eye, EyeOff, CornerDownRight } from 'lucide-react'
+import { Lock, Unlock, Eye, EyeOff, CornerDownRight } from 'lucide-react'
 import useSlideStore, { useCurrentSlide, useSelectedElements } from '@/stores/slideStore'
 import type { SlideElement, ImageContent, BlendMode } from '@/types/slide.types'
 import BlendModeSelector from './BlendModeSelector'
@@ -94,14 +94,6 @@ export default function ImagePropertiesPanel() {
   
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
-        <ImageIcon className="w-5 h-5 text-gray-600" />
-        <h3 className="font-semibold text-gray-800">
-          Image Properties
-          {isMultiple && <span className="text-sm font-normal text-gray-500 ml-2">({selectedImages.length} selected)</span>}
-        </h3>
-      </div>
-      
       {/* Image info */}
       {!isMultiple && firstImage && (
         <div className="space-y-2">

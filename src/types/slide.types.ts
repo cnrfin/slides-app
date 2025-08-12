@@ -69,8 +69,16 @@ export interface SlideElement {
   style?: ElementStyle
   animations?: Animation[]
   interactions?: Interaction[]
+  metadata?: ElementMetadata // Add metadata for element relationships
   createdAt: string
   updatedAt: string
+}
+
+export interface ElementMetadata {
+  tableId?: string // ID of parent table if this is a cell text element
+  cellRow?: number // Row index in table
+  cellCol?: number // Column index in table
+  [key: string]: any // Allow other metadata
 }
 
 export type ElementType = 
@@ -79,6 +87,7 @@ export type ElementType =
   | 'shape'
   | 'blurb'
   | 'line'
+  | 'icon'
   | 'video'
   | 'audio'
   | 'table'
@@ -92,6 +101,7 @@ export type ElementContent =
   | ShapeContent
   | BlurbContent
   | LineContent
+  | IconContent
   | VideoContent
   | AudioContent
   | TableContent
@@ -136,6 +146,12 @@ export interface LineContent {
   lineCap?: 'butt' | 'round' | 'square'
 }
 
+export interface IconContent {
+  iconId: string // ID of the icon (e.g., 'check', 'star', 'heart')
+  iconType?: 'lucide' | 'custom' // Type of icon library
+  svgPath?: string // Optional custom SVG path for custom icons
+}
+
 export interface VideoContent {
   src: string
   poster?: string
@@ -157,13 +173,18 @@ export interface TableContent {
   cells: TableCell[][]
   headerRow?: boolean
   headerColumn?: boolean
+  columnWidths?: number[] // Store column widths
+  rowHeights?: number[] // Store row heights
 }
 
 export interface TableCell {
   text: string
+  dataKey?: string // For template support
   image?: string
   audio?: string
   style?: CellStyle
+  width?: number // Cell-specific width override
+  height?: number // Cell-specific height override
 }
 
 export interface CellStyle {
@@ -266,6 +287,9 @@ export interface ElementStyle {
   // Other
   padding?: number | { top: number; right: number; bottom: number; left: number }
   zIndex?: number
+  
+  // Icon specific
+  strokeWidth?: number
 }
 
 export type BlendMode = 

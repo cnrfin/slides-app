@@ -1,4 +1,4 @@
-// src/components/sidebar/FloatingSidebar.tsx
+// src/components/sidebar/Sidebar.tsx
 import { useState, useRef, useEffect } from 'react'
 import { 
   ChevronLeft,
@@ -12,7 +12,9 @@ import {
   Minus,
   Image,
   BarChart3,
-  Search
+  Search,
+  Table,
+  Sparkles
 } from 'lucide-react'
 import useSlideStore from '@/stores/slideStore'
 import SlidePreview from '@/components/previews/SlidePreview'
@@ -20,17 +22,29 @@ import { formatDistanceToNow } from 'date-fns'
 import type { TextContent, ShapeContent, BlurbContent } from '@/types/slide.types'
 import { measureAutoText } from '@/utils/text.utils'
 import { getShapeById } from '@/utils/svg-shapes'
+import ShapePopup from './popups/ShapePopup'
+import IconsPopup from './popups/IconsPopup'
+import ChartModal from './popups/ChartModal'
+import TablePopup from './popups/TablePopup'
 
-interface FloatingSidebarProps {
+interface SidebarProps {
   onAddSlide: () => void
 }
 
-export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
+export default function Sidebar({ onAddSlide }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState<'elements' | 'slides'>('slides')
-  const [lessonTitle, setLessonTitle] = useState('Lesson Title')
+  const [lessonTitle, setLessonTitle] = useState('')
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [activeLineTool, setActiveLineTool] = useState(false)
+  const [showShapePopup, setShowShapePopup] = useState(false)
+  const [showIconsPopup, setShowIconsPopup] = useState(false)
+  const [showChartModal, setShowChartModal] = useState(false)
+  const [showTablePopup, setShowTablePopup] = useState(false)
+  const shapeButtonRef = useRef<HTMLButtonElement>(null)
+  const iconsButtonRef = useRef<HTMLButtonElement>(null)
+  const tableButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   
@@ -53,8 +67,8 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
   
   // Handle title editing
   useEffect(() => {
-    if (presentation?.title) {
-      setLessonTitle(presentation.title)
+    if (presentation?.title !== undefined) {
+      setLessonTitle(presentation.title || '')
     }
   }, [presentation?.title])
   
@@ -64,10 +78,34 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
       titleInputRef.current.select()
     }
   }, [isEditingTitle])
+
+  // Listen for line mode exit to deactivate line tool
+  useEffect(() => {
+    const handleExitLineMode = () => {
+      setActiveLineTool(false)
+    }
+
+    const handleEscapePressed = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeLineTool) {
+        setActiveLineTool(false)
+      }
+    }
+
+    window.addEventListener('canvas:exit-line-mode', handleExitLineMode)
+    window.addEventListener('keydown', handleEscapePressed)
+    
+    return () => {
+      window.removeEventListener('canvas:exit-line-mode', handleExitLineMode)
+      window.removeEventListener('keydown', handleEscapePressed)
+    }
+  }, [activeLineTool])
   
   const handleTitleSave = () => {
     setIsEditingTitle(false)
-    updatePresentationTitle(lessonTitle)
+    // Use placeholder if title is empty
+    const titleToSave = lessonTitle.trim() || 'Lesson Title'
+    setLessonTitle(titleToSave)
+    updatePresentationTitle(titleToSave)
   }
   
   const handleAddText = () => {
@@ -152,6 +190,8 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
   }
   
   const handleAddLine = () => {
+    // Set line tool as active
+    setActiveLineTool(true)
     // Emit event to start line drawing mode
     const event = new CustomEvent('canvas:start-line-mode')
     window.dispatchEvent(event)
@@ -205,21 +245,23 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
   
   const elementButtons = [
     { icon: Type, label: 'Text', onClick: handleAddText },
-    { icon: Square, label: 'Shapes', onClick: () => handleAddShape('rectangle') },
     { icon: MessageSquare, label: 'Speech', onClick: handleAddBlurb },
+    { icon: Square, label: 'Shapes', onClick: () => setShowShapePopup(!showShapePopup) },
+    { icon: Sparkles, label: 'Icons', onClick: () => setShowIconsPopup(!showIconsPopup) },
     { icon: Minus, label: 'Line', onClick: handleAddLine },
     { icon: Image, label: 'Image', onClick: handleAddImage },
-    { icon: BarChart3, label: 'Chart', onClick: () => {} },
+    { icon: BarChart3, label: 'Chart', onClick: () => setShowChartModal(true) },
+    { icon: Table, label: 'Table', onClick: () => setShowTablePopup(!showTablePopup) },
   ]
   
   return (
     <div
       ref={sidebarRef}
-      className={`floating-sidebar fixed left-4 top-4 bottom-4 z-30 transition-all duration-300 ${
+      className={`fixed left-0 top-0 h-screen z-30 transition-all duration-300 ${
         isCollapsed ? 'w-[4.5rem]' : 'w-56'
       }`}
     >
-      <div className="h-full bg-white/90 backdrop-blur-md rounded-2xl border border-gray-200/50 shadow-xl flex flex-col overflow-hidden">
+      <div className="h-full border-r border-gray-200 flex flex-col overflow-hidden bg-white">
         {/* Header */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
@@ -231,7 +273,7 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
                 onClick={() => setIsCollapsed(true)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <ChevronLeft className="w-4 h-4 text-gray-600" />
+                <ChevronLeft className="w-4 h-4 text-gray-600" strokeWidth={1} />
               </button>
             )}
             {isCollapsed && (
@@ -239,7 +281,7 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
                 onClick={() => setIsCollapsed(false)}
                 className="absolute top-4 left-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <ChevronLeft className="w-4 h-4 text-gray-600 rotate-180" />
+                <ChevronLeft className="w-4 h-4 text-gray-600 rotate-180" strokeWidth={1} />
               </button>
             )}
           </div>
@@ -254,22 +296,25 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
                     value={lessonTitle}
                     onChange={(e) => setLessonTitle(e.target.value)}
                     onBlur={handleTitleSave}
+                    placeholder="Lesson Title..."
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         handleTitleSave()
                       } else if (e.key === 'Escape') {
-                        setLessonTitle(presentation?.title || 'Lesson Title')
+                        setLessonTitle(presentation?.title || '')
                         setIsEditingTitle(false)
                       }
                     }}
-                    className="w-full text-lg font-semibold bg-transparent border-b border-gray-300 focus:border-blue-500 outline-none px-1 py-0.5"
+                    className="w-full text-lg font-semibold bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 outline-none px-1 py-0.5"
                   />
                 ) : (
                   <h2
-                    className="text-lg font-semibold cursor-pointer hover:text-gray-700"
-                    onDoubleClick={() => setIsEditingTitle(true)}
+                    className={`text-lg font-semibold cursor-pointer hover:text-gray-700 truncate ${
+                      !lessonTitle ? 'text-gray-400' : ''
+                    }`}
+                    onClick={() => setIsEditingTitle(true)}
                   >
-                    {lessonTitle}
+                    {lessonTitle || 'Lesson Title...'}
                   </h2>
                 )}
               </div>
@@ -281,24 +326,32 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
         {/* Tab Navigation */}
         {!isCollapsed && (
           <div className="px-4 pt-4">
-            <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+            <div className="flex gap-1 p-1" style={{ backgroundColor: 'var(--color-text-input-bg)', borderRadius: '0.7rem' }}>
               <button
                 onClick={() => setActiveTab('elements')}
-                className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                className={`flex-1 px-3 py-1.5 text-sm font-medium transition-all ${
                   activeTab === 'elements'
-                    ? 'bg-white text-gray-900 shadow-sm'
+                    ? 'bg-white text-gray-900'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
+                style={{
+                  borderRadius: '0.5rem',
+                  ...(activeTab === 'elements' ? { boxShadow: 'var(--shadow-primary)' } : {})
+                }}
               >
                 Elements
               </button>
               <button
                 onClick={() => setActiveTab('slides')}
-                className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                className={`flex-1 px-3 py-1.5 text-sm font-medium transition-all ${
                   activeTab === 'slides'
-                    ? 'bg-white text-gray-900 shadow-sm'
+                    ? 'bg-white text-gray-900'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
+                style={{
+                  borderRadius: '0.5rem',
+                  ...(activeTab === 'slides' ? { boxShadow: 'var(--shadow-primary)' } : {})
+                }}
               >
                 Slides
               </button>
@@ -307,43 +360,50 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
         )}
         
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
+        <div className={`flex-1 overflow-y-auto scrollbar-hide ${
+          activeTab === 'elements' ? 'pt-4' : 'p-4'
+        }`}>
           {isCollapsed ? (
             <div className="space-y-2">
               <button
                 onClick={onAddSlide}
-                className="w-full p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="w-full p-2 bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                style={{ borderRadius: '0.5rem' }}
                 title="Add Slide"
               >
-                <Plus className="w-5 h-5 mx-auto" />
+                <Plus className="w-5 h-5 mx-auto" strokeWidth={1} />
               </button>
             </div>
           ) : activeTab === 'elements' ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                {elementButtons.map((button, index) => (
-                  <button
-                    key={index}
-                    onClick={button.onClick}
-                    className="flex flex-col items-center gap-2 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-none"
-                  >
-                    <button.icon className="w-6 h-6 text-gray-700" />
-                    <span className="text-sm font-medium text-gray-700">{button.label}</span>
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 gap-0">
+                {elementButtons.map((button, index) => {
+                  const isLineToolActive = button.label === 'Line' && activeLineTool
+                  const isShapeButton = button.label === 'Shapes'
+                  const isIconsButton = button.label === 'Icons'
+                  const isTableButton = button.label === 'Table'
+                  return (
+                    <button
+                      key={index}
+                      ref={isShapeButton ? shapeButtonRef : isIconsButton ? iconsButtonRef : isTableButton ? tableButtonRef : undefined}
+                      onClick={button.onClick}
+                      className={`flex flex-col items-center gap-2 p-4 transition-colors ${
+                        isLineToolActive
+                          ? 'bg-blue-500 text-white'
+                          : (isShapeButton && showShapePopup) || (isIconsButton && showIconsPopup) || (isTableButton && showTablePopup)
+                          ? 'bg-gray-100 text-gray-700'
+                          : 'bg-white hover:bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      <button.icon className={`w-6 h-6 ${isLineToolActive ? 'text-white' : 'text-gray-700'}`} strokeWidth={1} />
+                      <span className={`text-sm ${isLineToolActive ? 'text-white' : 'text-gray-700'}`}>{button.label}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              <button
-                onClick={onAddSlide}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-              >
-                <Plus className="w-4 h-4" />
-                Add Slides
-              </button>
-              
-              <div className="space-y-2">
+            <div className="space-y-2">
                 {slides.map((slide, index) => (
                   <div
                     key={slide.id}
@@ -353,14 +413,29 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
                     }}
                     className={`
                       relative aspect-[4/3] bg-white border-2 rounded-lg cursor-pointer
-                      transition-all duration-200 hover:shadow-md overflow-hidden group
+                      transition-all duration-200 overflow-hidden group
                       ${slide.id === selectedSlideId
-                        ? 'border-blue-500 shadow-lg ring-2 ring-blue-400'
+                        ? 'border-blue-500 ring-2 ring-blue-400'
                         : slide.id === currentSlideId 
-                          ? 'border-blue-300 shadow-md' 
+                          ? 'border-blue-300' 
                           : 'border-gray-200 hover:border-gray-300'
                       }
                     `}
+                    style={{
+                      boxShadow: slide.id === selectedSlideId || slide.id === currentSlideId
+                        ? 'var(--shadow-primary)'
+                        : undefined
+                    }}
+                    onMouseEnter={(e) => {
+                      if (slide.id !== selectedSlideId && slide.id !== currentSlideId) {
+                        e.currentTarget.style.boxShadow = 'var(--shadow-primary)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (slide.id !== selectedSlideId && slide.id !== currentSlideId) {
+                        e.currentTarget.style.boxShadow = ''
+                      }
+                    }}
                   >
                     {/* Action buttons on hover */}
                     <div className="absolute top-1 right-1 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -372,7 +447,7 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
                         className="p-1.5 bg-white/90 backdrop-blur-sm rounded hover:bg-gray-100 transition-colors shadow-sm"
                         title="Duplicate slide"
                       >
-                        <Copy className="w-3 h-3 text-gray-700" />
+                        <Copy className="w-3 h-3 text-gray-700" strokeWidth={1} />
                       </button>
                       {slides.length > 1 && (
                         <button
@@ -385,7 +460,7 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
                           className="p-1.5 bg-white/90 backdrop-blur-sm rounded hover:bg-red-100 transition-colors shadow-sm"
                           title="Delete slide"
                         >
-                          <Trash2 className="w-3 h-3 text-red-600" />
+                          <Trash2 className="w-3 h-3 text-red-600" strokeWidth={1} />
                         </button>
                       )}
                     </div>
@@ -399,36 +474,96 @@ export default function FloatingSidebar({ onAddSlide }: FloatingSidebarProps) {
                     </div>
                   </div>
                 ))}
-              </div>
             </div>
           )}
         </div>
         
-        {/* Search Footer - Only show in elements tab */}
-        {!isCollapsed && activeTab === 'elements' && (
+        {/* Footer */}
+        {!isCollapsed && (
           <div className="p-4 border-t border-gray-100">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.ctrlKey && e.key === 'f') {
-                    e.preventDefault()
-                    e.currentTarget.focus()
-                  }
-                }}
-                className="w-full pl-9 pr-16 py-2 bg-transparent border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-50 text-sm placeholder-gray-400"
-              />
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                Ctrl+F
-              </kbd>
-            </div>
+            {activeTab === 'elements' ? (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1} />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey && e.key === 'f') {
+                      e.preventDefault()
+                      e.currentTarget.focus()
+                    }
+                  }}
+                  className="w-full pl-9 pr-16 py-2 bg-transparent border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-50 text-sm placeholder-gray-400"
+                />
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                  Ctrl+F
+                </kbd>
+              </div>
+            ) : (
+              <button
+                onClick={onAddSlide}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white hover:bg-blue-600 transition-colors font-medium"
+                style={{ borderRadius: '0.5rem' }}
+              >
+                Add Slides
+              </button>
+            )}
           </div>
         )}
       </div>
+      
+      {/* Shape Popup */}
+      <ShapePopup
+        isOpen={showShapePopup}
+        onClose={() => setShowShapePopup(false)}
+        anchorElement={shapeButtonRef.current}
+      />
+      
+      {/* Icons Popup */}
+      <IconsPopup
+        isOpen={showIconsPopup}
+        onClose={() => setShowIconsPopup(false)}
+        anchorElement={iconsButtonRef.current}
+      />
+      
+      {/* Table Popup */}
+      <TablePopup
+        isOpen={showTablePopup}
+        onClose={() => setShowTablePopup(false)}
+        anchorElement={tableButtonRef.current}
+      />
+      
+      {/* Chart Modal */}
+      <ChartModal
+        isOpen={showChartModal}
+        onClose={() => setShowChartModal(false)}
+        onAddToSlide={(imageDataUrl, width, height) => {
+          // Add chart to current slide
+          if (!currentSlide) return
+          
+          addElement(currentSlide.id, {
+            type: 'image',
+            x: 400 - width / 2,  // Center on canvas (800px width assumed)
+            y: 300 - height / 2, // Center on canvas (600px height assumed)
+            width,
+            height,
+            content: {
+              src: imageDataUrl,
+              alt: 'Generated Chart',
+              objectFit: 'contain',
+              isPlaceholder: false,
+              offsetX: 0.5,
+              offsetY: 0.5,
+              scale: 1
+            },
+            style: {},
+          })
+          
+          setShowChartModal(false)
+        }}
+      />
     </div>
   )
 }

@@ -76,18 +76,8 @@ export default function LinePropertiesPanel({ className = '' }: LinePropertiesPa
   
   return (
     <div className={`space-y-1 ${className}`}>
-      <div className="pb-3 border-b border-gray-200">
-        <h3 className="text-gray-800 font-medium flex items-center gap-2">
-          <Minus className="w-4 h-4" />
-          Line
-          {lineElements.length > 1 && (
-            <span className="text-sm font-normal text-gray-500">({lineElements.length} selected)</span>
-          )}
-        </h3>
-      </div>
-      
       {/* Stroke Section */}
-      <div className="pt-3">
+      <div>
         <h4 className="text-gray-800 text-sm font-medium mb-3">Stroke</h4>
         
         {/* Color Picker */}

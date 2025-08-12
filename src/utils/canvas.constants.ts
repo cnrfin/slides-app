@@ -9,9 +9,10 @@ export const CANVAS_DIMENSIONS = {
 } as const
 
 export const ZOOM_LIMITS = {
-  MIN: 0.33,
-  MAX: 2.0,
-  STEP: 0.1,
+  MIN: 0.2,   // 20% minimum zoom
+  MAX: 1.2,   // 120% maximum zoom
+  STEP: 0.02,  // Much smaller step for smoother zooming
+  PINCH_SCALE_FACTOR: 0.01,  // Scale factor for pinch zoom
 } as const
 
 export const CANVAS_COLORS = {

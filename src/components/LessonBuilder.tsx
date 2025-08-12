@@ -365,12 +365,12 @@ The user's language learning topic/prompt is below.`
       const systemPrompt = generateSystemPrompt()
       
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini', // Using the more affordable model
+        model: 'gpt-5-mini', // Using the latest GPT-5 mini model
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.7,
+        temperature: 1, // GPT-5-mini only supports default temperature of 1
         response_format: { type: 'json_object' }
       })
       
@@ -491,9 +491,9 @@ The user's language learning topic/prompt is below.`
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-8 right-8 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 flex items-center gap-2 text-sm font-medium shadow-lg"
+        className="fixed bottom-8 right-8 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 flex items-center gap-2 text-sm font-medium shadow-lg z-40"
       >
-        <Bot className="w-4 h-4" />
+        <Bot className="w-4 h-4" strokeWidth={1} />
         AI Lesson Builder
       </button>
     )
@@ -506,7 +506,7 @@ The user's language learning topic/prompt is below.`
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-r from-purple-100 to-blue-100 rounded-lg">
-              <Bot className="w-5 h-5 text-purple-600" />
+              <Bot className="w-5 h-5 text-purple-600" strokeWidth={1} />
             </div>
             <h2 className="text-xl font-semibold">AI Lesson Builder</h2>
           </div>
@@ -514,7 +514,7 @@ The user's language learning topic/prompt is below.`
             onClick={() => setIsOpen(false)}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" strokeWidth={1} />
           </button>
         </div>
         
@@ -571,7 +571,7 @@ The user's language learning topic/prompt is below.`
                           onClick={() => handleRemoveTemplate(index)}
                           className="p-1 hover:bg-gray-200 rounded transition-colors"
                         >
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                          <Trash2 className="w-4 h-4 text-red-500" strokeWidth={1} />
                         </button>
                       </div>
                     ))}
@@ -668,7 +668,7 @@ The user's language learning topic/prompt is below.`
               
               {error && (
                 <div className="bg-red-50 rounded-lg p-4 flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" strokeWidth={1} />
                   <div>
                     <p className="text-sm font-medium text-red-800">Error generating content</p>
                     <p className="text-sm text-red-600 mt-1">{error}</p>
@@ -722,7 +722,7 @@ The user's language learning topic/prompt is below.`
             disabled={currentStep === 'select' || isGenerating}
             className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-4 h-4" strokeWidth={1} />
             Back
           </button>
           
@@ -741,7 +741,7 @@ The user's language learning topic/prompt is below.`
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 Next
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4" strokeWidth={1} />
               </button>
             )}
             
@@ -753,12 +753,12 @@ The user's language learning topic/prompt is below.`
               >
                 {isGenerating ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1} />
                     Generating...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
+                    <Sparkles className="w-4 h-4" strokeWidth={1} />
                     Generate Content
                   </>
                 )}
@@ -770,7 +770,7 @@ The user's language learning topic/prompt is below.`
                 onClick={handleCreateSlides}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
               >
-                <Check className="w-4 h-4" />
+                <Check className="w-4 h-4" strokeWidth={1} />
                 Create Slides
               </button>
             )}

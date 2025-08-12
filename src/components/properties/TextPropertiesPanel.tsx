@@ -9,7 +9,6 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
-  Type,
   Palette,
   Grid3x3,
   ChevronDown,
@@ -272,16 +271,6 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
   
   return (
     <div className={`space-y-1 ${className}`}>
-      <div className="pb-3 border-b border-gray-200">
-        <h3 className="text-gray-800 font-medium flex items-center gap-2">
-          <Type className="w-4 h-4" />
-          Text
-          {textElements.length > 1 && (
-            <span className="text-sm font-normal text-gray-500">({textElements.length} selected)</span>
-          )}
-        </h3>
-      </div>
-      
       {/* Font Family */}
       <div className="space-y-2 py-3">
         <div className="relative">

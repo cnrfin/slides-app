@@ -5,14 +5,17 @@ import Konva from 'konva'
 import useSlideStore, { useCurrentSlide, useSelectedElements } from '@/stores/slideStore'
 import ElementRenderer from './ElementRenderer'
 import InlineTextEditor from './InlineTextEditor'
+
 import TextResizeHandler from './handlers/TextResizeHandler'
 import ShapeResizeHandler from './handlers/ShapeResizeHandler'
+import IconResizeHandler from './handlers/IconResizeHandler'
+
 import { CANVAS_DIMENSIONS, ZOOM_LIMITS, CANVAS_COLORS, SNAP_SETTINGS } from '@/utils/canvas.constants'
 import { measureWrappedText } from '@/utils/text.utils'
 import { calculateSnapPosition, calculateElementDragSnapPosition, getVisibleMarginGuides, type SnapGuide, type MarginGuide } from '@/utils/snap.utils'
 import { getElementsInSelectionRect, calculateBoundingBox } from '@/utils/selection.utils'
 import SelectionBoundingBox from './handlers/SelectionBoundingBox'
-import type { SlideElement, TextContent, BlurbContent, ImageContent } from '@/types/slide.types'
+import type { SlideElement, TextContent, BlurbContent, ImageContent, TableContent } from '@/types/slide.types'
 
 // Canvas constants
 const { WIDTH: CANVAS_WIDTH, HEIGHT: CANVAS_HEIGHT } = CANVAS_DIMENSIONS
@@ -40,7 +43,7 @@ export default function SlideCanvas({
     height: containerHeight || window.innerHeight 
   })
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
-  const [stageScale, setStageScale] = useState(1)
+  const [stageScale, setStageScale] = useState(0.75) // Default to 75% zoom
   const [isPanning, setIsPanning] = useState(false)
   const [isSpacePressed, setIsSpacePressed] = useState(false)
   const [isAltPressed, setIsAltPressed] = useState(false)
@@ -51,6 +54,10 @@ export default function SlideCanvas({
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]) // Snap guides to show
   const [marginGuides, setMarginGuides] = useState<MarginGuide[]>([]) // Margin guides to show
   const lastMousePosRef = useRef({ x: 0, y: 0 })
+  
+  // Pinch zoom state
+  const [lastPinchDist, setLastPinchDist] = useState(0)
+  const [isPinching, setIsPinching] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const [dragOverImageId, setDragOverImageId] = useState<string | null>(null)
@@ -67,6 +74,8 @@ export default function SlideCanvas({
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingTextPosition, setEditingTextPosition] = useState({ x: 0, y: 0 })
   
+
+  
   // Image editing state
   const [editingImageId, setEditingImageId] = useState<string | null>(null)
   const [imageEditStartPos, setImageEditStartPos] = useState<{ x: number; y: number } | null>(null)
@@ -78,6 +87,22 @@ export default function SlideCanvas({
   const currentSlide = useCurrentSlide()
   const selectedElements = useSelectedElements()
   const { updateElement, selectElement, selectMultipleElements, clearSelection, batchUpdateElements, addElement, selectSlide } = useSlideStore()
+  
+  // Helper function to get distance between two touch points
+  const getTouchDistance = (touch1: Touch, touch2: Touch) => {
+    return Math.sqrt(
+      Math.pow(touch2.clientX - touch1.clientX, 2) + 
+      Math.pow(touch2.clientY - touch1.clientY, 2)
+    )
+  }
+  
+  // Helper function to get center point between two touches
+  const getTouchCenter = (touch1: Touch, touch2: Touch) => {
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2
+    }
+  }
   
   // Create line helper function
   const createLine = useCallback((startPoint: { x: number; y: number }, endPoint: { x: number; y: number }) => {
@@ -144,13 +169,11 @@ export default function SlideCanvas({
   // Handle reset view event
   useEffect(() => {
     const handleResetView = () => {
-      setStageScale(1)
-      // Reset to position 0,0 which, combined with initialPosition in the transform group,
-      // will center the slide properly
+      setStageScale(0.75) // Reset to default 75% zoom
       setStagePos({ x: 0, y: 0 })
       
       // Emit zoom change event
-      const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: 1 } })
+      const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: 0.75 } })
       window.dispatchEvent(event)
     }
     
@@ -185,18 +208,18 @@ export default function SlideCanvas({
   // Handle keyboard events for panning and line drawing
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle space key if we're in text editing mode or if an input is focused
-      const activeElement = document.activeElement
-      const isInputFocused = activeElement && (
-        activeElement.tagName === 'INPUT' || 
-        activeElement.tagName === 'TEXTAREA' ||
-        activeElement.getAttribute('contenteditable') === 'true'
-      )
-      
-      if (e.code === 'Space' && !e.repeat && !isInputFocused) {
-        e.preventDefault()
-        setIsSpacePressed(true)
-      }
+      // Space key handling disabled for panning
+      // const activeElement = document.activeElement
+      // const isInputFocused = activeElement && (
+      //   activeElement.tagName === 'INPUT' || 
+      //   activeElement.tagName === 'TEXTAREA' ||
+      //   activeElement.getAttribute('contenteditable') === 'true'
+      // )
+      // 
+      // if (e.code === 'Space' && !e.repeat && !isInputFocused) {
+      //   e.preventDefault()
+      //   setIsSpacePressed(true)
+      // }
       if (e.key === 'Alt' && !e.repeat) {
         e.preventDefault()
         setIsAltPressed(true)
@@ -221,15 +244,17 @@ export default function SlideCanvas({
           setImageEditStartOffset(null)
           setEditingImageDimensions(null)
         }
+
       }
     }
     
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault()
-        setIsSpacePressed(false)
-        setIsPanning(false)
-      }
+      // Space key handling disabled
+      // if (e.code === 'Space') {
+      //   e.preventDefault()
+      //   setIsSpacePressed(false)
+      //   setIsPanning(false)
+      // }
       if (e.key === 'Alt') {
         e.preventDefault()
         setIsAltPressed(false)
@@ -250,10 +275,16 @@ export default function SlideCanvas({
   
   // Calculate initial position to center the canvas with viewport offset
   const initialPosition = useMemo(() => {
-    const x = (canvasSize.width - CANVAS_WIDTH) / 2
-    const y = (canvasSize.height - CANVAS_HEIGHT) / 2 - viewportOffset
+    // The Group's x,y are in screen coordinates (not affected by scale)
+    // So we calculate where to position the group so that the scaled content appears centered
+    const scaledWidth = CANVAS_WIDTH * stageScale
+    const scaledHeight = CANVAS_HEIGHT * stageScale
+    
+    const x = (canvasSize.width - scaledWidth) / 2
+    const y = (canvasSize.height - scaledHeight) / 2 - viewportOffset
+    
     return { x, y }
-  }, [canvasSize, viewportOffset])
+  }, [canvasSize, viewportOffset, stageScale])
 
   // Apply smooth animation when viewportOffset changes
   useEffect(() => {
@@ -281,16 +312,11 @@ export default function SlideCanvas({
     }
   }, [initialPosition.y, stagePos.y, isPanning, draggingElementId, isSelecting])
   
-  // Set initial stage position on mount to center the slide
+  // Initialize zoom on mount
   useEffect(() => {
-    if (stagePos.x === 0 && stagePos.y === 0) {
-      // Only set initial position if not already positioned
-      setStagePos({ x: 0, y: 0 })
-      
-      // Emit initial zoom
-      const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: 1 } })
-      window.dispatchEvent(event)
-    }
+    // Emit initial zoom (75%)
+    const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: 0.75 } })
+    window.dispatchEvent(event)
   }, [])
   
   // Handle image file processing
@@ -475,8 +501,6 @@ export default function SlideCanvas({
   const getCursor = () => {
     if (editingTextId) return 'default' // Keep default cursor while editing
     if (editingImageId) return 'move' // Move cursor for image editing
-    if (isPanning) return 'grabbing'
-    if (isSpacePressed) return 'grab'
     if (isLineMode) return 'crosshair' // Show crosshair cursor in line mode
     if (isAltPressed && hoveredElementId) return 'copy' // Show copy cursor when hovering over elements with Alt
     return 'default'
@@ -520,18 +544,17 @@ export default function SlideCanvas({
       return
     }
     
-    // If space is pressed, start panning (unless editing image)
-    if (isSpacePressed && !editingImageId) {
-      setIsPanning(true)
-      const stage = e.target.getStage()
-      if (stage) {
-        const pos = stage.getPointerPosition()
-        if (pos) {
-          lastMousePosRef.current = { x: pos.x, y: pos.y }
-        }
-      }
-      return
-    }
+    // Disable space-based panning
+    // if (isSpacePressed && !editingImageId) {
+    //   setIsPanning(true)
+    //   const stage = e.target.getStage()
+    //   if (stage) {
+    //     const pos = stage.getPointerPosition()
+    //     if (pos) {
+    //       lastMousePosRef.current = { x: pos.x, y: pos.y }
+    //   }
+    //   return
+    // }
     
     // If in line mode, handle line drawing
     if (isLineMode) {
@@ -660,22 +683,22 @@ export default function SlideCanvas({
       return
     }
     
-    // Handle panning
-    if (isPanning && isSpacePressed) {
-      const pos = stage.getPointerPosition()
-      if (!pos) return
-      
-      // Get the difference from the last position
-      const dx = pos.x - lastMousePosRef.current.x
-      const dy = pos.y - lastMousePosRef.current.y
-      
-      setStagePos(prev => ({
-        x: prev.x + dx,
-        y: prev.y + dy
-      }))
-      
-      lastMousePosRef.current = { x: pos.x, y: pos.y }
-    }
+    // Disable panning
+    // if (isPanning && isSpacePressed) {
+    //   const pos = stage.getPointerPosition()
+    //   if (!pos) return
+    //   
+    //   // Get the difference from the last position
+    //   const dx = pos.x - lastMousePosRef.current.x
+    //   const dy = pos.y - lastMousePosRef.current.y
+    //   
+    //   setStagePos(prev => ({
+    //     x: prev.x + dx,
+    //     y: prev.y + dy
+    //   }))
+    //   
+    //   lastMousePosRef.current = { x: pos.x, y: pos.y }
+    // }
     
     // Handle line preview when in line mode
     if (isLineMode && lineStartPoint) {
@@ -716,7 +739,7 @@ export default function SlideCanvas({
         height: relativePos.y - prev.y
       }))
     }
-  }, [isPanning, isSpacePressed, isLineMode, lineStartPoint, isShiftPressed, isSelecting, stageScale, editingImageId, imageEditStartPos, imageEditStartOffset, currentSlide, editingImageDimensions, updateElement])
+  }, [isPanning, isSpacePressed, isLineMode, lineStartPoint, isShiftPressed, isSelecting, editingImageId, imageEditStartPos, imageEditStartOffset, currentSlide, editingImageDimensions, updateElement])
   
   // Handle stage mouse up
   const handleStageMouseUp = useCallback(() => {
@@ -749,24 +772,33 @@ export default function SlideCanvas({
     if (!stage) return
     
     const oldScale = stageScale
-    const pointer = stage.getPointerPosition()
-    if (!pointer) return
     
-    // Calculate the point under the cursor in canvas coordinates
-    // We need to account for both stagePos and initialPosition
-    const mousePointTo = {
-      x: (pointer.x - stagePos.x - initialPosition.x) / oldScale,
-      y: (pointer.y - stagePos.y - initialPosition.y) / oldScale
+    // Use deltaY for zoom amount - normalize across browsers
+    let delta = e.evt.deltaY
+    
+    // Handle different deltaMode values
+    if (e.evt.deltaMode === 1) {
+      // Line mode
+      delta *= 40
+    } else if (e.evt.deltaMode === 2) {
+      // Page mode
+      delta *= 800
     }
     
-    // Calculate new scale
-    const direction = e.evt.deltaY > 0 ? -1 : 1
-    const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldScale + direction * ZOOM_STEP))
+    // Smaller multiplier for smoother zooming
+    const scaleBy = 1 + ZOOM_STEP
+    const direction = delta > 0 ? -1 : 1
     
-    // Calculate new position to keep the same point under the cursor
+    // Calculate new scale with exponential scaling for smooth zoom
+    const newScale = direction > 0 
+      ? Math.min(MAX_ZOOM, oldScale * scaleBy)
+      : Math.max(MIN_ZOOM, oldScale / scaleBy)
+    
+    // Zoom from canvas center (0,0) as per your requirement
+    // When zooming, we want the center of the canvas to stay in the same place
     const newPos = {
-      x: pointer.x - mousePointTo.x * newScale - initialPosition.x,
-      y: pointer.y - mousePointTo.y * newScale - initialPosition.y
+      x: stagePos.x * (newScale / oldScale),
+      y: stagePos.y * (newScale / oldScale)
     }
     
     setStageScale(newScale)
@@ -775,71 +807,176 @@ export default function SlideCanvas({
     // Emit zoom change event
     const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: newScale } })
     window.dispatchEvent(event)
-  }, [stageScale, stagePos, initialPosition, editingTextId, editingImageId])
+  }, [stageScale, stagePos, editingTextId, editingImageId])
+  
+  // Handle touch start for pinch zoom
+  const handleTouchStart = useCallback((e: Konva.KonvaEventObject<TouchEvent>) => {
+    const touches = e.evt.touches
+    
+    if (touches.length === 2) {
+      // Two fingers - start pinch zoom
+      const dist = getTouchDistance(touches[0], touches[1])
+      setLastPinchDist(dist)
+      setIsPinching(true)
+      
+      // Prevent default touch behavior
+      e.evt.preventDefault()
+    }
+  }, [])
+  
+  // Handle touch move for pinch zoom
+  const handleTouchMove = useCallback((e: Konva.KonvaEventObject<TouchEvent>) => {
+    const touches = e.evt.touches
+    
+    // Disable zoom during text or image editing
+    if (editingTextId || editingImageId) return
+    
+    if (touches.length === 2 && isPinching && lastPinchDist > 0) {
+      e.evt.preventDefault()
+      
+      const stage = e.target.getStage()
+      if (!stage) return
+      
+      // Calculate new distance between touches
+      const newDist = getTouchDistance(touches[0], touches[1])
+      
+      // Calculate scale change
+      const distDiff = newDist - lastPinchDist
+      const scaleDiff = distDiff * ZOOM_LIMITS.PINCH_SCALE_FACTOR
+      
+      // Apply scale with limits
+      const oldScale = stageScale
+      const newScale = Math.max(
+        MIN_ZOOM, 
+        Math.min(MAX_ZOOM, oldScale + scaleDiff)
+      )
+      
+      // For center-based zoom, we'll use the canvas center
+      // Calculate new position to keep canvas center in place
+      const newPos = {
+        x: stagePos.x * (newScale / oldScale),
+        y: stagePos.y * (newScale / oldScale)
+      }
+      
+      // Apply the new scale and position
+      setStageScale(newScale)
+      setStagePos(newPos)
+      setLastPinchDist(newDist)
+      
+      // Emit zoom change event
+      const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: newScale } })
+      window.dispatchEvent(event)
+    }
+  }, [stageScale, stagePos, isPinching, lastPinchDist, editingTextId, editingImageId])
+  
+  // Handle touch end
+  const handleTouchEnd = useCallback((e: Konva.KonvaEventObject<TouchEvent>) => {
+    const touches = e.evt.touches
+    
+    // Reset pinch state when less than 2 touches
+    if (touches.length < 2) {
+      setIsPinching(false)
+      setLastPinchDist(0)
+    }
+  }, [])
   
   // Handle element selection
   const handleElementSelect = useCallback((e: Konva.KonvaEventObject<MouseEvent>, elementId: string) => {
     e.cancelBubble = true
     
+    // If in line mode, prevent element selection and handle line creation instead
+    if (isLineMode) {
+      const stage = e.target.getStage()
+      if (!stage) return
+      
+      const transform = stage.findOne('#transform-group') as Konva.Group
+      if (!transform) return
+      
+      const relativePos = transform.getRelativePointerPosition()
+      if (!relativePos) return
+      
+      if (!lineStartPoint) {
+        // First click - set start point
+        setLineStartPoint({ x: relativePos.x, y: relativePos.y })
+      } else {
+        // Second click - create line
+        createLine(lineStartPoint, relativePos)
+        setLineStartPoint(null)
+        setTempLineEndPoint(null)
+        setIsLineMode(false)
+        
+        // Reset tool in toolbar
+        const event = new CustomEvent('canvas:exit-line-mode')
+        window.dispatchEvent(event)
+      }
+      return
+    }
+    
     const metaPressed = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey
     selectElement(elementId, metaPressed)
-  }, [selectElement])
+  }, [selectElement, isLineMode, lineStartPoint, createLine])
   
   // Handle element double click
   const handleElementDoubleClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>, element: SlideElement) => {
-  e.cancelBubble = true
-  const stage = e.target.getStage()
-  if (!stage) return
-  
-  // Handle text and blurb elements
-  if (element.type === 'text' || element.type === 'blurb') {
-  // For blurb elements, check if clicked in the center area
-  if (element.type === 'blurb') {
-    const transform = stage.findOne('#transform-group') as Konva.Group
-    if (!transform) return
+    e.cancelBubble = true
     
-    const pos = transform.getRelativePointerPosition()
-    if (!pos) return
-    
-    // Calculate center area bounds (with padding)
-    const padding = 20
-    const centerX = element.x + element.width / 2
-    const centerY = element.y + element.height / 2
-    const centerWidth = element.width - (padding * 2)
-    const centerHeight = element.height - (padding * 2)
-    
-    // Check if click is within center area
-    const isInCenter = 
-    pos.x >= element.x + padding &&
-    pos.x <= element.x + element.width - padding &&
-    pos.y >= element.y + padding &&
-    pos.y <= element.y + element.height - padding
-    
-    // If not in center, don't enter edit mode
-    if (!isInCenter) return
+    // Prevent double-click actions when in line mode
+    if (isLineMode) {
+      return
     }
     
-    // Calculate the position considering the current transform
-    const x = (element.x * stageScale) + stagePos.x + initialPosition.x
-    const y = (element.y * stageScale) + stagePos.y + initialPosition.y
+    const stage = e.target.getStage()
+    if (!stage) return
     
-    setEditingTextId(element.id)
-    setEditingTextPosition({ x, y })
-  }
-  
-  // Handle image elements with object-fit: cover
-  else if (element.type === 'image') {
-  const imageContent = element.content as ImageContent
-  // Only enter edit mode for non-placeholder images with cover fit
-  if (!imageContent.isPlaceholder && imageContent.objectFit === 'cover') {
-  // Get the image dimensions from the element renderer
-  const imageNode = layerRef.current?.findOne(`#element-${element.id}`)
-  const konvaImage = imageNode?.findOne('Image')
-  
-  if (konvaImage && konvaImage.image()) {
-    const img = konvaImage.image() as HTMLImageElement
-      const imgWidth = img.naturalWidth || img.width
-        const imgHeight = img.naturalHeight || img.height
+    // Handle text and blurb elements
+    if (element.type === 'text' || element.type === 'blurb') {
+      // For blurb elements, check if clicked in the center area
+      if (element.type === 'blurb') {
+        const transform = stage.findOne('#transform-group') as Konva.Group
+        if (!transform) return
+        
+        const pos = transform.getRelativePointerPosition()
+        if (!pos) return
+        
+        // Calculate center area bounds (with padding)
+        const padding = 20
+        const centerX = element.x + element.width / 2
+        const centerY = element.y + element.height / 2
+        const centerWidth = element.width - (padding * 2)
+        const centerHeight = element.height - (padding * 2)
+        
+        // Check if click is within center area
+        const isInCenter = 
+          pos.x >= element.x + padding &&
+          pos.x <= element.x + element.width - padding &&
+          pos.y >= element.y + padding &&
+          pos.y <= element.y + element.height - padding
+        
+        // If not in center, don't enter edit mode
+        if (!isInCenter) return
+      }
+      
+      // Calculate the position considering the current transform
+      const x = (element.x * stageScale) + stagePos.x + initialPosition.x
+      const y = (element.y * stageScale) + stagePos.y + initialPosition.y
+      
+      setEditingTextId(element.id)
+      setEditingTextPosition({ x, y })
+    }
+    
+    // Handle image elements with object-fit: cover
+    else if (element.type === 'image') {
+      const imageContent = element.content as ImageContent
+      // Only enter edit mode for non-placeholder images with cover fit
+      if (!imageContent.isPlaceholder && imageContent.objectFit === 'cover') {
+        // Get the image dimensions from the element renderer
+        const imageNode = layerRef.current?.findOne(`#element-${element.id}`)
+        const konvaImage = imageNode?.findOne('Image')
+        
+        if (konvaImage && konvaImage.image()) {
+          const img = konvaImage.image() as HTMLImageElement
+          const imgWidth = img.naturalWidth || img.width
+          const imgHeight = img.naturalHeight || img.height
           
           setEditingImageId(element.id)
           setEditingImageDimensions({ width: imgWidth, height: imgHeight })
@@ -851,7 +988,7 @@ export default function SlideCanvas({
         }
       }
     }
-  }, [stageScale, stagePos, initialPosition, clearSelection])
+  }, [stageScale, stagePos, initialPosition, clearSelection, isLineMode])
   
   // Handle text edit complete
   const handleTextEditComplete = useCallback((newText: string, newHeight?: number, isTyping: boolean = false) => {
@@ -897,8 +1034,16 @@ export default function SlideCanvas({
     setEditingTextId(null)
   }, [])
   
+
+  
   // Handle element drag start
   const handleElementDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>, elementId: string) => {
+    // Prevent dragging when in line mode
+    if (isLineMode) {
+      e.target.stopDrag()
+      return
+    }
+    
     // Only allow dragging if it's the only selected element
     if (selectedElements.length > 1) {
       e.target.stopDrag()
@@ -958,7 +1103,7 @@ export default function SlideCanvas({
     if (!isSelected) {
       selectElement(elementId)
     }
-  }, [selectedElements, selectElement, currentSlide, addElement])
+  }, [selectedElements, selectElement, currentSlide, addElement, isLineMode])
 
   // Handle element drag
   const handleElementDrag = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
@@ -1140,10 +1285,10 @@ export default function SlideCanvas({
     if (selectedElements.length === 0 || editingTextId || editingImageId) {
       transformer.nodes([])
     } else {
-      // Only show transformer for non-text elements
-      const nonTextSelectedElements = selectedElements.filter(el => el.type !== 'text')
+      // Only show transformer for non-text and non-icon elements (they have custom handlers)
+      const nonTextIconSelectedElements = selectedElements.filter(el => el.type !== 'text' && el.type !== 'icon')
       
-      if (nonTextSelectedElements.length === 0) {
+      if (nonTextIconSelectedElements.length === 0) {
         transformer.nodes([])
       } else {
         // Disable resize and rotate for all elements
@@ -1152,7 +1297,7 @@ export default function SlideCanvas({
           rotateEnabled: false
         })
         
-        const selectedNodes = nonTextSelectedElements
+        const selectedNodes = nonTextIconSelectedElements
           .map(el => layer.findOne(`#element-${el.id}`))
           .filter(Boolean) as Konva.Node[]
         
@@ -1290,14 +1435,14 @@ export default function SlideCanvas({
         onDoubleClick={handleElementDoubleClick}
         onMouseEnter={handleElementMouseEnter}
         onMouseLeave={handleElementMouseLeave}
-        draggable={!isMultiSelect && !editingImageId} // Disable individual dragging when multiple selected or editing image
+        draggable={!isMultiSelect && !editingImageId && !isLineMode} // Disable dragging when in line mode
       />
     )
-  }, [selectedElements, editingTextId, editingImageId, hoveredElementId, dragOverImageId, currentSlide, handleElementSelect, handleElementDragStart, handleElementDrag, handleElementDragEnd, handleElementDoubleClick, handleElementMouseEnter, handleElementMouseLeave])
+  }, [selectedElements, editingTextId, editingImageId, hoveredElementId, dragOverImageId, currentSlide, handleElementSelect, handleElementDragStart, handleElementDrag, handleElementDragEnd, handleElementDoubleClick, handleElementMouseEnter, handleElementMouseLeave, isLineMode])
   
   if (!currentSlide) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-100">
+      <div className="flex items-center justify-center h-full" style={{ backgroundColor: '#f9f9f9' }}>
         <p className="text-gray-500">No slide selected</p>
       </div>
     )
@@ -1305,8 +1450,8 @@ export default function SlideCanvas({
   
   return (
     <div 
-      className="relative w-full h-full bg-gray-100"
-      style={{ cursor: getCursor() }}
+      className="relative w-full h-full"
+      style={{ cursor: getCursor(), backgroundColor: '#f9f9f9' }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -1348,6 +1493,9 @@ export default function SlideCanvas({
         onMouseMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
         onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <Layer ref={layerRef}>
           <Group
@@ -1367,9 +1515,6 @@ export default function SlideCanvas({
               fill={CANVAS_COLORS.BACKGROUND}
               stroke={CANVAS_COLORS.BORDER}
               strokeWidth={1}
-              shadowColor={CANVAS_COLORS.SHADOW}
-              shadowBlur={10}
-              shadowOffsetY={2}
             />
             
             {/* Render elements */}
@@ -1446,9 +1591,30 @@ export default function SlideCanvas({
                 />
               ))}
             
-            {/* Shape, Image and Blurb resize handlers - only show when single element selected and not locked and not editing */}
+            {/* Icon resize handler - show when selected or hovered */}
+            {currentSlide.elements
+              .filter(el => el.type === 'icon' && draggingElementId !== el.id)
+              .map(element => {
+                const isSelected = selectedElements.some(sel => sel.id === element.id)
+                const isHovered = hoveredElementId === element.id
+                
+                // Only show if selected or hovered
+                if (!isSelected && !isHovered) return null
+                
+                return (
+                  <IconResizeHandler
+                    key={`resize-${element.id}`}
+                    element={element}
+                    isSelected={isSelected}
+                    isHovered={isHovered}
+                    onUpdate={() => layerRef.current?.batchDraw()}
+                  />
+                )
+              })}
+            
+            {/* Shape, Image, Table, and Blurb resize handlers - only show when single element selected and not locked and not editing */}
             {selectedElements.length === 1 && !editingImageId && selectedElements
-              .filter(el => (el.type === 'shape' || el.type === 'image' || el.type === 'blurb') && draggingElementId !== el.id && !el.locked)
+              .filter(el => (el.type === 'shape' || el.type === 'image' || el.type === 'blurb' || el.type === 'table') && draggingElementId !== el.id && !el.locked)
               .map(element => {
                 // Get aspect ratio for SVG shapes
                 let aspectRatio: number | undefined
@@ -1467,7 +1633,7 @@ export default function SlideCanvas({
                   width={element.width}
                   height={element.height}
                   elementId={element.id}
-                  elementType={element.type as 'shape' | 'image' | 'blurb'}
+                  elementType={element.type as 'shape' | 'image' | 'blurb' | 'table'}
                   aspectRatio={aspectRatio}
                   otherElements={currentSlide.elements}
                   visible={true}
@@ -1488,7 +1654,32 @@ export default function SlideCanvas({
                     )
                     setMarginGuides(visibleMargins)
                     
-                    updateElement(currentSlide.id, element.id, newProps)
+                    // If it's a table, update column widths and row heights proportionally
+                    if (element.type === 'table' && (newProps.width || newProps.height)) {
+                      const tableContent = element.content as TableContent
+                      const updates: Partial<SlideElement> = { ...newProps }
+                      
+                      // Update column widths proportionally
+                      if (newProps.width && tableContent.columnWidths) {
+                        const scale = newProps.width / element.width
+                        updates.content = {
+                          ...tableContent,
+                          columnWidths: tableContent.columnWidths.map(w => w * scale)
+                        }
+                      }
+                      
+                      // Update row heights proportionally  
+                      if (newProps.height && tableContent.rowHeights) {
+                        const scale = newProps.height / element.height
+                        const newContent = updates.content || { ...tableContent }
+                        newContent.rowHeights = tableContent.rowHeights.map(h => h * scale)
+                        updates.content = newContent
+                      }
+                      
+                      updateElement(currentSlide.id, element.id, updates)
+                    } else {
+                      updateElement(currentSlide.id, element.id, newProps)
+                    }
                   }}
                   onResizeEnd={() => {
                     // Clear margin guides when resize ends
@@ -1604,8 +1795,6 @@ export default function SlideCanvas({
         )
       })()}
       
-
-      
       {/* Edit mode indicator */}
       {editingTextId && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-amber-500 text-white rounded-lg px-3 py-1 text-sm">
@@ -1625,12 +1814,7 @@ export default function SlideCanvas({
         </>
       )}
       
-      {/* Pan mode indicator */}
-      {isSpacePressed && !editingTextId && !editingImageId && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white rounded-lg px-3 py-1 text-sm">
-          Pan Mode (Hold Space + Drag)
-        </div>
-      )}
+      {/* Pan mode indicator - disabled */}
       
       {/* Duplicate mode indicator */}
       {isAltPressed && !editingTextId && (
@@ -1646,6 +1830,13 @@ export default function SlideCanvas({
             ? `Line Mode - Click to set end point${isShiftPressed ? ' (Shift: Straight line)' : ''}`
             : 'Line Mode - Click to set start point'
           }
+        </div>
+      )}
+      
+      {/* Pinch zoom indicator */}
+      {isPinching && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white rounded-lg px-3 py-1 text-sm">
+          Pinch to Zoom - {Math.round(stageScale * 100)}%
         </div>
       )}
     </div>
