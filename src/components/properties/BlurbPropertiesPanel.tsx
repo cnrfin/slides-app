@@ -8,38 +8,26 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  AlignJustify,
-  Type,
-  Palette,
   ChevronDown,
   Lock,
   Unlock,
-  Rows,
-  MoveHorizontal
+  ChevronsUpDown,
+  ChevronsLeftRight,
+  Scan
 } from 'lucide-react'
-import { HexColorPicker, HexColorInput } from 'react-colorful'
 import useSlideStore from '@/stores/slideStore'
 import { useSelectedElements, useCurrentSlide } from '@/stores/slideStore'
 import type { BlurbContent, ElementStyle, BlendMode } from '@/types/slide.types'
+import { FONTS, getAvailableWeights, isWeightAvailable, getClosestAvailableWeight } from '@/utils/fonts.config'
 import CircularTailSelector from './CircularTailSelector'
 import BlendModeSelector from './BlendModeSelector'
+import { ColorOpacityControl, CustomSlider } from '@/components/ui'
 
 interface BlurbPropertiesPanelProps {
   className?: string
 }
 
-// Common fonts available in most systems
-const FONT_FAMILIES = [
-  { name: 'Inter', value: 'Inter' },
-  { name: 'Arial', value: 'Arial' },
-  { name: 'Helvetica', value: 'Helvetica' },
-  { name: 'Times New Roman', value: 'Times New Roman' },
-  { name: 'Georgia', value: 'Georgia' },
-  { name: 'Courier New', value: 'Courier New' },
-  { name: 'Verdana', value: 'Verdana' },
-  { name: 'Roboto', value: 'Roboto' },
-  { name: 'Open Sans', value: 'Open Sans' },
-]
+
 
 const FONT_WEIGHTS = [
   { name: 'Thin', value: '100' },
@@ -66,38 +54,68 @@ export default function BlurbPropertiesPanel({ className = '' }: BlurbProperties
   const blurbContent = firstBlurbElement?.content as BlurbContent | undefined
   const style = firstBlurbElement?.style || {}
   
-  const [showTextColorPicker, setShowTextColorPicker] = useState(false)
-  const [showBubbleColorPicker, setShowBubbleColorPicker] = useState(false)
   const [opacityValue, setOpacityValue] = useState(Math.round((firstBlurbElement?.opacity || 1) * 100))
   const [cornerRadiusValue, setCornerRadiusValue] = useState(style.borderRadius || 25)
-  const textColorButtonRef = useRef<HTMLButtonElement>(null)
-  const bubbleColorButtonRef = useRef<HTMLButtonElement>(null)
+  const [individualCorners, setIndividualCorners] = useState(false)
+  const [cornerValues, setCornerValues] = useState({
+    topLeft: style.borderRadius || 25,
+    topRight: style.borderRadius || 25,
+    bottomLeft: style.borderRadius || 25,
+    bottomRight: style.borderRadius || 25
+  })
+  
+  // Refs for drag functionality
+  const lineHeightDragRef = useRef<{ startY: number; startValue: number } | null>(null)
+  const letterSpacingDragRef = useRef<{ startY: number; startValue: number } | null>(null)
   
   // Update values when element changes
   useEffect(() => {
     setOpacityValue(Math.round((firstBlurbElement?.opacity || 1) * 100))
-    setCornerRadiusValue(style.borderRadius || 25)
-  }, [firstBlurbElement?.id, firstBlurbElement?.opacity, style.borderRadius])
-  
-  // Close color pickers on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (!target.closest('.color-picker-container')) {
-        setShowTextColorPicker(false)
-        setShowBubbleColorPicker(false)
-      }
-    }
+    const radius = style.borderRadius || 25
+    setCornerRadiusValue(radius)
     
-    if (showTextColorPicker || showBubbleColorPicker) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+    // Check if individual corners are stored
+    if (style.borderRadiusCorners) {
+      const corners = style.borderRadiusCorners.split(' ').map(Number)
+      if (corners.length === 4) {
+        setCornerValues({
+          topLeft: corners[0],
+          topRight: corners[1],
+          bottomLeft: corners[3], // CSS order is TL TR BR BL
+          bottomRight: corners[2]
+        })
+        setIndividualCorners(true)
+      } else {
+        setCornerValues({
+          topLeft: radius,
+          topRight: radius,
+          bottomLeft: radius,
+          bottomRight: radius
+        })
+      }
+    } else {
+      setCornerValues({
+        topLeft: radius,
+        topRight: radius,
+        bottomLeft: radius,
+        bottomRight: radius
+      })
     }
-  }, [showTextColorPicker, showBubbleColorPicker])
+  }, [firstBlurbElement?.id, firstBlurbElement?.opacity, style.borderRadius, style.borderRadiusCorners])
   
   if (blurbElements.length === 0 || !currentSlide) return null
   
   const handleStyleChange = (updates: Partial<ElementStyle>) => {
+    // Check if font family is changing
+    if (updates.fontFamily && updates.fontFamily !== style.fontFamily) {
+      // Check if current weight is available for new font
+      const currentWeight = style.fontWeight || '400'
+      if (!isWeightAvailable(updates.fontFamily, currentWeight)) {
+        // Auto-select closest available weight
+        updates.fontWeight = getClosestAvailableWeight(updates.fontFamily, currentWeight)
+      }
+    }
+    
     // Update all selected blurb elements
     blurbElements.forEach(element => {
       updateElement(currentSlide.id, element.id, {
@@ -122,61 +140,159 @@ export default function BlurbPropertiesPanel({ className = '' }: BlurbProperties
     })
   }
   
-  const handleOpacityChange = (value: string) => {
-    const numValue = parseInt(value, 10)
-    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-      setOpacityValue(numValue)
-      // Update all selected blurb elements
-      blurbElements.forEach(element => {
-        updateElement(currentSlide.id, element.id, {
-          opacity: numValue / 100
-        })
-      })
-    }
+  const handleOpacityChange = (opacity: number) => {
+    setOpacityValue(Math.round(opacity * 100))
+    // Update all selected blurb elements
+    blurbElements.forEach(element => {
+      updateElement(currentSlide.id, element.id, { opacity })
+    })
   }
   
   const handleCornerRadiusChange = (value: string) => {
     const numValue = parseInt(value, 10)
-    if (!isNaN(numValue) && numValue >= 0 && numValue <= 50) {
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
       setCornerRadiusValue(numValue)
+      setCornerValues({
+        topLeft: numValue,
+        topRight: numValue,
+        bottomLeft: numValue,
+        bottomRight: numValue
+      })
       handleStyleChange({ borderRadius: numValue })
     }
   }
   
+  const handleIndividualCornerChange = (corner: 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight', value: string) => {
+    const numValue = parseInt(value, 10)
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+      const newValues = { ...cornerValues, [corner]: numValue }
+      setCornerValues(newValues)
+      
+      // Store individual corner values in style
+      // Format: "topLeft topRight bottomRight bottomLeft" (CSS order)
+      const cornerRadiusString = `${newValues.topLeft} ${newValues.topRight} ${newValues.bottomRight} ${newValues.bottomLeft}`
+      
+      // Only update the borderRadiusCorners property, not the main borderRadius
+      handleStyleChange({ 
+        borderRadiusCorners: cornerRadiusString // Store individual corners
+      })
+    }
+  }
+  
+  const toggleIndividualCorners = () => {
+    const newState = !individualCorners
+    setIndividualCorners(newState)
+    
+    if (newState) {
+      // When turning on individual corners, initialize with the current borderRadius value
+      const currentRadius = cornerRadiusValue
+      const newValues = {
+        topLeft: currentRadius,
+        topRight: currentRadius,
+        bottomLeft: currentRadius,
+        bottomRight: currentRadius
+      }
+      setCornerValues(newValues)
+      
+      // Store individual corner values
+      const cornerRadiusString = `${newValues.topLeft} ${newValues.topRight} ${newValues.bottomRight} ${newValues.bottomLeft}`
+      handleStyleChange({ 
+        borderRadiusCorners: cornerRadiusString
+      })
+    } else {
+      // When turning off individual corners, clear the borderRadiusCorners property
+      // Keep the current borderRadius value (don't change it)
+      handleStyleChange({ 
+        borderRadiusCorners: undefined // Clear individual corners
+      })
+    }
+  }
+  
   const isLocked = blurbElements.every(el => el.locked)
-  const lockedCount = blurbElements.filter(el => el.locked).length
+  
+  // Handle drag for line height
+  const handleLineHeightDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startValue = Math.round((style.lineHeight || 1.2) * 100)
+    lineHeightDragRef.current = { startY: e.clientY, startValue }
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!lineHeightDragRef.current) return
+      const deltaY = lineHeightDragRef.current.startY - e.clientY
+      const newValue = Math.max(50, Math.min(300, lineHeightDragRef.current.startValue + Math.round(deltaY / 2)))
+      handleStyleChange({ lineHeight: newValue / 100 })
+    }
+    
+    const handleMouseUp = () => {
+      lineHeightDragRef.current = null
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+  
+  // Handle drag for letter spacing
+  const handleLetterSpacingDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startValue = Math.round((style.letterSpacing || 0) * 100)
+    letterSpacingDragRef.current = { startY: e.clientY, startValue }
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!letterSpacingDragRef.current) return
+      const deltaY = letterSpacingDragRef.current.startY - e.clientY
+      const newValue = Math.max(-50, Math.min(200, letterSpacingDragRef.current.startValue + Math.round(deltaY / 2)))
+      handleStyleChange({ letterSpacing: newValue / 100 })
+    }
+    
+    const handleMouseUp = () => {
+      letterSpacingDragRef.current = null
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
   
   return (
     <div className={`${className}`}>
       {/* Tail Position - New Circular Selector */}
-      <div>
-        <h4 className="text-gray-800 text-sm font-medium mb-3">Tail Position</h4>
+      <div className="pb-3">
+        <label className="text-xs text-gray-600 block mb-2">Tail Position</label>
         <CircularTailSelector
           value={blurbContent?.tailPosition || 'bottom-center'}
           onChange={(position) => handleContentChange({ tailPosition: position })}
         />
       </div>
       
-      {/* Text Properties */}
-      <div className="pt-4 mt-4 border-t border-gray-200">
-        <h4 className="text-gray-800 text-sm font-medium mb-3">Text</h4>
-        
-        {/* Font Family */}
-        <div className="relative mb-2">
+      {/* Text Label */}
+      <div className="pb-3">
+        <label className="text-xs text-gray-600 block">Text</label>
+      </div>
+      
+      {/* Font Family */}
+      <div className="pb-3">
+        <div className="relative">
           <select
-            value={style.fontFamily || 'Arial'}
+            value={style.fontFamily || 'Arial, sans-serif'}
             onChange={(e) => handleStyleChange({ fontFamily: e.target.value })}
             className="w-full px-3 py-2 bg-white text-gray-800 text-sm rounded-lg border border-gray-200 appearance-none hover:bg-gray-50 focus:outline-none focus:border-blue-500 pr-10"
           >
-            {FONT_FAMILIES.map(font => (
-              <option key={font.value} value={font.value}>{font.name}</option>
+            {FONTS.map(font => (
+              <option key={font.family} value={font.family} style={{ fontFamily: font.family }}>
+                {font.name}
+              </option>
             ))}
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
         </div>
-        
-        {/* Font Weight and Size */}
-        <div className="flex gap-3 mb-3">
+      </div>
+      
+      {/* Font Weight and Size */}
+      <div className="pb-3">
+        <div className="flex gap-3">
           <div className="flex-1">
             <label className="block text-xs text-gray-600 mb-1">Weight</label>
             <div className="relative">
@@ -185,9 +301,18 @@ export default function BlurbPropertiesPanel({ className = '' }: BlurbProperties
                 onChange={(e) => handleStyleChange({ fontWeight: e.target.value })}
                 className="w-full px-3 py-2 bg-white text-gray-800 text-sm rounded-lg border border-gray-200 appearance-none hover:bg-gray-50 focus:outline-none focus:border-blue-500 pr-10"
               >
-                {FONT_WEIGHTS.map(weight => (
-                  <option key={weight.value} value={weight.value}>{weight.name}</option>
-                ))}
+                {FONT_WEIGHTS.map(weight => {
+                  const isAvailable = isWeightAvailable(style.fontFamily || 'Arial, sans-serif', weight.value)
+                  return (
+                    <option 
+                      key={weight.value} 
+                      value={weight.value}
+                      disabled={!isAvailable}
+                    >
+                      {weight.name}
+                    </option>
+                  )
+                })}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
@@ -209,40 +334,57 @@ export default function BlurbPropertiesPanel({ className = '' }: BlurbProperties
             </div>
           </div>
         </div>
-        
-        {/* Line Height and Letter Spacing */}
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5 border border-gray-200">
-            <Rows className="w-4 h-4 text-gray-500" />
-            <input
-              type="number"
-              value={Math.round((style.lineHeight || 1.2) * 100)}
-              onChange={(e) => handleStyleChange({ lineHeight: Number(e.target.value) / 100 })}
-              className="flex-1 bg-transparent text-gray-800 text-sm outline-none"
-              min="50"
-              max="300"
-              step="10"
-            />
-            <span className="text-gray-500 text-xs">%</span>
+      </div>
+      
+      {/* Line Height and Letter Spacing */}
+      <div className="pb-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Line Height</label>
+            <div className="relative">
+              <input
+                type="number"
+                value={Math.round((style.lineHeight || 1.2) * 100)}
+                onChange={(e) => handleStyleChange({ lineHeight: Number(e.target.value) / 100 })}
+                className="w-full px-3 py-2 pr-8 bg-white text-gray-800 rounded-lg border border-gray-200 appearance-none focus:outline-none focus:border-blue-500 text-sm"
+                min="50"
+                max="300"
+                step="10"
+              />
+              <ChevronsUpDown 
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 cursor-ns-resize hover:text-gray-600 transition-colors"
+                onMouseDown={handleLineHeightDragStart}
+              />
+            </div>
           </div>
           
-          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5 border border-gray-200">
-            <MoveHorizontal className="w-4 h-4 text-gray-500" />
-            <input
-              type="number"
-              value={Math.round((style.letterSpacing || 0) * 100)}
-              onChange={(e) => handleStyleChange({ letterSpacing: Number(e.target.value) / 100 })}
-              className="flex-1 bg-transparent text-gray-800 text-sm outline-none"
-              min="-50"
-              max="200"
-              step="1"
-            />
-            <span className="text-gray-500 text-xs">%</span>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Spacing</label>
+            <div className="relative">
+              <input
+                type="number"
+                value={Math.round((style.letterSpacing || 0) * 100)}
+                onChange={(e) => handleStyleChange({ letterSpacing: Number(e.target.value) / 100 })}
+                className="w-full px-3 py-2 pr-8 bg-white text-gray-800 rounded-lg border border-gray-200 appearance-none focus:outline-none focus:border-blue-500 text-sm"
+                min="-50"
+                max="200"
+                step="1"
+              />
+              <ChevronsLeftRight 
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 cursor-ns-resize hover:text-gray-600 transition-colors"
+                onMouseDown={handleLetterSpacingDragStart}
+              />
+            </div>
           </div>
         </div>
+      </div>
+      
+      {/* Style Section */}
+      <div className="pb-3">
+        <label className="text-xs text-gray-600 block mb-2">Style</label>
         
         {/* Text Style Buttons */}
-        <div className="flex gap-2 mb-3">
+        <div className="flex gap-2 mb-2">
           <button
             onClick={() => handleStyleChange({ fontWeight: style.fontWeight === '700' ? '400' : '700' })}
             className={`flex-1 p-2 rounded-lg transition-colors ${
@@ -329,169 +471,139 @@ export default function BlurbPropertiesPanel({ className = '' }: BlurbProperties
         </div>
       </div>
       
-      {/* Colors */}
-      <div className="pt-4 mt-4 border-t border-gray-200">
-        <h4 className="text-gray-800 text-sm font-medium mb-3">Colors</h4>
-        
-        <div className="flex gap-3">
-          {/* Text Color */}
-          <div className="relative flex-1">
-            <label className="block text-xs text-gray-600 mb-1">Text</label>
-            <button
-              ref={textColorButtonRef}
-              onClick={() => setShowTextColorPicker(!showTextColorPicker)}
-              className="w-full h-10 rounded-lg border border-gray-200 relative overflow-hidden hover:border-gray-300 transition-colors"
-              style={{ backgroundColor: style.color || '#ffffff' }}
-            />
-            
-            {showTextColorPicker && (
-              <div className="relative">
-                <div 
-                  className="fixed z-50 p-3 bg-white rounded-lg shadow-xl border border-gray-200 color-picker-container"
-                  style={{
-                    // Use fixed positioning relative to viewport
-                    ...(textColorButtonRef.current && (() => {
-                      const rect = textColorButtonRef.current.getBoundingClientRect()
-                      const spaceBelow = window.innerHeight - rect.bottom
-                      const spaceAbove = rect.top
-                      
-                      // Position below if there's enough space, otherwise above
-                      if (spaceBelow >= 320) {
-                        return { top: `${rect.bottom + 8}px`, left: `${Math.min(rect.left, window.innerWidth - 280)}px` }
-                      } else if (spaceAbove >= 320) {
-                        return { bottom: `${window.innerHeight - rect.top + 8}px`, left: `${Math.min(rect.left, window.innerWidth - 280)}px` }
-                      } else {
-                        // If neither has enough space, position to the left of the button
-                        return { top: `${Math.max(8, rect.top)}px`, right: `${window.innerWidth - rect.left + 8}px` }
-                      }
-                    })())
-                  }}
-                >
-                  <HexColorPicker 
-                    color={style.color || '#ffffff'} 
-                    onChange={(color) => handleStyleChange({ color })}
-                  />
-                  <HexColorInput
-                    color={style.color || '#ffffff'}
-                    onChange={(color) => handleStyleChange({ color })}
-                    className="mt-2 w-full px-2 py-1 bg-gray-50 text-gray-800 text-sm rounded border border-gray-200 focus:outline-none focus:border-blue-500"
-                    prefixed
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Fill Color */}
-          <div className="relative flex-1">
-            <label className="block text-xs text-gray-600 mb-1">Fill</label>
-            <button
-              ref={bubbleColorButtonRef}
-              onClick={() => setShowBubbleColorPicker(!showBubbleColorPicker)}
-              className="w-full h-10 rounded-lg border border-gray-200 relative overflow-hidden hover:border-gray-300 transition-colors"
-              style={{ backgroundColor: style.backgroundColor || '#3b82f6' }}
-            />
-            
-            {showBubbleColorPicker && (
-              <div className="relative">
-                <div 
-                  className="fixed z-50 p-3 bg-white rounded-lg shadow-xl border border-gray-200 color-picker-container"
-                  style={{
-                    // Use fixed positioning relative to viewport
-                    ...(bubbleColorButtonRef.current && (() => {
-                      const rect = bubbleColorButtonRef.current.getBoundingClientRect()
-                      const spaceBelow = window.innerHeight - rect.bottom
-                      const spaceAbove = rect.top
-                      
-                      // Position below if there's enough space, otherwise above
-                      if (spaceBelow >= 320) {
-                        return { top: `${rect.bottom + 8}px`, left: `${Math.min(rect.left, window.innerWidth - 280)}px` }
-                      } else if (spaceAbove >= 320) {
-                        return { bottom: `${window.innerHeight - rect.top + 8}px`, left: `${Math.min(rect.left, window.innerWidth - 280)}px` }
-                      } else {
-                        // If neither has enough space, position to the left of the button
-                        return { top: `${Math.max(8, rect.top)}px`, right: `${window.innerWidth - rect.left + 8}px` }
-                      }
-                    })())
-                  }}
-                >
-                  <HexColorPicker 
-                    color={style.backgroundColor || '#3b82f6'} 
-                    onChange={(backgroundColor) => handleStyleChange({ backgroundColor })}
-                  />
-                  <HexColorInput
-                    color={style.backgroundColor || '#3b82f6'}
-                    onChange={(backgroundColor) => handleStyleChange({ backgroundColor })}
-                    className="mt-2 w-full px-2 py-1 bg-gray-50 text-gray-800 text-sm rounded border border-gray-200 focus:outline-none focus:border-blue-500"
-                    prefixed
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Text Color */}
+      <div className="pb-3">
+        <label className="text-xs text-gray-600 block mb-2">Text</label>
+        <ColorOpacityControl
+          style={style}
+          opacity={firstBlurbElement?.opacity || 1}
+          colorType="text"
+          onChange={handleStyleChange}
+          onOpacityChange={handleOpacityChange}
+          disableGradient={true}
+        />
+      </div>
+      
+      {/* Fill */}
+      <div className="pb-3">
+        <label className="text-xs text-gray-600 block mb-2">Fill</label>
+        <ColorOpacityControl
+          style={style}
+          opacity={firstBlurbElement?.opacity || 1}
+          colorType="fill"
+          onChange={handleStyleChange}
+          onOpacityChange={handleOpacityChange}
+          disableGradient={true}
+        />
       </div>
       
       {/* Corner Radius */}
-      <div className="pt-4 mt-4 border-t border-gray-200">
-        <h4 className="text-gray-800 text-sm font-medium mb-3">Corner Radius</h4>
+      <div className="pb-3">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs text-gray-600">Corner Radius</label>
+          <button
+            onClick={toggleIndividualCorners}
+            className={`p-1.5 rounded transition-colors ${
+              individualCorners
+                ? 'bg-blue-100 text-blue-600'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title="Individual corner control"
+          >
+            <Scan className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        
+        {individualCorners && (
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="relative">
+              <input
+                type="number"
+                value={cornerValues.topLeft}
+                onChange={(e) => handleIndividualCornerChange('topLeft', e.target.value)}
+                className="w-full pl-2 pr-6 py-1 bg-gray-50 text-gray-800 text-sm rounded border border-gray-200 appearance-none focus:outline-none focus:border-blue-500 text-center"
+                min="0"
+                max="100"
+                placeholder="TL"
+              />
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">%</span>
+            </div>
+            <div className="relative">
+              <input
+                type="number"
+                value={cornerValues.topRight}
+                onChange={(e) => handleIndividualCornerChange('topRight', e.target.value)}
+                className="w-full pl-2 pr-6 py-1 bg-gray-50 text-gray-800 text-sm rounded border border-gray-200 appearance-none focus:outline-none focus:border-blue-500 text-center"
+                min="0"
+                max="100"
+                placeholder="TR"
+              />
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">%</span>
+            </div>
+            <div className="relative">
+              <input
+                type="number"
+                value={cornerValues.bottomLeft}
+                onChange={(e) => handleIndividualCornerChange('bottomLeft', e.target.value)}
+                className="w-full pl-2 pr-6 py-1 bg-gray-50 text-gray-800 text-sm rounded border border-gray-200 appearance-none focus:outline-none focus:border-blue-500 text-center"
+                min="0"
+                max="100"
+                placeholder="BL"
+              />
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">%</span>
+            </div>
+            <div className="relative">
+              <input
+                type="number"
+                value={cornerValues.bottomRight}
+                onChange={(e) => handleIndividualCornerChange('bottomRight', e.target.value)}
+                className="w-full pl-2 pr-6 py-1 bg-gray-50 text-gray-800 text-sm rounded border border-gray-200 appearance-none focus:outline-none focus:border-blue-500 text-center"
+                min="0"
+                max="100"
+                placeholder="BR"
+              />
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">%</span>
+            </div>
+          </div>
+        )}
+        
         <div className="flex items-center gap-3">
-          <input
-            type="range"
+          <CustomSlider
             value={cornerRadiusValue}
-            onChange={(e) => handleCornerRadiusChange(e.target.value)}
-            className="flex-1 slider-light"
-            min="0"
-            max="50"
+            onChange={(value) => handleCornerRadiusChange(value.toString())}
+            min={0}
+            max={100}
+            className="flex-1"
+            disabled={individualCorners}
           />
-          <div className="relative flex items-center">
+          <div className="relative">
             <input
               type="number"
               value={cornerRadiusValue}
               onChange={(e) => handleCornerRadiusChange(e.target.value)}
-              className="w-16 px-2 py-1 bg-white text-gray-800 text-sm rounded border border-gray-200 appearance-none hover:bg-gray-50 focus:outline-none focus:border-blue-500 text-center"
-              min="0"
-              max="50"
-            />
-          </div>
-        </div>
-      </div>
-      
-      {/* Opacity */}
-      <div className="pt-4 mt-4 border-t border-gray-200">
-        <h4 className="text-gray-800 text-sm font-medium mb-3">Opacity</h4>
-        <div className="flex items-center gap-3">
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={opacityValue}
-            onChange={(e) => handleOpacityChange(e.target.value)}
-            className="flex-1 slider-light"
-          />
-          <div className="relative flex items-center gap-1">
-            <input
-              type="number"
-              value={opacityValue}
-              onChange={(e) => handleOpacityChange(e.target.value)}
-              className="w-16 px-2 py-1 bg-white text-gray-800 text-sm rounded border border-gray-200 appearance-none hover:bg-gray-50 focus:outline-none focus:border-blue-500 text-center"
+              className={`w-[4.5rem] pl-3 pr-8 py-1 bg-gray-50 text-gray-800 text-sm rounded border border-gray-200 appearance-none focus:outline-none focus:border-blue-500 text-right ${
+                individualCorners ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               min="0"
               max="100"
+              disabled={individualCorners}
             />
-            <span className="text-sm text-gray-600">%</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">%</span>
           </div>
         </div>
       </div>
       
       {/* Blend Mode */}
-      <BlendModeSelector
-        value={style.blendMode}
-        onChange={(blendMode: BlendMode) => handleStyleChange({ blendMode })}
-        className="pt-4 mt-4"
-      />
+      <div className="pb-3">
+        <label className="text-xs text-gray-600 block mb-2">Blend</label>
+        <BlendModeSelector
+          value={style.blendMode}
+          onChange={(blendMode: BlendMode) => handleStyleChange({ blendMode })}
+        />
+      </div>
       
       {/* Actions */}
-      <div className="pt-4">
+      <div>
         <button
           onClick={() => {
             const newLocked = !isLocked

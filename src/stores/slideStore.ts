@@ -18,6 +18,7 @@ interface SlideStore {
   showOutsideElements: boolean
   clipboard: SlideElement[] | null // For copy/paste functionality
   lastSaved: string | null // ISO string of last save time
+  canvasContainer: HTMLElement | null // Reference to canvas container for color picker
   
   // Actions
   createPresentation: (title: string) => void
@@ -51,6 +52,9 @@ interface SlideStore {
   
   // View settings
   toggleOutsideElements: () => void
+  
+  // Canvas reference
+  setCanvasContainer: (container: HTMLElement | null) => void
   
   // Copy/Paste operations
   copyElements: () => void
@@ -149,12 +153,17 @@ const useSlideStore = create<SlideStore>()(
       selectedElementIds: [],
       showOutsideElements: true,
       clipboard: null,
+      canvasContainer: null,
       canPaste: false,
       canUndo: historyManager.currentIndex > 0,
       canRedo: historyManager.currentIndex < historyManager.history.length - 1,
       lastSaved: new Date().toISOString(),
       
       debouncedSaveHistory: () => debouncedHistorySave(get, set),
+
+      setCanvasContainer: (container) => set((state) => {
+        state.canvasContainer = container
+      }),
 
       createPresentation: (title) => set((state) => {
         const presentationId = nanoid()

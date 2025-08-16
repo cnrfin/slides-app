@@ -276,7 +276,8 @@ export interface ElementStyle {
   // Border
   borderWidth?: number
   borderStyle?: string
-  borderRadius?: number // 0-50px for shapes
+  borderRadius?: number // 0-100% for shapes (percentage-based)
+  borderRadiusCorners?: string // Individual corner radii in format "topLeft topRight bottomRight bottomLeft"
   
   // Shadow
   shadow?: Shadow

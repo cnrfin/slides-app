@@ -246,6 +246,38 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
         
       case 'shape':
         const shapeContent = element.content as ShapeContent
+        
+        // Calculate actual corner radius - convert percentage to pixels
+        const smallerDimension = Math.min(element.width, element.height)
+        
+        // Check if individual corners are set
+        let actualCornerRadius: number | number[]
+        if (element.style?.borderRadiusCorners) {
+          // Parse individual corners: "topLeft topRight bottomRight bottomLeft"
+          const corners = element.style.borderRadiusCorners.split(' ').map(Number)
+          if (corners.length === 4) {
+            // Convert each percentage to pixels
+            // Konva expects: [top-left, top-right, bottom-right, bottom-left]
+            actualCornerRadius = corners.map(percent => {
+              return percent === 100 
+                ? smallerDimension / 2 
+                : (percent / 100) * (smallerDimension / 2)
+            })
+          } else {
+            // Fallback to single radius if parsing fails
+            const radiusPercent = element.style?.borderRadius || 0
+            actualCornerRadius = radiusPercent === 100 
+              ? smallerDimension / 2 
+              : (radiusPercent / 100) * (smallerDimension / 2)
+          }
+        } else {
+          // Use single radius value
+          const radiusPercent = element.style?.borderRadius || 0
+          actualCornerRadius = radiusPercent === 100 
+            ? smallerDimension / 2 
+            : (radiusPercent / 100) * (smallerDimension / 2)
+        }
+        
         const shapeProps = {
           ...props,
           ...additionalProps,
@@ -257,7 +289,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
           fillLinearGradientColorStops: element.style?.gradientStart && element.style?.gradientEnd ? 
             [(element.style.gradientStartPosition || 0) / 100, element.style.gradientStart, 
              (element.style.gradientEndPosition || 100) / 100, element.style.gradientEnd] : undefined,
-          cornerRadius: element.style?.borderRadius || 0,
+          cornerRadius: actualCornerRadius,
           perfectDrawEnabled: false,
           opacity: baseOpacity * (additionalProps.opacity || 1),
         }
@@ -438,7 +470,31 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                 width={element.width - (tailPosition === 'left-center' || tailPosition === 'right-center' ? tailSize : 0)}
                 height={element.height - (tailPosition.startsWith('bottom') || tailPosition.startsWith('top') ? tailSize : 0)}
                 fill={element.style?.backgroundColor || '#3b82f6'}
-                cornerRadius={element.style?.borderRadius || 25}
+                cornerRadius={(() => {
+                  // Calculate actual corner radius from percentage
+                  const bubbleWidth = element.width - (tailPosition === 'left-center' || tailPosition === 'right-center' ? tailSize : 0)
+                  const bubbleHeight = element.height - (tailPosition.startsWith('bottom') || tailPosition.startsWith('top') ? tailSize : 0)
+                  const smallerDimension = Math.min(bubbleWidth, bubbleHeight)
+                  
+                  // Check if individual corners are set
+                  if (element.style?.borderRadiusCorners) {
+                    const corners = element.style.borderRadiusCorners.split(' ').map(Number)
+                    if (corners.length === 4) {
+                      // Convert each percentage to pixels
+                      return corners.map(percent => {
+                        return percent === 100 
+                          ? smallerDimension / 2 
+                          : (percent / 100) * (smallerDimension / 2)
+                      })
+                    }
+                  }
+                  
+                  // Use single radius value
+                  const radiusPercent = element.style?.borderRadius || 25
+                  return radiusPercent === 100 
+                    ? smallerDimension / 2
+                    : (radiusPercent / 100) * (smallerDimension / 2)
+                })()}
                 perfectDrawEnabled={false}
               />
               
@@ -720,7 +776,15 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                   strokeWidth={3}
                   fill="#10b981"
                   opacity={0.2}
-                  cornerRadius={(element.style?.borderRadius || 0) + 4}
+                  cornerRadius={(() => {
+                    // Convert percentage to pixels and add border offset
+                    const radiusPercent = element.style?.borderRadius || 0
+                    const smallerDimension = Math.min(element.width, element.height)
+                    const baseRadius = radiusPercent === 100 
+                      ? smallerDimension / 2 
+                      : (radiusPercent / 100) * (smallerDimension / 2)
+                    return baseRadius + 4
+                  })()}
                   listening={false}
                 />
               )}
@@ -760,7 +824,14 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                 dash={[5, 5]}
                 perfectDrawEnabled={false}
                 opacity={baseOpacity * (additionalProps.opacity || 1)}
-                cornerRadius={element.style?.borderRadius || 0}
+                cornerRadius={(() => {
+                  // Convert percentage to pixels
+                  const radiusPercent = element.style?.borderRadius || 0
+                  const smallerDimension = Math.min(element.width, element.height)
+                  return radiusPercent === 100 
+                    ? smallerDimension / 2 
+                    : (radiusPercent / 100) * (smallerDimension / 2)
+                })()}
               />
               {/* Calculate icon and text positions based on element size */}
               {(() => {
@@ -904,7 +975,15 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                 strokeWidth={3}
                 fill="#10b981"
                 opacity={0.2}
-                cornerRadius={(element.style?.borderRadius || 0) + 4}
+                cornerRadius={(() => {
+                  // Convert percentage to pixels and add border offset
+                  const radiusPercent = element.style?.borderRadius || 0
+                  const smallerDimension = Math.min(element.width, element.height)
+                  const baseRadius = radiusPercent === 100 
+                    ? smallerDimension / 2 
+                    : (radiusPercent / 100) * (smallerDimension / 2)
+                  return baseRadius + 4
+                })()}
                 listening={false}
               />
             )}
@@ -945,7 +1024,15 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                     stroke="#2563eb"
                     strokeWidth={2}
                     fill="transparent"
-                    cornerRadius={(element.style?.borderRadius || 0) + 2}
+                    cornerRadius={(() => {
+                      // Convert percentage to pixels and add border offset
+                      const radiusPercent = element.style?.borderRadius || 0
+                      const smallerDimension = Math.min(element.width, element.height)
+                      const baseRadius = radiusPercent === 100 
+                        ? smallerDimension / 2 
+                        : (radiusPercent / 100) * (smallerDimension / 2)
+                      return baseRadius + 2
+                    })()}
                     listening={false}
                   />
                   {/* Inner border for better visibility */}
@@ -957,7 +1044,14 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                     stroke="rgba(255, 255, 255, 0.5)"
                     strokeWidth={1}
                     fill="transparent"
-                    cornerRadius={element.style?.borderRadius || 0}
+                    cornerRadius={(() => {
+                      // Convert percentage to pixels
+                      const radiusPercent = element.style?.borderRadius || 0
+                      const smallerDimension = Math.min(element.width, element.height)
+                      return radiusPercent === 100 
+                        ? smallerDimension / 2 
+                        : (radiusPercent / 100) * (smallerDimension / 2)
+                    })()}
                     listening={false}
                   />
                 </>
@@ -970,18 +1064,60 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                 {...additionalProps}
                 clipFunc={(ctx) => {
                   // Clip to element bounds with corner radius
-                  const cornerRadius = element.style?.borderRadius || 0
-                  if (cornerRadius > 0) {
+                  // Convert percentage to pixels
+                  const smallerDimension = Math.min(element.width, element.height)
+                  
+                  // Check if individual corners are set
+                  let cornerRadii: number[]
+                  if (element.style?.borderRadiusCorners) {
+                    // Parse individual corners: "topLeft topRight bottomRight bottomLeft"
+                    const corners = element.style.borderRadiusCorners.split(' ').map(Number)
+                    if (corners.length === 4) {
+                      // Convert each percentage to pixels
+                      cornerRadii = corners.map(percent => {
+                        return percent === 100 
+                          ? smallerDimension / 2 
+                          : (percent / 100) * (smallerDimension / 2)
+                      })
+                    } else {
+                      // Fallback to single radius
+                      const radiusPercent = element.style?.borderRadius || 0
+                      const singleRadius = radiusPercent === 100 
+                        ? smallerDimension / 2 
+                        : (radiusPercent / 100) * (smallerDimension / 2)
+                      cornerRadii = [singleRadius, singleRadius, singleRadius, singleRadius]
+                    }
+                  } else {
+                    // Use single radius value
+                    const radiusPercent = element.style?.borderRadius || 0
+                    const singleRadius = radiusPercent === 100 
+                      ? smallerDimension / 2 
+                      : (radiusPercent / 100) * (smallerDimension / 2)
+                    cornerRadii = [singleRadius, singleRadius, singleRadius, singleRadius]
+                  }
+                  
+                  // Draw path with individual corner radii
+                  const [topLeft, topRight, bottomRight, bottomLeft] = cornerRadii
+                  
+                  if (topLeft > 0 || topRight > 0 || bottomRight > 0 || bottomLeft > 0) {
                     ctx.beginPath()
-                    ctx.moveTo(cornerRadius, 0)
-                    ctx.lineTo(element.width - cornerRadius, 0)
-                    ctx.quadraticCurveTo(element.width, 0, element.width, cornerRadius)
-                    ctx.lineTo(element.width, element.height - cornerRadius)
-                    ctx.quadraticCurveTo(element.width, element.height, element.width - cornerRadius, element.height)
-                    ctx.lineTo(cornerRadius, element.height)
-                    ctx.quadraticCurveTo(0, element.height, 0, element.height - cornerRadius)
-                    ctx.lineTo(0, cornerRadius)
-                    ctx.quadraticCurveTo(0, 0, cornerRadius, 0)
+                    ctx.moveTo(topLeft, 0)
+                    ctx.lineTo(element.width - topRight, 0)
+                    if (topRight > 0) {
+                      ctx.quadraticCurveTo(element.width, 0, element.width, topRight)
+                    }
+                    ctx.lineTo(element.width, element.height - bottomRight)
+                    if (bottomRight > 0) {
+                      ctx.quadraticCurveTo(element.width, element.height, element.width - bottomRight, element.height)
+                    }
+                    ctx.lineTo(bottomLeft, element.height)
+                    if (bottomLeft > 0) {
+                      ctx.quadraticCurveTo(0, element.height, 0, element.height - bottomLeft)
+                    }
+                    ctx.lineTo(0, topLeft)
+                    if (topLeft > 0) {
+                      ctx.quadraticCurveTo(0, 0, topLeft, 0)
+                    }
                     ctx.closePath()
                   } else {
                     ctx.rect(0, 0, element.width, element.height)
@@ -1073,8 +1209,8 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                   const offsetX = imageContent.offsetX ?? 0.5
                   const offsetY = imageContent.offsetY ?? 0.5
                   
-                  const imageX = element.x - (displayWidth - element.width) * offsetX
-                  const imageY = element.y - (displayHeight - element.height) * offsetY
+                  const imageX = -(displayWidth - element.width) * offsetX
+                  const imageY = -(displayHeight - element.height) * offsetY
                   
                   return (
                     <>
@@ -1090,21 +1226,63 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                       />
                       {/* Frame area at full opacity with clipping */}
                       <Group
-                        x={element.x}
-                        y={element.y}
+                        x={0}
+                        y={0}
                         clipFunc={(ctx) => {
-                          const cornerRadius = element.style?.borderRadius || 0
-                          if (cornerRadius > 0) {
+                          // Convert percentage to pixels
+                          const smallerDimension = Math.min(element.width, element.height)
+                          
+                          // Check if individual corners are set
+                          let cornerRadii: number[]
+                          if (element.style?.borderRadiusCorners) {
+                            // Parse individual corners: "topLeft topRight bottomRight bottomLeft"
+                            const corners = element.style.borderRadiusCorners.split(' ').map(Number)
+                            if (corners.length === 4) {
+                              // Convert each percentage to pixels
+                              cornerRadii = corners.map(percent => {
+                                return percent === 100 
+                                  ? smallerDimension / 2 
+                                  : (percent / 100) * (smallerDimension / 2)
+                              })
+                            } else {
+                              // Fallback to single radius
+                              const radiusPercent = element.style?.borderRadius || 0
+                              const singleRadius = radiusPercent === 100 
+                                ? smallerDimension / 2 
+                                : (radiusPercent / 100) * (smallerDimension / 2)
+                              cornerRadii = [singleRadius, singleRadius, singleRadius, singleRadius]
+                            }
+                          } else {
+                            // Use single radius value
+                            const radiusPercent = element.style?.borderRadius || 0
+                            const singleRadius = radiusPercent === 100 
+                              ? smallerDimension / 2 
+                              : (radiusPercent / 100) * (smallerDimension / 2)
+                            cornerRadii = [singleRadius, singleRadius, singleRadius, singleRadius]
+                          }
+                          
+                          // Draw path with individual corner radii
+                          const [topLeft, topRight, bottomRight, bottomLeft] = cornerRadii
+                          
+                          if (topLeft > 0 || topRight > 0 || bottomRight > 0 || bottomLeft > 0) {
                             ctx.beginPath()
-                            ctx.moveTo(cornerRadius, 0)
-                            ctx.lineTo(element.width - cornerRadius, 0)
-                            ctx.quadraticCurveTo(element.width, 0, element.width, cornerRadius)
-                            ctx.lineTo(element.width, element.height - cornerRadius)
-                            ctx.quadraticCurveTo(element.width, element.height, element.width - cornerRadius, element.height)
-                            ctx.lineTo(cornerRadius, element.height)
-                            ctx.quadraticCurveTo(0, element.height, 0, element.height - cornerRadius)
-                            ctx.lineTo(0, cornerRadius)
-                            ctx.quadraticCurveTo(0, 0, cornerRadius, 0)
+                            ctx.moveTo(topLeft, 0)
+                            ctx.lineTo(element.width - topRight, 0)
+                            if (topRight > 0) {
+                              ctx.quadraticCurveTo(element.width, 0, element.width, topRight)
+                            }
+                            ctx.lineTo(element.width, element.height - bottomRight)
+                            if (bottomRight > 0) {
+                              ctx.quadraticCurveTo(element.width, element.height, element.width - bottomRight, element.height)
+                            }
+                            ctx.lineTo(bottomLeft, element.height)
+                            if (bottomLeft > 0) {
+                              ctx.quadraticCurveTo(0, element.height, 0, element.height - bottomLeft)
+                            }
+                            ctx.lineTo(0, topLeft)
+                            if (topLeft > 0) {
+                              ctx.quadraticCurveTo(0, 0, topLeft, 0)
+                            }
                             ctx.closePath()
                           } else {
                             ctx.rect(0, 0, element.width, element.height)
@@ -1113,8 +1291,8 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                       >
                         <Image
                           image={imageObj}
-                          x={imageX - element.x}
-                          y={imageY - element.y}
+                          x={imageX}
+                          y={imageY}
                           width={displayWidth}
                           height={displayHeight}
                           opacity={1}
@@ -1132,7 +1310,31 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                 {...additionalProps}
                 image={imageObj}
                 opacity={baseOpacity * (additionalProps.opacity || 1)}
-                cornerRadius={element.style?.borderRadius || 0}
+                cornerRadius={(() => {
+                  // Convert percentage to pixels
+                  const smallerDimension = Math.min(element.width, element.height)
+                  
+                  // Check if individual corners are set
+                  if (element.style?.borderRadiusCorners) {
+                    // Parse individual corners: "topLeft topRight bottomRight bottomLeft"
+                    const corners = element.style.borderRadiusCorners.split(' ').map(Number)
+                    if (corners.length === 4) {
+                      // Convert each percentage to pixels
+                      // Konva expects: [top-left, top-right, bottom-right, bottom-left]
+                      return corners.map(percent => {
+                        return percent === 100 
+                          ? smallerDimension / 2 
+                          : (percent / 100) * (smallerDimension / 2)
+                      })
+                    }
+                  }
+                  
+                  // Use single radius value
+                  const radiusPercent = element.style?.borderRadius || 0
+                  return radiusPercent === 100 
+                    ? smallerDimension / 2 
+                    : (radiusPercent / 100) * (smallerDimension / 2)
+                })()}
               />
             )}
           </>

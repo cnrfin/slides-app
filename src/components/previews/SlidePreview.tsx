@@ -3,7 +3,8 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { Stage, Layer, Rect, Text, Image, Shape, Path, Line, Group } from 'react-konva'
 import Konva from 'konva'
 import { CANVAS_DIMENSIONS } from '@/utils/canvas.constants'
-import type { Slide, SlideElement, TextContent, ShapeContent, ImageContent, BlurbContent, LineContent } from '@/types/slide.types'
+import type { Slide, SlideElement, TextContent, ShapeContent, ImageContent, BlurbContent, LineContent, IconContent, TableContent } from '@/types/slide.types'
+import { getIconPath } from '@/utils/icon.utils'
 
 // Preview scale factor (1/4 of original size for performance)
 const PREVIEW_SCALE = 0.25
@@ -96,20 +97,142 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
           />
         )
       } else if (shapeContent.shape === 'svg' && shapeContent.svgPath) {
+        // Render SVG shape properly
         return (
-          <Path
-            {...scaledProps}
-            data={shapeContent.svgPath}
-            scaleX={scaledProps.width / (shapeContent.viewBox ? parseViewBox(shapeContent.viewBox).width : 100)}
-            scaleY={scaledProps.height / (shapeContent.viewBox ? parseViewBox(shapeContent.viewBox).height : 100)}
-            fill={element.style?.backgroundColor || '#cccccc'}
-            perfectDrawEnabled={false}
-            listening={false}
-          />
+          <Group
+            x={scaledProps.x}
+            y={scaledProps.y}
+            rotation={scaledProps.rotation}
+            opacity={scaledProps.opacity}
+          >
+            <Path
+              data={shapeContent.svgPath}
+              x={shapeContent.viewBox ? -parseViewBox(shapeContent.viewBox).x * (scaledProps.width / parseViewBox(shapeContent.viewBox).width) : 0}
+              y={shapeContent.viewBox ? -parseViewBox(shapeContent.viewBox).y * (scaledProps.height / parseViewBox(shapeContent.viewBox).height) : 0}
+              scaleX={scaledProps.width / (shapeContent.viewBox ? parseViewBox(shapeContent.viewBox).width : 100)}
+              scaleY={scaledProps.height / (shapeContent.viewBox ? parseViewBox(shapeContent.viewBox).height : 100)}
+              fill={element.style?.backgroundColor || '#cccccc'}
+              perfectDrawEnabled={false}
+              listening={false}
+            />
+          </Group>
         )
       }
       
       return <Rect {...shapeProps} />
+    }
+    
+    case 'icon': {
+      const iconContent = element.content as IconContent
+      const iconData = getIconPath(iconContent.iconId)
+      
+      return (
+        <Group
+          {...scaledProps}
+        >
+          <Path
+            data={iconData.path}
+            x={scaledProps.width / 2}
+            y={scaledProps.height / 2}
+            offsetX={12} // Half of the original 24px viewBox
+            offsetY={12} // Half of the original 24px viewBox
+            scaleX={scaledProps.width / 24}
+            scaleY={scaledProps.height / 24}
+            fill={iconData.filled ? (element.style?.color || '#000000') : 'transparent'}
+            stroke={element.style?.color || '#000000'}
+            strokeWidth={iconData.filled ? 0 : ((element.style?.strokeWidth || 5) / (scaledProps.width / 24))}
+            lineCap="round"
+            lineJoin="round"
+            perfectDrawEnabled={false}
+            listening={false}
+          />
+        </Group>
+      )
+    }
+    
+    case 'table': {
+      const tableContent = element.content as TableContent
+      const cellPadding = 8 * scale
+      
+      return (
+        <Group
+          {...scaledProps}
+        >
+          {/* Table background */}
+          <Rect
+            x={0}
+            y={0}
+            width={scaledProps.width}
+            height={scaledProps.height}
+            fill={element.style?.backgroundColor || '#ffffff'}
+            stroke={element.style?.borderColor || '#d1d5db'}
+            strokeWidth={(element.style?.borderWidth || 1) * scale}
+            perfectDrawEnabled={false}
+            listening={false}
+          />
+          
+          {/* Draw cells */}
+          {tableContent.cells.map((row, rowIndex) => {
+            // Calculate row y position and height
+            const rowY = tableContent.rowHeights
+              ? tableContent.rowHeights.slice(0, rowIndex).reduce((sum, h) => sum + h, 0) * scale
+              : (scaledProps.height / tableContent.rows) * rowIndex
+            const rowHeight = tableContent.rowHeights
+              ? tableContent.rowHeights[rowIndex] * scale
+              : scaledProps.height / tableContent.rows
+              
+            return row.map((cell, colIndex) => {
+              // Calculate column x position and width
+              const colX = tableContent.columnWidths
+                ? tableContent.columnWidths.slice(0, colIndex).reduce((sum, w) => sum + w, 0) * scale
+                : (scaledProps.width / tableContent.columns) * colIndex
+              const colWidth = tableContent.columnWidths
+                ? tableContent.columnWidths[colIndex] * scale
+                : scaledProps.width / tableContent.columns
+              
+              const isHeaderRow = tableContent.headerRow && rowIndex === 0
+              const isHeaderCol = tableContent.headerColumn && colIndex === 0
+              const isHeader = isHeaderRow || isHeaderCol
+              
+              return (
+                <Group key={`cell-${rowIndex}-${colIndex}`}>
+                  {/* Cell background */}
+                  <Rect
+                    x={colX}
+                    y={rowY}
+                    width={colWidth}
+                    height={rowHeight}
+                    fill={cell.style?.background || (isHeader ? '#f9fafb' : '#ffffff')}
+                    stroke={element.style?.borderColor || '#d1d5db'}
+                    strokeWidth={(element.style?.borderWidth || 1) * scale}
+                    perfectDrawEnabled={false}
+                    listening={false}
+                  />
+                  
+                  {/* Cell text */}
+                  <Text
+                    x={colX + cellPadding}
+                    y={rowY + cellPadding}
+                    width={colWidth - cellPadding * 2}
+                    height={rowHeight - cellPadding * 2}
+                    text={cell.text || ''}
+                    fontSize={(cell.style?.fontSize || element.style?.fontSize || 14) * scale}
+                    fontFamily={element.style?.fontFamily || 'Arial'}
+                    fontStyle={`${cell.style?.fontWeight || (isHeader ? 'bold' : 'normal')} normal`}
+                    fill={cell.style?.color || element.style?.color || '#000000'}
+                    align={cell.style?.textAlign || 'center'}
+                    verticalAlign={cell.style?.verticalAlign || 'middle'}
+                    wrap="word"
+                    ellipsis={true}
+                    perfectDrawEnabled={false}
+                    listening={false}
+                  />
+                </Group>
+              )
+            })
+          })}
+        </Group>
+      )
     }
     
     case 'line': {
@@ -166,6 +289,29 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
                 context.moveTo(tailX - 15 * scale, bubbleBottom - 5 * scale)
                 context.lineTo(tailX, scaledProps.height)
                 context.lineTo(tailX + 15 * scale, bubbleBottom - 5 * scale)
+                context.closePath()
+              } else if (tailPosition.startsWith('top')) {
+                const tailX = scaledProps.width * (tailPosition === 'top-left' ? 0.2 : 
+                           tailPosition === 'top-right' ? 0.8 : 0.5)
+                
+                context.moveTo(tailX - 15 * scale, tailSize + 5 * scale)
+                context.lineTo(tailX, 0)
+                context.lineTo(tailX + 15 * scale, tailSize + 5 * scale)
+                context.closePath()
+              } else if (tailPosition === 'left-center') {
+                const tailY = scaledProps.height * 0.5
+                
+                context.moveTo(tailSize + 5 * scale, tailY - 15 * scale)
+                context.lineTo(0, tailY)
+                context.lineTo(tailSize + 5 * scale, tailY + 15 * scale)
+                context.closePath()
+              } else if (tailPosition === 'right-center') {
+                const tailY = scaledProps.height * 0.5
+                const bubbleRight = scaledProps.width - tailSize
+                
+                context.moveTo(bubbleRight - 5 * scale, tailY - 15 * scale)
+                context.lineTo(scaledProps.width, tailY)
+                context.lineTo(bubbleRight - 5 * scale, tailY + 15 * scale)
                 context.closePath()
               }
               

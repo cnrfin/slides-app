@@ -491,10 +491,10 @@ The user's language learning topic/prompt is below.`
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-8 right-8 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 flex items-center gap-2 text-sm font-medium shadow-lg z-40"
+        className="fixed bottom-8 right-8 px-4 py-2 bg-purple-100 border border-purple-300 text-purple-700 rounded-lg hover:scale-110 transition-all duration-200 flex items-center gap-2 text-sm font-medium shadow-lg z-40"
       >
         <Bot className="w-4 h-4" strokeWidth={1} />
-        AI Lesson Builder
+        Build Lesson
       </button>
     )
   }

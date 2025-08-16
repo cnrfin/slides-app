@@ -366,7 +366,7 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
           bottom: `${popupPosition.bottom}px`,
           left: `${popupPosition.left}px`,
           maxHeight: '320px',
-          zIndex: 35
+          zIndex: 9
         }}
       >
         {/* Search Bar */}
@@ -442,7 +442,7 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
           bottom: `${lessonPopupPosition.bottom}px`,
           left: `${lessonPopupPosition.left}px`,
           maxHeight: '400px',
-          zIndex: 35
+          zIndex: 9
         }}
       >
         {/* Search Bar */}
@@ -529,7 +529,7 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
       {renderStudentPopup()}
       {renderLessonPopup()}
       <div
-        className="fixed bottom-4 left-0 right-0 z-20 flex justify-center"
+        className="fixed bottom-4 left-0 right-0 z-[5] flex justify-center"
         style={{ 
           paddingLeft: '256px',
           paddingRight: '256px',
@@ -561,32 +561,33 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
         <div 
           className={`flex items-center justify-center transition-all duration-300 ease-out ${
             !isExpanded
-              ? 'h-8 px-6 border border-gray-300' 
+              ? 'h-8 px-6 border hover:scale-110' 
               : 'h-1 w-10 bg-gray-400 rounded-full'
           }`}
           style={{
             borderRadius: !isExpanded ? '9999px' : undefined,
-            backgroundColor: !isExpanded ? '#f9f9f9' : undefined
+            backgroundColor: !isExpanded ? '#ede8ff' : undefined,
+            borderColor: !isExpanded ? '#ede8ff' : undefined
           }}
           onMouseEnter={(e) => {
             if (!isExpanded) {
-              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.backgroundColor = '#ede8ff'
               e.currentTarget.classList.add('shadow-sm')
-              e.currentTarget.style.borderColor = '#e5e7eb' // border-gray-200
+              e.currentTarget.style.borderColor = '#ede8ff'
             }
           }}
           onMouseLeave={(e) => {
             if (!isExpanded) {
-              e.currentTarget.style.backgroundColor = '#f9f9f9'
+              e.currentTarget.style.backgroundColor = '#ede8ff'
               e.currentTarget.classList.remove('shadow-sm')
-              e.currentTarget.style.borderColor = '#d1d5db' // border-gray-300
+              e.currentTarget.style.borderColor = '#ede8ff'
             }
           }}
         >
           {/* Text that appears inside the expanded handle */}
           {!isExpanded && (
-            <span className="text-sm font-medium text-gray-700 whitespace-nowrap select-none">
-              Generate a lesson
+            <span className="text-sm font-medium text-purple-700 whitespace-nowrap select-none">
+              Build a lesson
             </span>
           )}
         </div>
@@ -630,43 +631,43 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
                 <button
                   ref={studentButtonRef}
                   onClick={toggleStudentPopup}
-                  className="w-8 h-8 flex items-center justify-center border border-gray-300 transition-all duration-200"
+                  className="w-8 h-8 flex items-center justify-center border border-gray-300 transition-all duration-200 hover:bg-gray-100 active:bg-gray-100"
                   style={{
                     borderRadius: '0.5rem',
-                    backgroundColor: 'white'
+                    backgroundColor: showStudentPopup ? '#f3f4f6' : 'white'
                   }}
                   title="Add student profile"
                 >
-                  <User size={16} className="text-gray-600" strokeWidth={2} />
+                  <User size={16} className="text-gray-600" strokeWidth={1.5} />
                 </button>
 
                 {/* Lesson Button */}
                 <button
                   ref={lessonButtonRef}
                   onClick={toggleLessonPopup}
-                  className="w-8 h-8 flex items-center justify-center border border-gray-300 transition-all duration-200"
+                  className="w-8 h-8 flex items-center justify-center border border-gray-300 transition-all duration-200 hover:bg-gray-100 active:bg-gray-100"
                   style={{
                     borderRadius: '0.5rem',
-                    backgroundColor: 'white'
+                    backgroundColor: showLessonPopup ? '#f3f4f6' : 'white'
                   }}
                   title="Add lesson context"
                 >
-                  <BookOpen size={16} className="text-gray-600" strokeWidth={2} />
+                  <BookOpen size={16} className="text-gray-600" strokeWidth={1.5} />
                 </button>
 
                 {/* Genius Mode Toggle Button */}
                 <button
                   onClick={toggleGeniusMode}
-                  className={`px-3 h-8 flex items-center justify-center transition-all duration-200 ${isGeniusMode ? 'border-blue-500 text-blue-600' : 'border-gray-300 text-gray-600'}`}
+                  className={`px-3 h-8 flex items-center justify-center transition-all duration-200 ${isGeniusMode ? 'border-purple-700 text-purple-700' : 'border-gray-300 text-gray-600'}`}
                   style={{
                     borderRadius: '0.5rem',
-                    backgroundColor: isGeniusMode ? 'rgba(52, 95, 216, 0.1)' : 'white',
+                    backgroundColor: isGeniusMode ? '#f5f3ff' : 'white',
                     borderWidth: '1px',
                     borderStyle: 'solid'
                   }}
                   title={isGeniusMode ? 'Genius mode enabled (gpt-5-thinking-mini)' : 'Enable Genius mode'}
                 >
-                  <Brain size={16} strokeWidth={2} className="mr-1.5" />
+                  <Brain size={16} strokeWidth={1.5} className="mr-1.5" />
                   <span className="text-sm font-medium">Genius</span>
                 </button>
 

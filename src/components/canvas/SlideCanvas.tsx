@@ -86,7 +86,7 @@ export default function SlideCanvas({
   // Store
   const currentSlide = useCurrentSlide()
   const selectedElements = useSelectedElements()
-  const { updateElement, selectElement, selectMultipleElements, clearSelection, batchUpdateElements, addElement, selectSlide } = useSlideStore()
+  const { updateElement, selectElement, selectMultipleElements, clearSelection, batchUpdateElements, addElement, selectSlide, setCanvasContainer } = useSlideStore()
   
   // Helper function to get distance between two touch points
   const getTouchDistance = (touch1: Touch, touch2: Touch) => {
@@ -318,6 +318,24 @@ export default function SlideCanvas({
     const event = new CustomEvent('canvas:zoom-change', { detail: { zoom: 0.75 } })
     window.dispatchEvent(event)
   }, [])
+  
+  // Register canvas container for color picker
+  useEffect(() => {
+    // Wait a bit for the stage to be fully mounted
+    const timeoutId = setTimeout(() => {
+      const stage = stageRef.current
+      if (stage) {
+        const container = stage.container()
+        console.log('Setting canvas container:', container)
+        setCanvasContainer(container as HTMLElement)
+      }
+    }, 100)
+    
+    return () => {
+      clearTimeout(timeoutId)
+      setCanvasContainer(null)
+    }
+  }, [setCanvasContainer])
   
   // Handle image file processing
   const processImageFile = useCallback((file: File): Promise<{ src: string; width: number; height: number }> => {
@@ -928,6 +946,15 @@ export default function SlideCanvas({
     const stage = e.target.getStage()
     if (!stage) return
     
+    // If already editing this image, exit edit mode
+    if (editingImageId === element.id) {
+      setEditingImageId(null)
+      setImageEditStartPos(null)
+      setImageEditStartOffset(null)
+      setEditingImageDimensions(null)
+      return
+    }
+    
     // Handle text and blurb elements
     if (element.type === 'text' || element.type === 'blurb') {
       // For blurb elements, check if clicked in the center area
@@ -988,7 +1015,7 @@ export default function SlideCanvas({
         }
       }
     }
-  }, [stageScale, stagePos, initialPosition, clearSelection, isLineMode])
+  }, [stageScale, stagePos, initialPosition, clearSelection, isLineMode, editingImageId])
   
   // Handle text edit complete
   const handleTextEditComplete = useCallback((newText: string, newHeight?: number, isTyping: boolean = false) => {
@@ -1807,10 +1834,6 @@ export default function SlideCanvas({
         <>
           {/* Semi-transparent overlay */}
           <div className="absolute inset-0 bg-black bg-opacity-20 pointer-events-none z-10" />
-          {/* Mode indicator */}
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white rounded-lg px-3 py-1 text-sm z-20">
-            Image Edit Mode - Drag to reposition • ESC to exit
-          </div>
         </>
       )}
       

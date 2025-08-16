@@ -1,6 +1,6 @@
 // src/components/properties/BlendModeSelector.tsx
 import { useState, useRef, useEffect } from 'react'
-import { Blend, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import type { BlendMode } from '@/types/slide.types'
 
 interface BlendModeSelectorProps {
@@ -51,13 +51,6 @@ export default function BlendModeSelector({ value = 'normal', onChange, classNam
   
   return (
     <div className={`${className}`}>
-      <div className="flex items-center justify-between mb-2">
-        <h4 className="text-gray-800 text-sm font-medium flex items-center gap-2">
-          <Blend className="w-4 h-4" />
-          Blend
-        </h4>
-      </div>
-      
       <div className="relative" ref={dropdownRef}>
         <button
           ref={buttonRef}

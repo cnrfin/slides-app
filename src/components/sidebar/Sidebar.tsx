@@ -1,7 +1,6 @@
 // src/components/sidebar/Sidebar.tsx
 import { useState, useRef, useEffect } from 'react'
 import { 
-  ChevronLeft,
   Plus,
   Copy,
   Trash2,
@@ -12,7 +11,6 @@ import {
   Minus,
   Image,
   BarChart3,
-  Search,
   Table,
   Sparkles
 } from 'lucide-react'
@@ -26,17 +24,16 @@ import ShapePopup from './popups/ShapePopup'
 import IconsPopup from './popups/IconsPopup'
 import ChartModal from './popups/ChartModal'
 import TablePopup from './popups/TablePopup'
+import { TabGroup } from '@/components/ui'
 
 interface SidebarProps {
   onAddSlide: () => void
 }
 
 export default function Sidebar({ onAddSlide }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState<'elements' | 'slides'>('slides')
   const [lessonTitle, setLessonTitle] = useState('')
   const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
   const [activeLineTool, setActiveLineTool] = useState(false)
   const [showShapePopup, setShowShapePopup] = useState(false)
   const [showIconsPopup, setShowIconsPopup] = useState(false)
@@ -57,6 +54,7 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
     duplicateSlide,
     deleteSlide,
     addElement,
+    addSlide,
     presentation,
     lastSaved,
     updatePresentationTitle
@@ -257,37 +255,18 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
   return (
     <div
       ref={sidebarRef}
-      className={`fixed left-0 top-0 h-screen z-30 transition-all duration-300 ${
-        isCollapsed ? 'w-[4.5rem]' : 'w-56'
-      }`}
+      className="fixed left-0 top-0 h-screen z-30 transition-all duration-300 w-56"
     >
       <div className="h-full border-r border-gray-200 flex flex-col overflow-hidden bg-white">
         {/* Header */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            <div className={`w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-semibold text-gray-700 ${isCollapsed ? 'mx-auto' : ''}`}>
+            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-semibold text-gray-700">
               CF
             </div>
-            {!isCollapsed && (
-              <button
-                onClick={() => setIsCollapsed(true)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4 text-gray-600" strokeWidth={1} />
-              </button>
-            )}
-            {isCollapsed && (
-              <button
-                onClick={() => setIsCollapsed(false)}
-                className="absolute top-4 left-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4 text-gray-600 rotate-180" strokeWidth={1} />
-              </button>
-            )}
           </div>
           
-          {!isCollapsed && (
-            <>
+          <>
               <div className="mb-1">
                 {isEditingTitle ? (
                   <input
@@ -319,62 +298,27 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
                 )}
               </div>
               <p className="text-xs text-gray-500">{formatSavedTime()}</p>
-            </>
-          )}
+          </>
         </div>
         
         {/* Tab Navigation */}
-        {!isCollapsed && (
-          <div className="px-4 pt-4">
-            <div className="flex gap-1 p-1" style={{ backgroundColor: 'var(--color-text-input-bg)', borderRadius: '0.7rem' }}>
-              <button
-                onClick={() => setActiveTab('elements')}
-                className={`flex-1 px-3 py-1.5 text-sm font-medium transition-all ${
-                  activeTab === 'elements'
-                    ? 'bg-white text-gray-900'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-                style={{
-                  borderRadius: '0.5rem',
-                  ...(activeTab === 'elements' ? { boxShadow: 'var(--shadow-primary)' } : {})
-                }}
-              >
-                Elements
-              </button>
-              <button
-                onClick={() => setActiveTab('slides')}
-                className={`flex-1 px-3 py-1.5 text-sm font-medium transition-all ${
-                  activeTab === 'slides'
-                    ? 'bg-white text-gray-900'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-                style={{
-                  borderRadius: '0.5rem',
-                  ...(activeTab === 'slides' ? { boxShadow: 'var(--shadow-primary)' } : {})
-                }}
-              >
-                Slides
-              </button>
-            </div>
-          </div>
-        )}
+        <div className="px-4 pt-4">
+          <TabGroup
+            tabs={[
+              { id: 'elements', label: 'Elements' },
+              { id: 'slides', label: 'Slides' }
+            ]}
+            activeTab={activeTab}
+            onTabChange={(tab) => setActiveTab(tab as 'elements' | 'slides')}
+            className="mb-3"
+          />
+        </div>
         
         {/* Content */}
         <div className={`flex-1 overflow-y-auto scrollbar-hide ${
           activeTab === 'elements' ? 'pt-4' : 'p-4'
         }`}>
-          {isCollapsed ? (
-            <div className="space-y-2">
-              <button
-                onClick={onAddSlide}
-                className="w-full p-2 bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-                style={{ borderRadius: '0.5rem' }}
-                title="Add Slide"
-              >
-                <Plus className="w-5 h-5 mx-auto" strokeWidth={1} />
-              </button>
-            </div>
-          ) : activeTab === 'elements' ? (
+          {activeTab === 'elements' ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-0">
                 {elementButtons.map((button, index) => {
@@ -474,42 +418,28 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
                     </div>
                   </div>
                 ))}
+                
+                {/* Add new slide button */}
+                <button
+                  onClick={() => addSlide()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+                >
+                  <Plus className="w-5 h-5" strokeWidth={1} />
+                </button>
             </div>
           )}
         </div>
         
-        {/* Footer */}
-        {!isCollapsed && (
+        {/* Footer - Only for Slides tab */}
+        {activeTab === 'slides' && (
           <div className="p-4 border-t border-gray-100">
-            {activeTab === 'elements' ? (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" strokeWidth={1} />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey && e.key === 'f') {
-                      e.preventDefault()
-                      e.currentTarget.focus()
-                    }
-                  }}
-                  className="w-full pl-9 pr-16 py-2 bg-transparent border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-50 text-sm placeholder-gray-400"
-                />
-                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                  Ctrl+F
-                </kbd>
-              </div>
-            ) : (
-              <button
-                onClick={onAddSlide}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white hover:bg-blue-600 transition-colors font-medium"
-                style={{ borderRadius: '0.5rem' }}
-              >
-                Add Slides
-              </button>
-            )}
+            <button
+              onClick={onAddSlide}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white hover:bg-blue-600 transition-colors font-medium"
+              style={{ borderRadius: '0.5rem' }}
+            >
+              Add Slides
+            </button>
           </div>
         )}
       </div>

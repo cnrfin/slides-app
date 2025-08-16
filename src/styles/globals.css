@@ -303,7 +303,7 @@ input[type="number"] {
   border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  transition: all 0.1s ease;
+  transition: all 0ms ease;
 }
 
 /* Firefox */
@@ -323,7 +323,7 @@ input[type="number"] {
   border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  transition: all 0.1s ease;
+  transition: all 0ms ease;
   border-style: solid;
 }
 
@@ -408,17 +408,41 @@ input[type="number"] {
 }
 
 /* Gradient Color Picker Styles */
+.gradient-picker-wrapper {
+  width: 100%;
+}
+
 .gradient-picker-wrapper .react-colorful {
   width: 100% !important;
+  height: auto !important;
 }
 
 .gradient-picker-wrapper .react-colorful__saturation {
-  border-radius: 8px 8px 0 0;
+  border-radius: 6px 6px 0 0;
   width: 100% !important;
+  height: 150px !important;
 }
 
 .gradient-picker-wrapper .react-colorful__hue {
-  margin: 12px 0;
+  margin: 8px 0;
+  height: 12px !important;
+  border-radius: 6px;
+}
+
+.gradient-picker-wrapper .react-colorful__alpha {
+  height: 12px !important;
+  border-radius: 6px;
+}
+
+.gradient-picker-wrapper .react-colorful__pointer {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.gradient-picker-wrapper .react-colorful__hue-pointer,
+.gradient-picker-wrapper .react-colorful__alpha-pointer {
+  width: 16px !important;
+  height: 16px !important;
 }
 
 /* Prevent text selection during drag */
@@ -450,4 +474,113 @@ input[type="number"] {
 /* Blend mode preview styles */
 .blend-mode-preview {
   isolation: isolate;
+}
+
+/* Color picker magnifying glass styles */
+.color-picker-magnifier {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Crosshair cursor during color picking */
+body.color-picking,
+body.color-picking * {
+  cursor: crosshair !important;
+}
+
+/* Smooth transitions for color picker UI */
+.color-picker-container {
+  transition: opacity 0.2s ease;
+}
+
+/* Ensure canvas is accessible for color picking */
+.konvajs-content canvas {
+  pointer-events: auto !important;
+}
+
+/* Disabled select option styles */
+select option:disabled {
+  color: #e5e7eb; /* Light gray text */
+  cursor: not-allowed;
+}
+
+/* For Firefox */
+select option[disabled] {
+  color: #e5e7eb; /* Light gray text */
+}
+
+/* Separate color/background transitions from transform transitions */
+@layer utilities {
+  /* Instant color/background transitions */
+  .transition-colors {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke !important;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition-duration: 0ms !important;
+  }
+  
+  /* Transform transitions with 100ms duration */
+  .transition-transform {
+    transition-property: transform !important;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition-duration: 100ms !important;
+  }
+  
+  /* Shadow transitions instant */
+  .transition-shadow {
+    transition-property: box-shadow !important;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition-duration: 0ms !important;
+  }
+  
+  /* Opacity transitions instant */
+  .transition-opacity {
+    transition-property: opacity !important;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition-duration: 0ms !important;
+  }
+  
+  /* Mixed transition-all class: instant colors, smooth transforms */
+  .transition-all {
+    transition-property: all !important;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition-duration: 100ms !important;
+  }
+  
+  /* Specific property transitions */
+  .transition-all {
+    transition: 
+      color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      text-decoration-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      fill 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      stroke 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      transform 100ms cubic-bezier(0.4, 0, 0.2, 1),
+      width 100ms cubic-bezier(0.4, 0, 0.2, 1),
+      height 100ms cubic-bezier(0.4, 0, 0.2, 1),
+      padding 100ms cubic-bezier(0.4, 0, 0.2, 1),
+      margin 100ms cubic-bezier(0.4, 0, 0.2, 1),
+      font-size 100ms cubic-bezier(0.4, 0, 0.2, 1),
+      scale 100ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  
+  /* New utility classes for common combinations */
+  .transition-colors-transform {
+    transition: 
+      color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      transform 100ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  
+  .transition-colors-scale {
+    transition: 
+      color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
+      scale 100ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
 }

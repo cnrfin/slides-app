@@ -15,25 +15,16 @@ import ImagePropertiesPanel from '@/components/properties/ImagePropertiesPanel'
 import BlurbPropertiesPanel from '@/components/properties/BlurbPropertiesPanel'
 import LinePropertiesPanel from '@/components/properties/LinePropertiesPanel'
 import IconPropertiesPanel from '@/components/properties/IconPropertiesPanel'
+import TablePropertiesPanel from '@/components/properties/TablePropertiesPanel'
+import { TabGroup } from '@/components/ui'
+import { FONTS } from '@/utils/fonts.config'
 
 interface RightSidebarProps {
   onPlaySlideshow?: () => void
   onExportPDF?: () => void
 }
 
-// Predefined fonts
-const FONTS = [
-  { name: 'Arial', family: 'Arial, sans-serif', type: 'Sans Serif' },
-  { name: 'Helvetica', family: 'Helvetica, sans-serif', type: 'Sans Serif' },
-  { name: 'Verdana', family: 'Verdana, sans-serif', type: 'Sans Serif' },
-  { name: 'Trebuchet MS', family: 'Trebuchet MS, sans-serif', type: 'Sans Serif' },
-  { name: 'Geneva', family: 'Geneva, sans-serif', type: 'Sans Serif' },
-  { name: 'Georgia', family: 'Georgia, serif', type: 'Serif' },
-  { name: 'Times New Roman', family: 'Times New Roman, serif', type: 'Serif' },
-  { name: 'Courier New', family: 'Courier New, monospace', type: 'Monospace' },
-  { name: 'Comic Sans MS', family: 'Comic Sans MS, cursive', type: 'Display' },
-  { name: 'Impact', family: 'Impact, sans-serif', type: 'Display' },
-]
+
 
 // Predefined color schemes
 const COLOR_SCHEMES = [
@@ -281,6 +272,8 @@ export default function RightSidebar({ onPlaySlideshow, onExportPDF }: RightSide
               <LinePropertiesPanel />
             ) : selectedElements.some(el => el.type === 'icon') ? (
               <IconPropertiesPanel element={selectedElements.find(el => el.type === 'icon')!} />
+            ) : selectedElements.some(el => el.type === 'table') ? (
+              <TablePropertiesPanel />
             ) : null}
           </div>
         ) : (
@@ -291,33 +284,33 @@ export default function RightSidebar({ onPlaySlideshow, onExportPDF }: RightSide
               <div className="p-4 space-y-3">
                 <button
                   onClick={() => setCurrentView('fonts')}
-                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all hover:scale-105 group"
                 >
-                  <Type className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
+                  <Type className="w-5 h-5 text-gray-600 group-hover:text-[#9771ff] transition-colors" strokeWidth={1.5} />
                   <div className="text-left">
-                    <div className="font-medium text-gray-800">Change Fonts</div>
+                    <div className="font-medium text-gray-800 group-hover:text-[#9771ff] transition-colors">Change Fonts</div>
                     <div className="text-xs text-gray-500">Update all fonts</div>
                   </div>
                 </button>
                 
                 <button
                   onClick={() => setCurrentView('colors')}
-                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all hover:scale-105 group"
                 >
-                  <Palette className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
+                  <Palette className="w-5 h-5 text-gray-600 group-hover:text-[#54cb56] transition-colors" strokeWidth={1.5} />
                   <div className="text-left">
-                    <div className="font-medium text-gray-800">Change Colors</div>
+                    <div className="font-medium text-gray-800 group-hover:text-[#54cb56] transition-colors">Change Colors</div>
                     <div className="text-xs text-gray-500">Update all colors</div>
                   </div>
                 </button>
                 
                 <button
                   onClick={() => setCurrentView('themes')}
-                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all hover:scale-105 group"
                 >
-                  <Sparkles className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
+                  <Sparkles className="w-5 h-5 text-gray-600 group-hover:text-[#fe6d66] transition-colors" strokeWidth={1.5} />
                   <div className="text-left">
-                    <div className="font-medium text-gray-800">Change Theme</div>
+                    <div className="font-medium text-gray-800 group-hover:text-[#fe6d66] transition-colors">Change Theme</div>
                     <div className="text-xs text-gray-500">Update the theme</div>
                   </div>
                 </button>
@@ -433,30 +426,15 @@ export default function RightSidebar({ onPlaySlideshow, onExportPDF }: RightSide
                 </div>
                 
                 {/* Tab navigation */}
-                <div className="flex gap-1 p-1 mb-3" style={{ backgroundColor: '#f3f4f6', borderRadius: '0.5rem' }}>
-                  <button
-                    onClick={() => setThemeTab('default')}
-                    className={`flex-1 px-3 py-1.5 text-sm font-medium transition-all ${
-                      themeTab === 'default'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                    style={{ borderRadius: '0.375rem' }}
-                  >
-                    Default
-                  </button>
-                  <button
-                    onClick={() => setThemeTab('custom')}
-                    className={`flex-1 px-3 py-1.5 text-sm font-medium transition-all ${
-                      themeTab === 'custom'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                    style={{ borderRadius: '0.375rem' }}
-                  >
-                    Custom
-                  </button>
-                </div>
+                <TabGroup
+                  tabs={[
+                    { id: 'default', label: 'Default' },
+                    { id: 'custom', label: 'Custom' }
+                  ]}
+                  activeTab={themeTab}
+                  onTabChange={(tab) => setThemeTab(tab as 'default' | 'custom')}
+                  className="mb-3"
+                />
                 
                 {themeTab === 'default' ? (
                   <>
