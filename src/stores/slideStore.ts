@@ -118,9 +118,6 @@ function saveToHistory(state: any) {
   } else {
     historyManager.currentIndex++
   }
-  
-  // Update last saved time
-  state.lastSaved = new Date().toISOString()
 }
 
 // Helper to restore state from history
@@ -139,6 +136,7 @@ const debouncedHistorySave = debounce((get: any, set: any) => {
   set((s: any) => {
     s.canUndo = historyManager.currentIndex > 0
     s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+    s.lastSaved = new Date().toISOString()
   })
 }, 500)
 
@@ -190,6 +188,9 @@ const useSlideStore = create<SlideStore>()(
         
         state.currentSlideId = firstSlideId
         state.selectedSlideId = firstSlideId
+        
+        // Update last saved time
+        state.lastSaved = new Date().toISOString()
         
         // Save initial state to history
         saveToHistory(state)
@@ -290,6 +291,7 @@ const useSlideStore = create<SlideStore>()(
         set(s => {
           s.canUndo = historyManager.currentIndex > 0
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
         })
         
         return slideId
@@ -325,6 +327,9 @@ const useSlideStore = create<SlideStore>()(
               state.selectedSlideId = null
             }
           }
+          
+          // Update last saved time
+          state.lastSaved = new Date().toISOString()
         })
         
         // Save to history
@@ -333,6 +338,7 @@ const useSlideStore = create<SlideStore>()(
         set(s => {
           s.canUndo = historyManager.currentIndex > 0
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
         })
       },
 
@@ -440,6 +446,7 @@ const useSlideStore = create<SlideStore>()(
         set(s => {
           s.canUndo = historyManager.currentIndex > 0
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
         })
         
         return elementId
@@ -481,6 +488,7 @@ const useSlideStore = create<SlideStore>()(
         set(s => {
           s.canUndo = historyManager.currentIndex > 0
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
         })
       },
 
@@ -504,6 +512,7 @@ const useSlideStore = create<SlideStore>()(
         set(s => {
           s.canUndo = historyManager.currentIndex > 0
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
         })
       },
 
@@ -527,6 +536,7 @@ const useSlideStore = create<SlideStore>()(
         set(s => {
           s.canUndo = historyManager.currentIndex > 0
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
         })
       },
 
@@ -551,6 +561,7 @@ const useSlideStore = create<SlideStore>()(
         set(s => {
           s.canUndo = historyManager.currentIndex > 0
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
         })
       },
 
@@ -575,6 +586,7 @@ const useSlideStore = create<SlideStore>()(
         set(s => {
           s.canUndo = historyManager.currentIndex > 0
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
         })
       },
 
@@ -669,6 +681,7 @@ const useSlideStore = create<SlideStore>()(
         set(s => {
           s.canUndo = historyManager.currentIndex > 0
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
         })
       },
 

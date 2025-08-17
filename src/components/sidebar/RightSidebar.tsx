@@ -18,10 +18,12 @@ import IconPropertiesPanel from '@/components/properties/IconPropertiesPanel'
 import TablePropertiesPanel from '@/components/properties/TablePropertiesPanel'
 import { TabGroup } from '@/components/ui'
 import { FONTS } from '@/utils/fonts.config'
+import ExportDropdown from '@/components/ui/ExportDropdown'
 
 interface RightSidebarProps {
   onPlaySlideshow?: () => void
-  onExportPDF?: () => void
+  onExportAllPDF?: () => void
+  onExportCurrentPDF?: () => void
 }
 
 
@@ -118,7 +120,7 @@ const THEMES = [
 
 type SidebarView = 'default' | 'fonts' | 'colors' | 'themes'
 
-export default function RightSidebar({ onPlaySlideshow, onExportPDF }: RightSidebarProps) {
+export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExportCurrentPDF }: RightSidebarProps) {
   const [currentView, setCurrentView] = useState<SidebarView>('default')
   const [selectedFont, setSelectedFont] = useState(FONTS[0].family)
   const [selectedColorScheme, setSelectedColorScheme] = useState(COLOR_SCHEMES[0])
@@ -245,13 +247,10 @@ export default function RightSidebar({ onPlaySlideshow, onExportPDF }: RightSide
           >
             <Play className="w-4 h-4 text-gray-600" strokeWidth={1.5} />
           </button>
-          <button
-            onClick={onExportPDF}
-            className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
-            title="Export as PDF"
-          >
-            Export
-          </button>
+          <ExportDropdown
+            onExportAll={onExportAllPDF || (() => {})}
+            onExportCurrent={onExportCurrentPDF || (() => {})}
+          />
         </div>
       </div>
       

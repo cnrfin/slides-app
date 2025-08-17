@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import useSlideStore from '@/stores/slideStore'
 import type { IconContent } from '@/types/slide.types'
+import { getIconPath } from '@/utils/icon.utils'
 
 interface IconsPopupProps {
   isOpen: boolean
@@ -265,9 +266,13 @@ export default function IconsPopup({ isOpen, onClose, anchorElement }: IconsPopu
   const handleAddIcon = (iconId: string, IconComponent: any) => {
     if (!currentSlide) return
     
+    // Get the SVG path for this icon
+    const iconData = getIconPath(iconId)
+    
     const iconContent: IconContent = {
       iconId,
-      iconType: 'lucide'
+      iconType: 'lucide',
+      svgPath: iconData.path // Store the SVG path directly
     }
     
     addElement(currentSlide.id, {

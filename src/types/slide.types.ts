@@ -266,6 +266,10 @@ export interface ElementStyle {
   backgroundColor?: string
   borderColor?: string
   
+  // Opacity for different properties
+  fillOpacity?: number
+  borderOpacity?: number
+  
   // Gradient support
   gradientStart?: string
   gradientEnd?: string

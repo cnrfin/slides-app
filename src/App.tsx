@@ -7,7 +7,6 @@ import TemplateModal from '@/components/templates/TemplateModal'
 import RightSidebar from '@/components/sidebar/RightSidebar'
 import TemplateDesigner from '@/components/TemplateDesigner'
 // import TemplateDemo from '@/components/TemplateDemo'
-import LessonBuilder from '@/components/LessonBuilder'
 import DataKeyHelper from '@/components/DataKeyHelper'
 import Sidebar from '@/components/sidebar/Sidebar'
 import { Plus, ChevronLeft, ChevronRight, Undo2, Redo2, Wand2 } from 'lucide-react'
@@ -17,6 +16,9 @@ import { preloadCommonFonts } from '@/utils/font.utils'
 import SlidePreview from '@/components/previews/SlidePreview'
 import { Trash2, Copy } from 'lucide-react'
 import CollapsibleTextInput from '@/components/ui/CollapsibleTextInput'
+import ToastContainer from '@/components/ui/Toast'
+import { exportSlidesToPDF } from '@/utils/pdf-export'
+import { toast } from '@/utils/toast'
 
 function App() {
   const canvasContainerRef = useRef<HTMLDivElement>(null)
@@ -233,9 +235,68 @@ function App() {
           // TODO: Implement slideshow functionality
           console.log('Play slideshow')
         }}
-        onExportPDF={() => {
-          // TODO: Implement PDF export functionality
-          console.log('Export as PDF')
+        onExportAllPDF={async () => {
+          try {
+            // Show loading toast
+            const toastId = toast.loading('Generating PDF for all slides...')
+            
+            // Get presentation name for filename
+            const fileName = presentation?.title ? 
+              `${presentation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf` : 
+              'presentation.pdf'
+            
+            // Export all slides to PDF
+            await exportSlidesToPDF({
+              slides,
+              slideOrder: presentation?.slides, // Use presentation's slide order
+              fileName,
+              onProgress: (progress) => {
+                // Update toast with progress
+                toast.loading(`Generating PDF... ${Math.round(progress)}%`, toastId)
+              }
+            })
+            
+            // Show success toast
+            toast.success('All slides exported successfully!', toastId)
+          } catch (error) {
+            console.error('Failed to export PDF:', error)
+            toast.error('Failed to export PDF. Please try again.')
+          }
+        }}
+        onExportCurrentPDF={async () => {
+          try {
+            // Find the current slide
+            const currentSlide = slides.find(s => s.id === currentSlideId)
+            if (!currentSlide) {
+              toast.error('No slide selected')
+              return
+            }
+            
+            // Show loading toast
+            const toastId = toast.loading('Generating PDF for current slide...')
+            
+            // Get slide index for filename
+            const slideIndex = slides.findIndex(s => s.id === currentSlideId) + 1
+            const fileName = presentation?.title ? 
+              `${presentation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_slide_${slideIndex}.pdf` : 
+              `slide_${slideIndex}.pdf`
+            
+            // Export only the current slide to PDF
+            await exportSlidesToPDF({
+              slides: [currentSlide], // Only export current slide
+              fileName,
+              onProgress: (progress) => {
+                // Update toast with progress
+                toast.loading(`Generating PDF... ${Math.round(progress)}%`, toastId)
+              }
+            })
+            
+            // Show success toast
+            toast.success(`Slide ${slideIndex} exported successfully!`, toastId)
+          } catch (error) {
+            console.error('Failed to export PDF:', error)
+            toast.error('Failed to export PDF. Please try again.')
+          }
         }}
       />
       
@@ -275,23 +336,26 @@ function App() {
         Template Mode
       </button>
       
-      {/* AI Lesson Builder */}
-      <LessonBuilder />
-      
       {/* Collapsible Text Input */}
       <CollapsibleTextInput 
         placeholder="Add a prompt..."
         onHeightChange={setTextInputHeight} // Track height changes
-        onSubmit={(text, selectedProfile, selectedLesson, useGeniusMode) => {
-          // TODO: Implement prompt submission logic
+        onSubmit={(text, selectedProfile, selectedLesson, useGeniusMode, selectedSlides) => {
+          // This is now handled internally by the CollapsibleTextInput component
+          // The component directly calls the OpenAI API and adds slides to the canvas
           console.log('Generated:', {
             text,
             profile: selectedProfile,
             lesson: selectedLesson,
-            model: useGeniusMode ? 'gpt-5-thinking-mini' : 'gpt-5-mini'
+            model: 'gpt-5-mini', // Both modes use gpt-5-mini
+            geniusMode: useGeniusMode,
+            slides: selectedSlides
           })
         }}
       />
+      
+      {/* Toast Container */}
+      <ToastContainer />
     </div>
   )
 }

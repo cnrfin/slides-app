@@ -8,6 +8,7 @@ import useSlideStore from '@/stores/slideStore'
 import { loadFont } from '@/utils/font.utils'
 import { measureWrappedText } from '@/utils/text.utils'
 import { getIconPath, getIconBounds } from '@/utils/icon.utils'
+import { applyOpacityToColor } from '@/utils/color.utils'
 
 // Helper function to parse viewBox string
 const parseViewBox = (viewBox: string) => {
@@ -278,17 +279,34 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
             : (radiusPercent / 100) * (smallerDimension / 2)
         }
         
+        // Get separate opacities for fill and stroke
+        // For backward compatibility, if fillOpacity is not set, use the element's opacity
+        const fillOpacity = element.style?.fillOpacity ?? element.opacity ?? 1
+        const borderOpacity = element.style?.borderOpacity ?? 1
+        
+        // Apply opacity to colors
+        const fillColor = applyOpacityToColor(element.style?.backgroundColor || '#cccccc', fillOpacity)
+        const strokeColor = element.style?.borderWidth && element.style?.borderWidth > 0 
+          ? applyOpacityToColor(element.style?.borderColor || '#000000', borderOpacity)
+          : undefined
+        
         const shapeProps = {
           ...props,
           ...additionalProps,
-          fill: element.style?.gradientStart && element.style?.gradientEnd ? undefined : (element.style?.backgroundColor || '#cccccc'),
+          fill: element.style?.gradientStart && element.style?.gradientEnd ? undefined : fillColor,
           fillLinearGradientStartPoint: element.style?.gradientStart && element.style?.gradientEnd ? 
             getGradientPoints(element.style.gradientAngle || 0, element.width, element.height).start : undefined,
           fillLinearGradientEndPoint: element.style?.gradientStart && element.style?.gradientEnd ? 
             getGradientPoints(element.style.gradientAngle || 0, element.width, element.height).end : undefined,
           fillLinearGradientColorStops: element.style?.gradientStart && element.style?.gradientEnd ? 
-            [(element.style.gradientStartPosition || 0) / 100, element.style.gradientStart, 
-             (element.style.gradientEndPosition || 100) / 100, element.style.gradientEnd] : undefined,
+            [
+              (element.style.gradientStartPosition || 0) / 100, 
+              applyOpacityToColor(element.style.gradientStart, fillOpacity) || element.style.gradientStart, 
+              (element.style.gradientEndPosition || 100) / 100, 
+              applyOpacityToColor(element.style.gradientEnd, fillOpacity) || element.style.gradientEnd
+            ] : undefined,
+          stroke: strokeColor,
+          strokeWidth: element.style?.borderWidth || 0,
           cornerRadius: actualCornerRadius,
           perfectDrawEnabled: false,
           opacity: baseOpacity * (additionalProps.opacity || 1),
@@ -342,14 +360,22 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                   y={shapeContent.viewBox ? -parseViewBox(shapeContent.viewBox).y * (element.height / parseViewBox(shapeContent.viewBox).height) : 0}
                   scaleX={element.width / (shapeContent.viewBox ? parseViewBox(shapeContent.viewBox).width : 100)}
                   scaleY={element.height / (shapeContent.viewBox ? parseViewBox(shapeContent.viewBox).height : 100)}
-                  fill={element.style?.gradientStart && element.style?.gradientEnd ? undefined : (element.style?.backgroundColor || '#cccccc')}
+                  fill={element.style?.gradientStart && element.style?.gradientEnd ? undefined : 
+                    applyOpacityToColor(element.style?.backgroundColor || '#cccccc', element.style?.fillOpacity ?? element.opacity ?? 1)}
                   fillLinearGradientStartPoint={element.style?.gradientStart && element.style?.gradientEnd ? 
                     getGradientPoints(element.style.gradientAngle || 0, element.width, element.height).start : undefined}
                   fillLinearGradientEndPoint={element.style?.gradientStart && element.style?.gradientEnd ? 
                     getGradientPoints(element.style.gradientAngle || 0, element.width, element.height).end : undefined}
                   fillLinearGradientColorStops={element.style?.gradientStart && element.style?.gradientEnd ? 
-                    [(element.style.gradientStartPosition || 0) / 100, element.style.gradientStart, 
-                     (element.style.gradientEndPosition || 100) / 100, element.style.gradientEnd] : undefined}
+                    [
+                      (element.style.gradientStartPosition || 0) / 100, 
+                      applyOpacityToColor(element.style.gradientStart, element.style?.fillOpacity ?? element.opacity ?? 1) || element.style.gradientStart, 
+                      (element.style.gradientEndPosition || 100) / 100, 
+                      applyOpacityToColor(element.style.gradientEnd, element.style?.fillOpacity ?? element.opacity ?? 1) || element.style.gradientEnd
+                    ] : undefined}
+                  stroke={element.style?.borderWidth && element.style?.borderWidth > 0 ? 
+                    applyOpacityToColor(element.style?.borderColor || '#000000', element.style?.borderOpacity ?? 1) : undefined}
+                  strokeWidth={element.style?.borderWidth || 0}
                   perfectDrawEnabled={false}
                 />
               </Group>
@@ -815,76 +841,110 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                 />
               )}
               {/* Placeholder background */}
-              <Rect
-                {...props}
-                {...additionalProps}
-                fill="#f3f4f6"
-                stroke="#d1d5db"
-                strokeWidth={2}
-                dash={[5, 5]}
-                perfectDrawEnabled={false}
-                opacity={baseOpacity * (additionalProps.opacity || 1)}
-                cornerRadius={(() => {
-                  // Convert percentage to pixels
-                  const radiusPercent = element.style?.borderRadius || 0
-                  const smallerDimension = Math.min(element.width, element.height)
-                  return radiusPercent === 100 
-                    ? smallerDimension / 2 
-                    : (radiusPercent / 100) * (smallerDimension / 2)
-                })()}
-              />
+              {(() => {
+                const radiusPercent = element.style?.borderRadius || 0
+                const smallerDimension = Math.min(element.width, element.height)
+                
+                // For 100% radius, render as ellipse for perfect circle
+                if (radiusPercent === 100) {
+                  return (
+                    <>
+                      <Shape
+                        {...props}
+                        {...additionalProps}
+                        sceneFunc={(context, shape) => {
+                          context.beginPath()
+                          context.ellipse(
+                            element.width / 2,
+                            element.height / 2,
+                            element.width / 2,
+                            element.height / 2,
+                            0,
+                            0,
+                            2 * Math.PI
+                          )
+                          context.closePath()
+                          context.fillStrokeShape(shape)
+                        }}
+                        fill="#f3f4f6"
+                        stroke="#d1d5db"
+                        strokeWidth={2}
+                        dash={[5, 5]}
+                        perfectDrawEnabled={false}
+                        opacity={baseOpacity * (additionalProps.opacity || 1)}
+                      />
+                    </>
+                  )
+                } else {
+                  // Regular rounded rectangle
+                  return (
+                    <Rect
+                      {...props}
+                      {...additionalProps}
+                      fill="#f3f4f6"
+                      stroke="#d1d5db"
+                      strokeWidth={2}
+                      dash={[5, 5]}
+                      perfectDrawEnabled={false}
+                      opacity={baseOpacity * (additionalProps.opacity || 1)}
+                      cornerRadius={(radiusPercent / 100) * (smallerDimension / 2)}
+                    />
+                  )
+                }
+              })()}
               {/* Calculate icon and text positions based on element size */}
               {(() => {
+                const isLoading = !imageContent.isPlaceholder && !imageObj
                 const hasSecondaryText = element.width > 120 && element.height > 100 && !isLoading
-                const iconSize = Math.min(element.width, element.height) * 0.35 // Icon takes 35% of smallest dimension
+                const iconSize = Math.min(element.width, element.height) * 0.3 // Icon takes 30% of smallest dimension
                 const spacing = 8 // Space between icon and text
                 
-                // Calculate vertical positions to center the content
-                let iconY: number
-                let textY: number
-                let secondaryTextY: number
+                // Calculate total content height
+                const primaryTextHeight = 16
+                const secondaryTextHeight = 12
+                const textSpacing = 4
                 
-                if (hasSecondaryText) {
-                  // With secondary text: icon + primary text + secondary text
-                  const totalHeight = iconSize + spacing + 16 + 6 + 12 // icon + spacing + text1 + spacing + text2
-                  const startY = element.y + (element.height - totalHeight) / 2
-                  iconY = startY + iconSize / 2
-                  textY = startY + iconSize + spacing + 8 // Half of text height (16/2)
-                  secondaryTextY = textY + 16 / 2 + 6 + 12 / 2 // Primary text half height + spacing + secondary half height
-                } else if (element.width > 80 && element.height > 60) {
-                  // Just primary text
-                  const totalHeight = iconSize + spacing + 16 // icon + spacing + text
-                  const startY = element.y + (element.height - totalHeight) / 2
-                  iconY = startY + iconSize / 2
-                  textY = startY + iconSize + spacing + 8
+                let totalContentHeight: number
+                if (element.width > 80 && element.height > 80) {
+                  // Icon + text
+                  if (hasSecondaryText) {
+                    totalContentHeight = iconSize + spacing + primaryTextHeight + textSpacing + secondaryTextHeight
+                  } else {
+                    totalContentHeight = iconSize + spacing + primaryTextHeight
+                  }
                 } else if (element.width > 60 && element.height > 60) {
                   // Just icon
-                  iconY = element.y + element.height / 2
-                  textY = 0 // Not used
+                  totalContentHeight = iconSize
                 } else {
                   // Nothing - too small
                   return null
                 }
                 
+                // Center everything vertically
+                const startY = element.y + (element.height - totalContentHeight) / 2
+                
                 return (
                   <>
-                    {/* Icon - only show if element is large enough */}
+                    {/* Icon - centered horizontally and positioned at calculated Y */}
                     {element.width > 60 && element.height > 60 && (
                       <Shape
                         x={element.x + element.width / 2}
-                        y={iconY}
+                        y={startY + iconSize / 2}
                         sceneFunc={(context, shape) => {
-                          context.beginPath()
                           const scale = iconSize / 100 // Base icon size is 100
                           context.save()
                           context.scale(scale, scale)
+                          
+                          // Center the drawing at (0, 0)
+                          context.translate(0, 0)
                           
                           // Image frame
                           const frameWidth = 70
                           const frameHeight = 50
                           const cornerRadius = 5
                           
-                          // Draw rounded rectangle frame
+                          // Draw rounded rectangle frame centered at origin
+                          context.beginPath()
                           context.moveTo(-frameWidth/2 + cornerRadius, -frameHeight/2)
                           context.lineTo(frameWidth/2 - cornerRadius, -frameHeight/2)
                           context.quadraticCurveTo(frameWidth/2, -frameHeight/2, frameWidth/2, -frameHeight/2 + cornerRadius)
@@ -912,7 +972,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                           context.fillStyle = '#e5e7eb'
                           context.fill()
                           
-                          // Sun
+                          // Sun circle in top left
                           context.beginPath()
                           context.arc(-frameWidth/2 + 22, -frameHeight/2 + 18, 7, 0, Math.PI * 2)
                           context.fillStyle = '#d1d5db'
@@ -923,37 +983,35 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                         listening={false}
                       />
                     )}
-                    {/* Text - only show if element is large enough */}
-                    {element.width > 80 && element.height > 60 && (
-                      <>
-                        <Text
-                          x={element.x + element.width / 2}
-                          y={textY}
-                          text={isLoading ? "Loading..." : "Drop image here"}
-                          fontSize={Math.min(14, Math.max(10, element.width / 10))}
-                          fontFamily="system-ui, -apple-system, sans-serif"
-                          fill="#6b7280"
-                          align="center"
-                          verticalAlign="middle"
-                          width={element.width - 20}
-                          listening={false}
-                        />
-                        {/* Secondary text - only show if very large */}
-                        {hasSecondaryText && (
-                          <Text
-                            x={element.x + element.width / 2}
-                            y={secondaryTextY!}
-                            text="or resize placeholder"
-                            fontSize={Math.min(12, Math.max(9, element.width / 12))}
-                            fontFamily="system-ui, -apple-system, sans-serif"
-                            fill="#9ca3af"
-                            align="center"
-                            verticalAlign="middle"
-                            width={element.width - 20}
-                            listening={false}
-                          />
-                        )}
-                      </>
+                    {/* Primary text - centered below icon */}
+                    {element.width > 80 && element.height > 80 && (
+                      <Text
+                        x={element.x}
+                        y={startY + iconSize + spacing}
+                        width={element.width}
+                        text={isLoading ? "Loading..." : "Drop image here"}
+                        fontSize={Math.min(14, Math.max(10, element.width / 10))}
+                        fontFamily="system-ui, -apple-system, sans-serif"
+                        fill="#6b7280"
+                        align="center"
+                        verticalAlign="top"
+                        listening={false}
+                      />
+                    )}
+                    {/* Secondary text - only show if element is large enough */}
+                    {hasSecondaryText && (
+                      <Text
+                        x={element.x}
+                        y={startY + iconSize + spacing + primaryTextHeight + textSpacing}
+                        width={element.width}
+                        text="or resize placeholder"
+                        fontSize={Math.min(12, Math.max(9, element.width / 12))}
+                        fontFamily="system-ui, -apple-system, sans-serif"
+                        fill="#9ca3af"
+                        align="center"
+                        verticalAlign="top"
+                        listening={false}
+                      />
                     )}
                   </>
                 )
@@ -1064,62 +1122,38 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                 {...additionalProps}
                 clipFunc={(ctx) => {
                   // Clip to element bounds with corner radius
-                  // Convert percentage to pixels
+                  const radiusPercent = element.style?.borderRadius || 0
                   const smallerDimension = Math.min(element.width, element.height)
                   
-                  // Check if individual corners are set
-                  let cornerRadii: number[]
-                  if (element.style?.borderRadiusCorners) {
-                    // Parse individual corners: "topLeft topRight bottomRight bottomLeft"
-                    const corners = element.style.borderRadiusCorners.split(' ').map(Number)
-                    if (corners.length === 4) {
-                      // Convert each percentage to pixels
-                      cornerRadii = corners.map(percent => {
-                        return percent === 100 
-                          ? smallerDimension / 2 
-                          : (percent / 100) * (smallerDimension / 2)
-                      })
-                    } else {
-                      // Fallback to single radius
-                      const radiusPercent = element.style?.borderRadius || 0
-                      const singleRadius = radiusPercent === 100 
-                        ? smallerDimension / 2 
-                        : (radiusPercent / 100) * (smallerDimension / 2)
-                      cornerRadii = [singleRadius, singleRadius, singleRadius, singleRadius]
-                    }
-                  } else {
-                    // Use single radius value
-                    const radiusPercent = element.style?.borderRadius || 0
-                    const singleRadius = radiusPercent === 100 
-                      ? smallerDimension / 2 
-                      : (radiusPercent / 100) * (smallerDimension / 2)
-                    cornerRadii = [singleRadius, singleRadius, singleRadius, singleRadius]
-                  }
-                  
-                  // Draw path with individual corner radii
-                  const [topLeft, topRight, bottomRight, bottomLeft] = cornerRadii
-                  
-                  if (topLeft > 0 || topRight > 0 || bottomRight > 0 || bottomLeft > 0) {
+                  // For 100% radius, use ellipse for perfect circle/ellipse
+                  if (radiusPercent === 100) {
                     ctx.beginPath()
-                    ctx.moveTo(topLeft, 0)
-                    ctx.lineTo(element.width - topRight, 0)
-                    if (topRight > 0) {
-                      ctx.quadraticCurveTo(element.width, 0, element.width, topRight)
-                    }
-                    ctx.lineTo(element.width, element.height - bottomRight)
-                    if (bottomRight > 0) {
-                      ctx.quadraticCurveTo(element.width, element.height, element.width - bottomRight, element.height)
-                    }
-                    ctx.lineTo(bottomLeft, element.height)
-                    if (bottomLeft > 0) {
-                      ctx.quadraticCurveTo(0, element.height, 0, element.height - bottomLeft)
-                    }
-                    ctx.lineTo(0, topLeft)
-                    if (topLeft > 0) {
-                      ctx.quadraticCurveTo(0, 0, topLeft, 0)
-                    }
+                    ctx.ellipse(
+                      element.width / 2,
+                      element.height / 2,
+                      element.width / 2,
+                      element.height / 2,
+                      0,
+                      0,
+                      2 * Math.PI
+                    )
+                  } else if (radiusPercent > 0) {
+                    // For other radius values, create rounded rectangle
+                    const radius = (radiusPercent / 100) * (smallerDimension / 2)
+                    
+                    ctx.beginPath()
+                    ctx.moveTo(radius, 0)
+                    ctx.lineTo(element.width - radius, 0)
+                    ctx.quadraticCurveTo(element.width, 0, element.width, radius)
+                    ctx.lineTo(element.width, element.height - radius)
+                    ctx.quadraticCurveTo(element.width, element.height, element.width - radius, element.height)
+                    ctx.lineTo(radius, element.height)
+                    ctx.quadraticCurveTo(0, element.height, 0, element.height - radius)
+                    ctx.lineTo(0, radius)
+                    ctx.quadraticCurveTo(0, 0, radius, 0)
                     ctx.closePath()
                   } else {
+                    // No radius - simple rectangle
                     ctx.rect(0, 0, element.width, element.height)
                   }
                 }}
@@ -1229,62 +1263,38 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                         x={0}
                         y={0}
                         clipFunc={(ctx) => {
-                          // Convert percentage to pixels
+                          const radiusPercent = element.style?.borderRadius || 0
                           const smallerDimension = Math.min(element.width, element.height)
                           
-                          // Check if individual corners are set
-                          let cornerRadii: number[]
-                          if (element.style?.borderRadiusCorners) {
-                            // Parse individual corners: "topLeft topRight bottomRight bottomLeft"
-                            const corners = element.style.borderRadiusCorners.split(' ').map(Number)
-                            if (corners.length === 4) {
-                              // Convert each percentage to pixels
-                              cornerRadii = corners.map(percent => {
-                                return percent === 100 
-                                  ? smallerDimension / 2 
-                                  : (percent / 100) * (smallerDimension / 2)
-                              })
-                            } else {
-                              // Fallback to single radius
-                              const radiusPercent = element.style?.borderRadius || 0
-                              const singleRadius = radiusPercent === 100 
-                                ? smallerDimension / 2 
-                                : (radiusPercent / 100) * (smallerDimension / 2)
-                              cornerRadii = [singleRadius, singleRadius, singleRadius, singleRadius]
-                            }
-                          } else {
-                            // Use single radius value
-                            const radiusPercent = element.style?.borderRadius || 0
-                            const singleRadius = radiusPercent === 100 
-                              ? smallerDimension / 2 
-                              : (radiusPercent / 100) * (smallerDimension / 2)
-                            cornerRadii = [singleRadius, singleRadius, singleRadius, singleRadius]
-                          }
-                          
-                          // Draw path with individual corner radii
-                          const [topLeft, topRight, bottomRight, bottomLeft] = cornerRadii
-                          
-                          if (topLeft > 0 || topRight > 0 || bottomRight > 0 || bottomLeft > 0) {
+                          // For 100% radius, use ellipse for perfect circle/ellipse
+                          if (radiusPercent === 100) {
                             ctx.beginPath()
-                            ctx.moveTo(topLeft, 0)
-                            ctx.lineTo(element.width - topRight, 0)
-                            if (topRight > 0) {
-                              ctx.quadraticCurveTo(element.width, 0, element.width, topRight)
-                            }
-                            ctx.lineTo(element.width, element.height - bottomRight)
-                            if (bottomRight > 0) {
-                              ctx.quadraticCurveTo(element.width, element.height, element.width - bottomRight, element.height)
-                            }
-                            ctx.lineTo(bottomLeft, element.height)
-                            if (bottomLeft > 0) {
-                              ctx.quadraticCurveTo(0, element.height, 0, element.height - bottomLeft)
-                            }
-                            ctx.lineTo(0, topLeft)
-                            if (topLeft > 0) {
-                              ctx.quadraticCurveTo(0, 0, topLeft, 0)
-                            }
+                            ctx.ellipse(
+                              element.width / 2,
+                              element.height / 2,
+                              element.width / 2,
+                              element.height / 2,
+                              0,
+                              0,
+                              2 * Math.PI
+                            )
+                          } else if (radiusPercent > 0) {
+                            // For other radius values, create rounded rectangle
+                            const radius = (radiusPercent / 100) * (smallerDimension / 2)
+                            
+                            ctx.beginPath()
+                            ctx.moveTo(radius, 0)
+                            ctx.lineTo(element.width - radius, 0)
+                            ctx.quadraticCurveTo(element.width, 0, element.width, radius)
+                            ctx.lineTo(element.width, element.height - radius)
+                            ctx.quadraticCurveTo(element.width, element.height, element.width - radius, element.height)
+                            ctx.lineTo(radius, element.height)
+                            ctx.quadraticCurveTo(0, element.height, 0, element.height - radius)
+                            ctx.lineTo(0, radius)
+                            ctx.quadraticCurveTo(0, 0, radius, 0)
                             ctx.closePath()
                           } else {
+                            // No radius - simple rectangle
                             ctx.rect(0, 0, element.width, element.height)
                           }
                         }}
@@ -1305,37 +1315,69 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
               </Group>
             ) : (
               // Default rendering for other object-fit modes
-              <Image
-                {...props}
-                {...additionalProps}
-                image={imageObj}
-                opacity={baseOpacity * (additionalProps.opacity || 1)}
-                cornerRadius={(() => {
-                  // Convert percentage to pixels
-                  const smallerDimension = Math.min(element.width, element.height)
-                  
-                  // Check if individual corners are set
-                  if (element.style?.borderRadiusCorners) {
-                    // Parse individual corners: "topLeft topRight bottomRight bottomLeft"
-                    const corners = element.style.borderRadiusCorners.split(' ').map(Number)
-                    if (corners.length === 4) {
-                      // Convert each percentage to pixels
-                      // Konva expects: [top-left, top-right, bottom-right, bottom-left]
-                      return corners.map(percent => {
-                        return percent === 100 
-                          ? smallerDimension / 2 
-                          : (percent / 100) * (smallerDimension / 2)
-                      })
-                    }
-                  }
-                  
-                  // Use single radius value
-                  const radiusPercent = element.style?.borderRadius || 0
-                  return radiusPercent === 100 
-                    ? smallerDimension / 2 
-                    : (radiusPercent / 100) * (smallerDimension / 2)
-                })()}
-              />
+              (() => {
+                const radiusPercent = element.style?.borderRadius || 0
+                const smallerDimension = Math.min(element.width, element.height)
+                
+                // Always use clipping for any border radius to ensure perfect circles at 100%
+                if (radiusPercent > 0) {
+                  return (
+                    <Group
+                      {...props}
+                      {...additionalProps}
+                      opacity={baseOpacity * (additionalProps.opacity || 1)}
+                      clipFunc={(ctx) => {
+                        // For 100% radius, use ellipse for perfect circle/ellipse
+                        if (radiusPercent === 100) {
+                          ctx.beginPath()
+                          ctx.ellipse(
+                            element.width / 2,
+                            element.height / 2,
+                            element.width / 2,
+                            element.height / 2,
+                            0,
+                            0,
+                            2 * Math.PI
+                          )
+                        } else {
+                          // For other values, use rounded rectangle
+                          const radius = (radiusPercent / 100) * (smallerDimension / 2)
+                          
+                          ctx.beginPath()
+                          ctx.moveTo(radius, 0)
+                          ctx.lineTo(element.width - radius, 0)
+                          ctx.quadraticCurveTo(element.width, 0, element.width, radius)
+                          ctx.lineTo(element.width, element.height - radius)
+                          ctx.quadraticCurveTo(element.width, element.height, element.width - radius, element.height)
+                          ctx.lineTo(radius, element.height)
+                          ctx.quadraticCurveTo(0, element.height, 0, element.height - radius)
+                          ctx.lineTo(0, radius)
+                          ctx.quadraticCurveTo(0, 0, radius, 0)
+                          ctx.closePath()
+                        }
+                      }}
+                    >
+                      <Image
+                        image={imageObj}
+                        x={0}
+                        y={0}
+                        width={element.width}
+                        height={element.height}
+                      />
+                    </Group>
+                  )
+                } else {
+                  // No border radius - simple image
+                  return (
+                    <Image
+                      {...props}
+                      {...additionalProps}
+                      image={imageObj}
+                      opacity={baseOpacity * (additionalProps.opacity || 1)}
+                    />
+                  )
+                }
+              })()
             )}
           </>
         )

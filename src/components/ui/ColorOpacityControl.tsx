@@ -35,9 +35,8 @@ export default function ColorOpacityControl({
   const [isPickingColor, setIsPickingColor] = useState(false)
   
   // Initialize opacity value - ensure 0 is handled correctly
-  const initialOpacity = opacity ?? 1
   const [opacityInputValue, setOpacityInputValue] = useState(() => {
-    const percentage = Math.round(initialOpacity * 100)
+    const percentage = Math.round((opacity ?? 1) * 100)
     return percentage.toString()
   })
   const [gradientStops, setGradientStops] = useState([
@@ -62,12 +61,15 @@ export default function ColorOpacityControl({
   // Get canvas element from the slide store
   const canvasContainer = useSlideStore((state) => state.canvasContainer)
   
-  // Don't auto-update from prop changes after initial mount to avoid conflicts
-  // The local state should be the source of truth while editing
-  
-  // Update gradient stops when style changes
+  // Update opacity input value when the opacity prop changes (element selection changes)
   useEffect(() => {
-    if (style.gradientStart && style.gradientEnd) {
+    const percentage = Math.round((opacity ?? 1) * 100)
+    setOpacityInputValue(percentage.toString())
+  }, [opacity])
+  
+  // Update gradient stops and colors when style changes (element selection changes)
+  useEffect(() => {
+    if (style.gradientStart && style.gradientEnd && !disableGradient) {
       setColorMode('gradient')
       setGradientStops([
         { color: style.gradientStart, position: style.gradientStartPosition || 0 },
@@ -76,8 +78,17 @@ export default function ColorOpacityControl({
       setGradientAngle(style.gradientAngle || 0)
     } else {
       setColorMode('solid')
+      // Update gradient stops with current solid color for potential switch to gradient
+      const currentColor = colorType === 'text' ? (style.color || '#000000') :
+                          colorType === 'stroke' ? (style.borderColor || '#000000') :
+                          (style.backgroundColor || '#cccccc')
+      setGradientStops([
+        { color: currentColor, position: 0 },
+        { color: '#ffffff', position: 100 }
+      ])
+      setGradientAngle(0)
     }
-  }, [style.gradientStart, style.gradientEnd, style.gradientAngle, style.gradientStartPosition, style.gradientEndPosition])
+  }, [style, colorType, disableGradient])
   
   // Use refs to avoid stale closures
   const gradientStopsRef = useRef(gradientStops)

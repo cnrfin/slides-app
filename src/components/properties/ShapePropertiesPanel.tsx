@@ -24,25 +24,29 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
   const shapeElements = selectedElements.filter(el => el.type === 'shape')
   const firstShapeElement = shapeElements[0]
   const shapeContent = firstShapeElement?.content as ShapeContent | undefined
-  const style = firstShapeElement?.style || {}
   
-  const [opacityValue, setOpacityValue] = useState(Math.round((firstShapeElement?.opacity || 1) * 100))
+  // Initialize with style values or fall back to element opacity for backward compatibility
+  const [fillOpacity, setFillOpacity] = useState(firstShapeElement?.style?.fillOpacity ?? firstShapeElement?.opacity ?? 1)
+  const [borderOpacity, setBorderOpacity] = useState(firstShapeElement?.style?.borderOpacity ?? 1)
   const [individualCorners, setIndividualCorners] = useState(false)
   const [cornerValues, setCornerValues] = useState({
-    topLeft: style.borderRadius || 0,
-    topRight: style.borderRadius || 0,
-    bottomLeft: style.borderRadius || 0,
-    bottomRight: style.borderRadius || 0
+    topLeft: firstShapeElement?.style?.borderRadius || 0,
+    topRight: firstShapeElement?.style?.borderRadius || 0,
+    bottomLeft: firstShapeElement?.style?.borderRadius || 0,
+    bottomRight: firstShapeElement?.style?.borderRadius || 0
   })
   
   // Update values when element changes
   useEffect(() => {
-    setOpacityValue(Math.round((firstShapeElement?.opacity || 1) * 100))
-    const radius = style.borderRadius || 0
+    if (firstShapeElement) {
+      const newStyle = firstShapeElement.style || {}
+      setFillOpacity(newStyle.fillOpacity ?? firstShapeElement.opacity ?? 1)
+      setBorderOpacity(newStyle.borderOpacity ?? 1)
+      const radius = newStyle.borderRadius || 0
     
-    // Check if individual corners are stored
-    if (style.borderRadiusCorners) {
-      const corners = style.borderRadiusCorners.split(' ').map(Number)
+      // Check if individual corners are stored
+      if (newStyle.borderRadiusCorners) {
+        const corners = newStyle.borderRadiusCorners.split(' ').map(Number)
       if (corners.length === 4) {
         setCornerValues({
           topLeft: corners[0],
@@ -60,14 +64,15 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
         })
       }
     } else {
-      setCornerValues({
-        topLeft: radius,
-        topRight: radius,
-        bottomLeft: radius,
-        bottomRight: radius
-      })
+        setCornerValues({
+          topLeft: radius,
+          topRight: radius,
+          bottomLeft: radius,
+          bottomRight: radius
+        })
+      }
     }
-  }, [firstShapeElement?.id, firstShapeElement?.opacity, style.borderRadius, style.borderRadiusCorners])
+  }, [firstShapeElement?.id, firstShapeElement?.style, firstShapeElement?.opacity])
   
   // If no shape elements are selected, return null
   if (shapeElements.length === 0 || !currentSlide) {
@@ -82,12 +87,16 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
     })
   }
   
-  const handleOpacityChange = (opacity: number) => {
-    setOpacityValue(Math.round(opacity * 100))
+  const handleFillOpacityChange = (opacity: number) => {
+    setFillOpacity(opacity)
     // Update all selected shape elements
-    shapeElements.forEach(element => {
-      updateElement(currentSlide.id, element.id, { opacity })
-    })
+    updateStyle({ fillOpacity: opacity })
+  }
+  
+  const handleBorderOpacityChange = (opacity: number) => {
+    setBorderOpacity(opacity)
+    // Update all selected shape elements
+    updateStyle({ borderOpacity: opacity })
   }
   
   const handleIndividualCornerChange = (corner: 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight', value: string) => {
@@ -113,7 +122,7 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
     
     if (newState) {
       // When turning on individual corners, initialize with the current borderRadius value
-      const currentRadius = style.borderRadius || 0
+      const currentRadius = firstShapeElement?.style?.borderRadius || 0
       const newValues = {
         topLeft: currentRadius,
         topRight: currentRadius,
@@ -142,13 +151,55 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
       <div className="pb-3">
         <label className="text-xs text-gray-600 block mb-2">Fill</label>
         <ColorOpacityControl
-          style={style}
-          opacity={firstShapeElement?.opacity || 1}
+          style={firstShapeElement?.style || {}}
+          opacity={fillOpacity}
           colorType="fill"
           onChange={updateStyle}
-          onOpacityChange={handleOpacityChange}
+          onOpacityChange={handleFillOpacityChange}
         />
       </div>
+      
+      {/* Border Width */}
+      <div className="pb-3">
+        <label className="text-xs text-gray-600 block mb-2">Border Width</label>
+        <div className="flex items-center gap-3">
+          <CustomSlider
+            value={firstShapeElement?.style?.borderWidth || 0}
+            onChange={(value) => updateStyle({ borderWidth: value })}
+            min={0}
+            max={20}
+            step={0.5}
+            className="flex-1"
+          />
+          <div className="relative">
+            <input
+              type="number"
+              value={firstShapeElement?.style?.borderWidth || 0}
+              onChange={(e) => updateStyle({ borderWidth: Math.max(0, Math.min(20, Number(e.target.value))) })}
+              className="w-[4.5rem] pl-3 pr-8 py-1 bg-gray-50 text-gray-800 text-sm rounded border border-gray-200 appearance-none focus:outline-none focus:border-blue-500 text-right"
+              min="0"
+              max="20"
+              step="0.5"
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">px</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Border Color - only show if border width > 0 */}
+      {(firstShapeElement?.style?.borderWidth || 0) > 0 && (
+        <div className="pb-3">
+          <label className="text-xs text-gray-600 block mb-2">Border Color</label>
+          <ColorOpacityControl
+            style={firstShapeElement?.style || {}}
+            opacity={borderOpacity}
+            colorType="stroke"
+            onChange={updateStyle}
+            onOpacityChange={handleBorderOpacityChange}
+            disableGradient={true}
+          />
+        </div>
+      )}
       
       {/* Border Radius - Only show for rectangles and SVG shapes without fixed aspect ratio */}
       {(shapeContent?.shape === 'rectangle' || (shapeContent?.shape === 'svg' && !shapeContent.aspectRatio)) && (
@@ -223,7 +274,7 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
           
           <div className="flex items-center gap-3">
             <CustomSlider
-              value={style.borderRadius || 0}
+              value={firstShapeElement?.style?.borderRadius || 0}
               onChange={(value) => updateStyle({ borderRadius: value })}
               min={0}
               max={100}
@@ -233,7 +284,7 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
             <div className="relative">
               <input
                 type="number"
-                value={style.borderRadius || 0}
+                value={firstShapeElement?.style?.borderRadius || 0}
                 onChange={(e) => updateStyle({ borderRadius: Math.max(0, Math.min(100, Number(e.target.value))) })}
                 className={`w-[4.5rem] pl-3 pr-8 py-1 bg-gray-50 text-gray-800 text-sm rounded border border-gray-200 appearance-none focus:outline-none focus:border-blue-500 text-right ${
                   individualCorners ? 'opacity-50 cursor-not-allowed' : ''
@@ -252,7 +303,7 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
       <div className="pb-3">
         <label className="text-xs text-gray-600 block mb-2">Blend</label>
         <BlendModeSelector
-          value={style.blendMode}
+          value={firstShapeElement?.style?.blendMode}
           onChange={(blendMode: BlendMode) => updateStyle({ blendMode })}
         />
       </div>

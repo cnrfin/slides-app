@@ -422,7 +422,10 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
                 {/* Add new slide button */}
                 <button
                   onClick={() => addSlide()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+                  onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                 >
                   <Plus className="w-5 h-5" strokeWidth={1} />
                 </button>
@@ -435,6 +438,9 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
           <div className="p-4 border-t border-gray-100">
             <button
               onClick={onAddSlide}
+              onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white hover:bg-blue-600 transition-colors font-medium"
               style={{ borderRadius: '0.5rem' }}
             >

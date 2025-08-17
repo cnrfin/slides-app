@@ -60,6 +60,25 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
         displayText = lines.map(line => line.trim() ? `• ${line}` : line).join('\n')
       }
       
+      // Calculate gradient points if gradient is used
+      const getGradientPoints = (angle: number, width: number, height: number) => {
+        const rad = (angle - 90) * Math.PI / 180
+        const dx = Math.cos(rad)
+        const dy = Math.sin(rad)
+        const diag = Math.sqrt(width * width + height * height)
+        const cx = width / 2
+        const cy = height / 2
+        
+        return {
+          start: { x: cx - dx * diag / 2, y: cy - dy * diag / 2 },
+          end: { x: cx + dx * diag / 2, y: cy + dy * diag / 2 }
+        }
+      }
+      
+      const hasGradient = element.style?.gradientStart && element.style?.gradientEnd
+      const gradientPoints = hasGradient ? 
+        getGradientPoints(element.style.gradientAngle || 0, scaledProps.width, scaledProps.height) : null
+      
       return (
         <Text
           {...scaledProps}
@@ -67,7 +86,13 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
           fontSize={(element.style?.fontSize || 16) * scale}
           fontFamily={element.style?.fontFamily || 'Arial'}
           fontStyle={`${element.style?.fontWeight || 'normal'} ${element.style?.fontStyle || 'normal'}`}
-          fill={element.style?.color || '#000000'}
+          fill={hasGradient ? undefined : (element.style?.color || '#000000')}
+          fillLinearGradientStartPoint={gradientPoints?.start}
+          fillLinearGradientEndPoint={gradientPoints?.end}
+          fillLinearGradientColorStops={hasGradient ? [
+            (element.style.gradientStartPosition || 0) / 100, element.style.gradientStart,
+            (element.style.gradientEndPosition || 100) / 100, element.style.gradientEnd
+          ] : undefined}
           align={element.style?.textAlign || 'left'}
           verticalAlign="top"
           wrap="word"
@@ -81,10 +106,62 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
     
     case 'shape': {
       const shapeContent = element.content as ShapeContent
+      // Calculate gradient points if gradient is used
+      const getGradientPoints = (angle: number, width: number, height: number) => {
+        const rad = (angle - 90) * Math.PI / 180
+        const dx = Math.cos(rad)
+        const dy = Math.sin(rad)
+        const diag = Math.sqrt(width * width + height * height)
+        const cx = width / 2
+        const cy = height / 2
+        
+        return {
+          start: { x: cx - dx * diag / 2, y: cy - dy * diag / 2 },
+          end: { x: cx + dx * diag / 2, y: cy + dy * diag / 2 }
+        }
+      }
+      
+      const hasGradient = element.style?.gradientStart && element.style?.gradientEnd
+      const gradientPoints = hasGradient ? 
+        getGradientPoints(element.style.gradientAngle || 0, scaledProps.width, scaledProps.height) : null
+      
+      // Calculate actual corner radius - convert percentage to pixels
+      const smallerDimension = Math.min(scaledProps.width, scaledProps.height)
+      let actualCornerRadius: number | number[]
+      if (element.style?.borderRadiusCorners) {
+        const corners = element.style.borderRadiusCorners.split(' ').map(Number)
+        if (corners.length === 4) {
+          actualCornerRadius = corners.map(percent => {
+            return percent === 100 
+              ? smallerDimension / 2 
+              : (percent / 100) * (smallerDimension / 2)
+          })
+        } else {
+          const radiusPercent = element.style?.borderRadius || 0
+          actualCornerRadius = radiusPercent === 100 
+            ? smallerDimension / 2 
+            : (radiusPercent / 100) * (smallerDimension / 2)
+        }
+      } else {
+        const radiusPercent = element.style?.borderRadius || 0
+        actualCornerRadius = radiusPercent === 100 
+          ? smallerDimension / 2 
+          : (radiusPercent / 100) * (smallerDimension / 2)
+      }
+      
       const shapeProps = {
         ...scaledProps,
-        fill: element.style?.backgroundColor || '#cccccc',
-        cornerRadius: (element.style?.borderRadius || 0) * scale,
+        fill: hasGradient ? undefined : (element.style?.backgroundColor || '#cccccc'),
+        fillLinearGradientStartPoint: gradientPoints?.start,
+        fillLinearGradientEndPoint: gradientPoints?.end,
+        fillLinearGradientColorStops: hasGradient ? [
+          (element.style.gradientStartPosition || 0) / 100, element.style.gradientStart,
+          (element.style.gradientEndPosition || 100) / 100, element.style.gradientEnd
+        ] : undefined,
+        stroke: element.style?.borderWidth && element.style?.borderWidth > 0 ? 
+          (element.style?.borderColor || '#000000') : undefined,
+        strokeWidth: (element.style?.borderWidth || 0) * scale,
+        cornerRadius: actualCornerRadius,
         perfectDrawEnabled: false,
         listening: false,
       }
@@ -111,7 +188,16 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
               y={shapeContent.viewBox ? -parseViewBox(shapeContent.viewBox).y * (scaledProps.height / parseViewBox(shapeContent.viewBox).height) : 0}
               scaleX={scaledProps.width / (shapeContent.viewBox ? parseViewBox(shapeContent.viewBox).width : 100)}
               scaleY={scaledProps.height / (shapeContent.viewBox ? parseViewBox(shapeContent.viewBox).height : 100)}
-              fill={element.style?.backgroundColor || '#cccccc'}
+              fill={hasGradient ? undefined : (element.style?.backgroundColor || '#cccccc')}
+              fillLinearGradientStartPoint={gradientPoints?.start}
+              fillLinearGradientEndPoint={gradientPoints?.end}
+              fillLinearGradientColorStops={hasGradient ? [
+                (element.style.gradientStartPosition || 0) / 100, element.style.gradientStart,
+                (element.style.gradientEndPosition || 100) / 100, element.style.gradientEnd
+              ] : undefined}
+              stroke={element.style?.borderWidth && element.style?.borderWidth > 0 ? 
+                (element.style?.borderColor || '#000000') : undefined}
+              strokeWidth={(element.style?.borderWidth || 0) * scale}
               perfectDrawEnabled={false}
               listening={false}
             />
@@ -262,15 +348,45 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
         displayText = lines.map(line => line.trim() ? `• ${line}` : line).join('\n')
       }
       
+      // Calculate gradient points if gradient is used
+      const getGradientPoints = (angle: number, width: number, height: number) => {
+        const rad = (angle - 90) * Math.PI / 180
+        const dx = Math.cos(rad)
+        const dy = Math.sin(rad)
+        const diag = Math.sqrt(width * width + height * height)
+        const cx = width / 2
+        const cy = height / 2
+        
+        return {
+          start: { x: cx - dx * diag / 2, y: cy - dy * diag / 2 },
+          end: { x: cx + dx * diag / 2, y: cy + dy * diag / 2 }
+        }
+      }
+      
+      const hasGradient = element.style?.gradientStart && element.style?.gradientEnd
+      const bubbleWidth = scaledProps.width - (tailPosition === 'left-center' || tailPosition === 'right-center' ? tailSize : 0)
+      const bubbleHeight = scaledProps.height - (tailPosition.startsWith('bottom') || tailPosition.startsWith('top') ? tailSize : 0)
+      const gradientPoints = hasGradient ? 
+        getGradientPoints(element.style.gradientAngle || 0, bubbleWidth, bubbleHeight) : null
+      
       return (
         <Group {...scaledProps}>
           {/* Main bubble body */}
           <Rect
             x={tailPosition === 'left-center' ? tailSize : 0}
             y={tailPosition.startsWith('bottom') ? 0 : (tailPosition.startsWith('top') ? tailSize : 0)}
-            width={scaledProps.width - (tailPosition === 'left-center' || tailPosition === 'right-center' ? tailSize : 0)}
-            height={scaledProps.height - (tailPosition.startsWith('bottom') || tailPosition.startsWith('top') ? tailSize : 0)}
-            fill={element.style?.backgroundColor || '#3b82f6'}
+            width={bubbleWidth}
+            height={bubbleHeight}
+            fill={hasGradient ? undefined : (element.style?.backgroundColor || '#3b82f6')}
+            fillLinearGradientStartPoint={gradientPoints?.start}
+            fillLinearGradientEndPoint={gradientPoints?.end}
+            fillLinearGradientColorStops={hasGradient ? [
+              (element.style.gradientStartPosition || 0) / 100, element.style.gradientStart,
+              (element.style.gradientEndPosition || 100) / 100, element.style.gradientEnd
+            ] : undefined}
+            stroke={element.style?.borderWidth && element.style?.borderWidth > 0 ? 
+              (element.style?.borderColor || '#000000') : undefined}
+            strokeWidth={(element.style?.borderWidth || 0) * scale}
             cornerRadius={(element.style?.borderRadius || 25) * scale}
             perfectDrawEnabled={false}
             listening={false}
@@ -317,7 +433,16 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
               
               context.fillStrokeShape(shape)
             }}
-            fill={element.style?.backgroundColor || '#3b82f6'}
+            fill={hasGradient ? undefined : (element.style?.backgroundColor || '#3b82f6')}
+            fillLinearGradientStartPoint={hasGradient ? { x: 0, y: 0 } : undefined}
+            fillLinearGradientEndPoint={hasGradient ? { x: scaledProps.width, y: scaledProps.height } : undefined}
+            fillLinearGradientColorStops={hasGradient ? [
+              (element.style.gradientStartPosition || 0) / 100, element.style.gradientStart,
+              (element.style.gradientEndPosition || 100) / 100, element.style.gradientEnd
+            ] : undefined}
+            stroke={element.style?.borderWidth && element.style?.borderWidth > 0 ? 
+              (element.style?.borderColor || '#000000') : undefined}
+            strokeWidth={(element.style?.borderWidth || 0) * scale}
             perfectDrawEnabled={false}
             listening={false}
           />
