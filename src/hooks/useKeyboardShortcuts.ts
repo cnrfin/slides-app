@@ -23,7 +23,9 @@ export function useKeyboardShortcuts() {
     batchUpdateElements,
     copyElements,
     pasteElements,
-    canPaste
+    canPaste,
+    saveToDatabase,
+    presentation
   } = useSlideStore()
   
   useEffect(() => {
@@ -122,6 +124,16 @@ export function useKeyboardShortcuts() {
         if (canPaste) {
           e.preventDefault()
           pasteElements()
+        }
+      }
+      
+      // Save (Ctrl/Cmd + S)
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        if (presentation) {
+          saveToDatabase().catch(error => {
+            console.error('Save failed:', error)
+          })
         }
       }
       
@@ -225,7 +237,7 @@ export function useKeyboardShortcuts() {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentSlideId, selectedSlideId, selectedElementIds, deleteElement, deleteSelectedSlide, duplicateSelectedSlide, slides, clearSelection, undo, redo, canUndo, canRedo, bringToFront, sendToBack, bringForward, sendBackward, batchUpdateElements, copyElements, pasteElements, canPaste])
+  }, [currentSlideId, selectedSlideId, selectedElementIds, deleteElement, deleteSelectedSlide, duplicateSelectedSlide, slides, clearSelection, undo, redo, canUndo, canRedo, bringToFront, sendToBack, bringForward, sendBackward, batchUpdateElements, copyElements, pasteElements, canPaste, saveToDatabase, presentation])
 }
 
 export default useKeyboardShortcuts

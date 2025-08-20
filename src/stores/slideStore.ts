@@ -7,6 +7,9 @@ import type { Slide, SlideElement, Presentation } from '@/types/slide.types'
 import type { SlideTemplate } from '@/types/template.types'
 import { measureAutoText } from '@/utils/text.utils'
 import { debounce } from 'lodash-es'
+import { saveLesson, loadLesson, loadUserLessons, deleteLesson } from '@/lib/database'
+import { toast } from '@/utils/toast'
+import { withSessionRecovery } from '@/utils/session-recovery'
 
 interface SlideStore {
   // State
@@ -19,6 +22,8 @@ interface SlideStore {
   clipboard: SlideElement[] | null // For copy/paste functionality
   lastSaved: string | null // ISO string of last save time
   canvasContainer: HTMLElement | null // Reference to canvas container for color picker
+  isSaving: boolean // Track save state
+  autoSaveEnabled: boolean // Enable/disable auto-save
   
   // Actions
   createPresentation: (title: string) => void
@@ -69,6 +74,14 @@ interface SlideStore {
   
   // Internal helper
   debouncedSaveHistory: () => void
+  
+  // Database operations
+  saveToDatabase: () => Promise<void>
+  loadFromDatabase: (lessonId: string) => Promise<void>
+  loadUserLessons: () => Promise<any[]>
+  deleteFromDatabase: (lessonId: string) => Promise<void>
+  enableAutoSave: () => void
+  disableAutoSave: () => void
 }
 
 // History management
@@ -138,7 +151,28 @@ const debouncedHistorySave = debounce((get: any, set: any) => {
     s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
     s.lastSaved = new Date().toISOString()
   })
+  
+  // Trigger auto-save if enabled
+  if (state.autoSaveEnabled && state.presentation) {
+    debouncedAutoSave(get)
+  }
 }, 500)
+
+// Create debounced auto-save function
+const debouncedAutoSave = debounce(async (get: any) => {
+  const state = get()
+  if (state.autoSaveEnabled && state.presentation && !state.isSaving) {
+    try {
+      // For auto-save, we don't need to update IDs since they should already be valid UUIDs
+      // after the first manual save
+      await saveLesson(state.presentation, state.slides)
+      // Silently update last saved time - no toast for auto-save
+    } catch (error) {
+      console.error('Auto-save failed:', error)
+      // Don't show error toast for auto-save failures
+    }
+  }
+}, 2000) // Auto-save every 2 seconds after changes stop
 
 const useSlideStore = create<SlideStore>()(
   subscribeWithSelector(
@@ -156,6 +190,8 @@ const useSlideStore = create<SlideStore>()(
       canUndo: historyManager.currentIndex > 0,
       canRedo: historyManager.currentIndex < historyManager.history.length - 1,
       lastSaved: new Date().toISOString(),
+      isSaving: false,
+      autoSaveEnabled: true,
       
       debouncedSaveHistory: () => debouncedHistorySave(get, set),
 
@@ -724,6 +760,141 @@ const useSlideStore = create<SlideStore>()(
           state.canUndo = true
           state.canRedo = historyManager.currentIndex < historyManager.history.length - 1
         }
+      }),
+
+      // Database operations
+      saveToDatabase: async () => {
+        const state = get()
+        if (!state.presentation || state.isSaving) return
+
+        set(draft => { draft.isSaving = true })
+
+        try {
+          // Wrap the save operation with session recovery
+          const { lesson, idMapping } = await withSessionRecovery(
+            () => saveLesson(state.presentation!, state.slides),
+            {
+              onError: (error) => {
+                console.error('Save failed after retries:', error)
+              }
+            }
+          )
+          
+          // Update the local state with database-generated IDs
+          set(draft => {
+            // Update presentation ID if it changed
+            if (draft.presentation && !draft.presentation.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+              draft.presentation.id = lesson.id
+            }
+            
+            // Update slide IDs if they changed
+            draft.slides.forEach(slide => {
+              const newSlideId = idMapping.slides[slide.id]
+              if (newSlideId) {
+                // Update slide ID
+                const oldId = slide.id
+                slide.id = newSlideId
+                slide.presentationId = lesson.id
+                
+                // Update current slide ID if it matches
+                if (draft.currentSlideId === oldId) {
+                  draft.currentSlideId = newSlideId
+                }
+                
+                // Update selected slide ID if it matches
+                if (draft.selectedSlideId === oldId) {
+                  draft.selectedSlideId = newSlideId
+                }
+                
+                // Update element IDs
+                slide.elements.forEach(element => {
+                  const newElementId = idMapping.elements[element.id]
+                  if (newElementId) {
+                    const oldElementId = element.id
+                    element.id = newElementId
+                    
+                    // Update selected element IDs
+                    const selectedIndex = draft.selectedElementIds.indexOf(oldElementId)
+                    if (selectedIndex !== -1) {
+                      draft.selectedElementIds[selectedIndex] = newElementId
+                    }
+                  }
+                })
+              }
+            })
+            
+            // Update presentation slide order
+            if (draft.presentation) {
+              draft.presentation.slides = lesson.slide_order
+            }
+            
+            draft.lastSaved = new Date().toISOString()
+            draft.isSaving = false
+          })
+          
+          toast.success('Lesson saved successfully!')
+        } catch (error) {
+          console.error('Error saving to database:', error)
+          set(draft => { draft.isSaving = false })
+          toast.error('Failed to save lesson. Please try again.')
+        }
+      },
+
+      loadFromDatabase: async (lessonId: string) => {
+        try {
+          const { presentation, slides } = await loadLesson(lessonId)
+          
+          set(state => {
+            state.presentation = presentation
+            state.slides = slides
+            state.currentSlideId = slides[0]?.id || null
+            state.selectedSlideId = slides[0]?.id || null
+            state.selectedElementIds = []
+            state.lastSaved = new Date().toISOString()
+          })
+          
+          // Save initial state to history
+          saveToHistory(get())
+          set(s => {
+            s.canUndo = historyManager.currentIndex > 0
+            s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          })
+          
+          toast.success('Lesson loaded successfully!')
+        } catch (error) {
+          console.error('Error loading from database:', error)
+          toast.error('Failed to load lesson. Please try again.')
+        }
+      },
+
+      loadUserLessons: async () => {
+        try {
+          // This would need user ID from auth store
+          // For now, return empty array - implement when auth is connected
+          return []
+        } catch (error) {
+          console.error('Error loading user lessons:', error)
+          toast.error('Failed to load lessons.')
+          return []
+        }
+      },
+
+      deleteFromDatabase: async (lessonId: string) => {
+        try {
+          await deleteLesson(lessonId)
+          toast.success('Lesson deleted successfully!')
+        } catch (error) {
+          console.error('Error deleting lesson:', error)
+          toast.error('Failed to delete lesson. Please try again.')
+        }
+      },
+
+      enableAutoSave: () => set(state => {
+        state.autoSaveEnabled = true
+      }),
+
+      disableAutoSave: () => set(state => {
+        state.autoSaveEnabled = false
       }),
     }))
   )

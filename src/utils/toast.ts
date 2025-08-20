@@ -1,33 +1,69 @@
 // src/utils/toast.ts
 import { showToast, clearLoadingToasts } from '@/components/ui/Toast'
 
+interface ToastOptions {
+  duration?: number
+  action?: {
+    label: string
+    onClick: () => void
+  }
+}
+
 interface ToastHelpers {
-  success: (message: string, loadingId?: string) => void
-  error: (message: string, loadingId?: string) => void
-  info: (message: string, loadingId?: string) => void
+  success: (message: string, optionsOrLoadingId?: string | ToastOptions) => void
+  error: (message: string, optionsOrLoadingId?: string | ToastOptions) => void
+  info: (message: string, optionsOrLoadingId?: string | ToastOptions) => void
+  warning: (message: string, options?: ToastOptions) => void
   loading: (message: string, id?: string) => string
 }
 
 export const toast: ToastHelpers = {
-  success: (message: string, loadingId?: string) => {
-    if (loadingId) {
+  success: (message: string, optionsOrLoadingId?: string | ToastOptions) => {
+    if (typeof optionsOrLoadingId === 'string') {
       clearLoadingToasts()
+      showToast('success', message)
+    } else {
+      const options = optionsOrLoadingId || {}
+      showToast('success', message, options.duration)
+      // Note: action button is not yet supported in the current Toast component
+      if (options.action) {
+        console.log('Toast action requested but not yet implemented:', options.action)
+      }
     }
-    showToast('success', message)
   },
   
-  error: (message: string, loadingId?: string) => {
-    if (loadingId) {
+  error: (message: string, optionsOrLoadingId?: string | ToastOptions) => {
+    if (typeof optionsOrLoadingId === 'string') {
       clearLoadingToasts()
+      showToast('error', message)
+    } else {
+      const options = optionsOrLoadingId || {}
+      showToast('error', message, options.duration)
+      if (options.action) {
+        console.log('Toast action requested but not yet implemented:', options.action)
+      }
     }
-    showToast('error', message)
   },
   
-  info: (message: string, loadingId?: string) => {
-    if (loadingId) {
+  info: (message: string, optionsOrLoadingId?: string | ToastOptions) => {
+    if (typeof optionsOrLoadingId === 'string') {
       clearLoadingToasts()
+      showToast('info', message)
+    } else {
+      const options = optionsOrLoadingId || {}
+      showToast('info', message, options.duration)
+      if (options.action) {
+        console.log('Toast action requested but not yet implemented:', options.action)
+      }
     }
-    showToast('info', message)
+  },
+  
+  warning: (message: string, options?: ToastOptions) => {
+    // Use 'info' type for warnings as the current Toast component doesn't have a warning type
+    showToast('info', message, options?.duration)
+    if (options?.action) {
+      console.log('Toast action requested but not yet implemented:', options.action)
+    }
   },
   
   loading: (message: string, id?: string) => {

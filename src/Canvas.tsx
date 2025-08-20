@@ -1,17 +1,16 @@
-// src/App.tsx
+// src/Canvas.tsx
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import SlideCanvas from '@/components/canvas/SlideCanvas'
 import useSlideStore from '@/stores/slideStore'
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts'
 import TemplateModal from '@/components/templates/TemplateModal'
 import RightSidebar from '@/components/sidebar/RightSidebar'
 import TemplateDesigner from '@/components/TemplateDesigner'
-// import TemplateDemo from '@/components/TemplateDemo'
 import DataKeyHelper from '@/components/DataKeyHelper'
 import Sidebar from '@/components/sidebar/Sidebar'
-import { Plus, ChevronLeft, ChevronRight, Undo2, Redo2, Wand2 } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Undo2, Redo2, Wand2, ArrowLeft } from 'lucide-react'
 import type { SlideTemplate } from '@/types/template.types'
-
 import { preloadCommonFonts } from '@/utils/font.utils'
 import SlidePreview from '@/components/previews/SlidePreview'
 import { Trash2, Copy } from 'lucide-react'
@@ -20,17 +19,17 @@ import ToastContainer from '@/components/ui/Toast'
 import { exportSlidesToPDF } from '@/utils/pdf-export'
 import { toast } from '@/utils/toast'
 
-
-function App() {
+export default function Canvas() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const canvasContainerRef = useRef<HTMLDivElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isTemplateDesignerOpen, setIsTemplateDesignerOpen] = useState(false)
-  const [currentZoom, setCurrentZoom] = useState(75) // Default to 75% zoom
-  const [textInputHeight, setTextInputHeight] = useState(0) // Track text input height
-  const [slideBottomY, setSlideBottomY] = useState(0) // Track slide bottom position
+  const [currentZoom, setCurrentZoom] = useState(75)
+  const [textInputHeight, setTextInputHeight] = useState(0)
+  const [slideBottomY, setSlideBottomY] = useState(0)
   
-  // Enable keyboard shortcuts
   useKeyboardShortcuts()
   
   const {
@@ -51,24 +50,31 @@ function App() {
     redo,
   } = useSlideStore()
   
-  // Initialize with a presentation on mount
+  // Check if we need to generate from prompt
+  useEffect(() => {
+    if (location.state?.action === 'generate' && location.state?.prompt) {
+      // Handle AI generation with the prompt
+      console.log('Generate from prompt:', location.state.prompt)
+      // TODO: Trigger AI generation with the prompt
+      // For now, just clear the state
+      navigate('/canvas', { replace: true })
+    }
+  }, [location.state, navigate])
+  
   useEffect(() => {
     if (!presentation) {
       createPresentation('My Language Lesson')
     }
   }, [presentation, createPresentation])
   
-  // Preload common fonts on mount
   useEffect(() => {
     preloadCommonFonts().catch(err => {
       console.warn('Failed to preload some fonts:', err)
     })
   }, [])
   
-  // Update canvas size when container resizes or on mount
   useEffect(() => {
     const updateSize = () => {
-      // Use full viewport dimensions
       setCanvasSize({
         width: window.innerWidth,
         height: window.innerHeight
@@ -80,7 +86,6 @@ function App() {
     return () => window.removeEventListener('resize', updateSize)
   }, [])
   
-  // Listen for zoom changes from canvas
   useEffect(() => {
     const handleZoomChange = (event: Event) => {
       const customEvent = event as CustomEvent
@@ -92,18 +97,12 @@ function App() {
     return () => window.removeEventListener('canvas:zoom-change', handleZoomChange)
   }, [])
   
-  // Calculate slide bottom position whenever zoom or canvas size changes
   useEffect(() => {
-    // Canvas dimensions from constants
     const CANVAS_HEIGHT = 600
     const zoom = currentZoom / 100
-    
-    // Calculate the slide's bottom edge position on screen
-    // The slide is centered in the viewport
     const slideHeight = CANVAS_HEIGHT * zoom
     const canvasCenterY = canvasSize.height / 2
     const slideBottomY = canvasCenterY + (slideHeight / 2)
-    
     setSlideBottomY(slideBottomY)
   }, [currentZoom, canvasSize.height])
   
@@ -121,19 +120,14 @@ function App() {
     }
   }
   
-
-  
-  // Handle clicks outside to clear selections
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      
-      // Check if click is not on any interactive elements
       if (
-        !target.closest('[class*="fixed left-0 top-0"]') && // Not on fixed sidebar
-        !target.closest('.konvajs-content') && // Not on canvas elements
-        !target.closest('[role="dialog"]') && // Not on modals
-        !target.closest('.properties-panel') // Not on properties panel
+        !target.closest('[class*="fixed left-0 top-0"]') &&
+        !target.closest('.konvajs-content') &&
+        !target.closest('[role="dialog"]') &&
+        !target.closest('.properties-panel')
       ) {
         clearSelection()
       }
@@ -145,38 +139,36 @@ function App() {
   
   return (
     <div className="relative h-screen bg-gray-50 overflow-hidden">
-      {/* Canvas Area - Full viewport */}
+      {/* Back to Dashboard Button */}
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="absolute top-4 left-4 z-30 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200 flex items-center gap-2 hover:bg-gray-50 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span className="text-sm font-medium">Dashboard</span>
+      </button>
+
+      {/* Canvas Area */}
       <div className="absolute inset-0">
         <div ref={canvasContainerRef} className="w-full h-full" style={{ backgroundColor: '#f9f9f9' }}>
           <SlideCanvas 
             containerWidth={canvasSize.width}
             containerHeight={canvasSize.height}
             viewportOffset={(() => {
-              // Calculate viewport offset based on proximity to slide
-              if (textInputHeight <= 32) return 0 // Not expanded
-              
-              // Calculate positions
-              const textInputHandleY = canvasSize.height - textInputHeight - 16 // 16px bottom margin
+              if (textInputHeight <= 32) return 0
+              const textInputHandleY = canvasSize.height - textInputHeight - 16
               const gap = textInputHandleY - slideBottomY
-              
-              // Only start repositioning when handle touches the slide (gap <= 0)
               if (gap > 0) return 0
-              
-              // Calculate offset to maintain exactly 8px gap once repositioning starts
-              // The offset should push the slide up by the amount needed
               const desiredGap = 8
               const overlapAmount = slideBottomY - textInputHandleY + desiredGap
-              
-              // Return the offset needed to maintain the gap
               return Math.max(0, overlapAmount)
-            })()} // Offset canvas when text input touches slide
+            })()}
           />
         </div>
       </div>
       
-      {/* Toolbar with Undo/Redo and Navigation - Top Center */}
+      {/* Toolbar */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2 flex items-center gap-4 z-20">
-        {/* Undo/Redo Buttons */}
         <div className="flex items-center gap-2">
           <button
             onClick={undo}
@@ -219,7 +211,6 @@ function App() {
           </button>
         </div>
         
-        {/* Zoom indicator */}
         <div className="flex items-center gap-4 border-l border-gray-200 pl-4">
           <span className="text-xs text-gray-600 font-medium">
             {currentZoom}%
@@ -227,37 +218,26 @@ function App() {
         </div>
       </div>
       
-      {/* Fixed Sidebar */}
       <Sidebar onAddSlide={() => setIsTemplateModalOpen(true)} />
       
-      {/* Right Sidebar - Always Visible */}
       <RightSidebar 
         onPlaySlideshow={() => {
-          // TODO: Implement slideshow functionality
           console.log('Play slideshow')
         }}
         onExportAllPDF={async () => {
           try {
-            // Show loading toast
             const toastId = toast.loading('Generating PDF for all slides...')
-            
-            // Get presentation name for filename
             const fileName = presentation?.title ? 
               `${presentation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf` : 
               'presentation.pdf'
-            
-            // Export all slides to PDF
             await exportSlidesToPDF({
               slides,
-              slideOrder: presentation?.slides, // Use presentation's slide order
+              slideOrder: presentation?.slides,
               fileName,
               onProgress: (progress) => {
-                // Update toast with progress
                 toast.loading(`Generating PDF... ${Math.round(progress)}%`, toastId)
               }
             })
-            
-            // Show success toast
             toast.success('All slides exported successfully!', toastId)
           } catch (error) {
             console.error('Failed to export PDF:', error)
@@ -266,33 +246,23 @@ function App() {
         }}
         onExportCurrentPDF={async () => {
           try {
-            // Find the current slide
             const currentSlide = slides.find(s => s.id === currentSlideId)
             if (!currentSlide) {
               toast.error('No slide selected')
               return
             }
-            
-            // Show loading toast
             const toastId = toast.loading('Generating PDF for current slide...')
-            
-            // Get slide index for filename
             const slideIndex = slides.findIndex(s => s.id === currentSlideId) + 1
             const fileName = presentation?.title ? 
               `${presentation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_slide_${slideIndex}.pdf` : 
               `slide_${slideIndex}.pdf`
-            
-            // Export only the current slide to PDF
             await exportSlidesToPDF({
-              slides: [currentSlide], // Only export current slide
+              slides: [currentSlide],
               fileName,
               onProgress: (progress) => {
-                // Update toast with progress
                 toast.loading(`Generating PDF... ${Math.round(progress)}%`, toastId)
               }
             })
-            
-            // Show success toast
             toast.success(`Slide ${slideIndex} exported successfully!`, toastId)
           } catch (error) {
             console.error('Failed to export PDF:', error)
@@ -301,7 +271,6 @@ function App() {
         }}
       />
       
-      {/* Template Modal */}
       <TemplateModal
         isOpen={isTemplateModalOpen}
         onClose={() => setIsTemplateModalOpen(false)}
@@ -311,19 +280,13 @@ function App() {
         }}
       />
       
-      {/* Template Designer */}
       <TemplateDesigner
         isOpen={isTemplateDesignerOpen}
         onClose={() => setIsTemplateDesignerOpen(false)}
       />
       
-      {/* Data Key Helper - show when template designer is open */}
       {isTemplateDesignerOpen && <DataKeyHelper />}
       
-      {/* Template Demo - for development */}
-      {/* <TemplateDemo /> */}
-      
-      {/* Template Mode Button */}
       <button
         onClick={() => setIsTemplateDesignerOpen(!isTemplateDesignerOpen)}
         className={`fixed bottom-20 right-8 px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium shadow-lg z-40 ${
@@ -337,28 +300,22 @@ function App() {
         Template Mode
       </button>
       
-      {/* Collapsible Text Input */}
       <CollapsibleTextInput 
         placeholder="Add a prompt..."
-        onHeightChange={setTextInputHeight} // Track height changes
+        onHeightChange={setTextInputHeight}
         onSubmit={(text, selectedProfile, selectedLesson, useGeniusMode, selectedSlides) => {
-          // This is now handled internally by the CollapsibleTextInput component
-          // The component directly calls the OpenAI API and adds slides to the canvas
           console.log('Generated:', {
             text,
             profile: selectedProfile,
             lesson: selectedLesson,
-            model: 'gpt-5-mini', // Both modes use gpt-5-mini
+            model: 'gpt-5-mini',
             geniusMode: useGeniusMode,
             slides: selectedSlides
           })
         }}
       />
       
-      {/* Toast Container */}
       <ToastContainer />
     </div>
   )
 }
-
-export default App

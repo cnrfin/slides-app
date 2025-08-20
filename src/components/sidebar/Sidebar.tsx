@@ -12,9 +12,11 @@ import {
   Image,
   BarChart3,
   Table,
-  Sparkles
+  Sparkles,
+  User
 } from 'lucide-react'
 import useSlideStore from '@/stores/slideStore'
+import useAuthStore from '@/stores/authStore'
 import SlidePreview from '@/components/previews/SlidePreview'
 import { formatDistanceToNow } from 'date-fns'
 import type { TextContent, ShapeContent, BlurbContent } from '@/types/slide.types'
@@ -25,6 +27,7 @@ import IconsPopup from './popups/IconsPopup'
 import ChartModal from './popups/ChartModal'
 import TablePopup from './popups/TablePopup'
 import { TabGroup } from '@/components/ui'
+import UserMenu from '@/components/auth/UserMenu'
 
 interface SidebarProps {
   onAddSlide: () => void
@@ -39,11 +42,13 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
   const [showIconsPopup, setShowIconsPopup] = useState(false)
   const [showChartModal, setShowChartModal] = useState(false)
   const [showTablePopup, setShowTablePopup] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const shapeButtonRef = useRef<HTMLButtonElement>(null)
   const iconsButtonRef = useRef<HTMLButtonElement>(null)
   const tableButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const userButtonRef = useRef<HTMLButtonElement>(null)
   
   const {
     slides,
@@ -59,6 +64,8 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
     lastSaved,
     updatePresentationTitle
   } = useSlideStore()
+  
+  const { user } = useAuthStore()
   
   const currentSlideIndex = slides.findIndex(s => s.id === currentSlideId)
   const currentSlide = slides.find(s => s.id === currentSlideId)
@@ -252,6 +259,19 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
     { icon: Table, label: 'Table', onClick: () => setShowTablePopup(!showTablePopup) },
   ]
   
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user) return 'U'
+    if (user.display_name) {
+      const parts = user.display_name.split(' ')
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+      }
+      return user.display_name[0].toUpperCase()
+    }
+    return (user.email || 'U')[0].toUpperCase()
+  }
+  
   return (
     <div
       ref={sidebarRef}
@@ -261,9 +281,42 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
         {/* Header */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-semibold text-gray-700">
-              CF
-            </div>
+            {/* User Profile Button */}
+            <button
+              ref={userButtonRef}
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="relative flex items-center justify-center transition-all hover:opacity-80"
+              title={user?.display_name || user?.email || 'User Profile'}
+            >
+              {user?.avatar_url ? (
+                <img 
+                  src={user.avatar_url} 
+                  alt={user.display_name || user.email}
+                  className="w-10 h-10 rounded-full border-2 border-gray-200"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                  {user ? (
+                    <span className="text-white font-semibold text-sm">
+                      {getUserInitials()}
+                    </span>
+                  ) : (
+                    <User className="w-5 h-5 text-white" />
+                  )}
+                </div>
+              )}
+            </button>
+            
+            {/* Subscription Badge */}
+            {user && (
+              <div className={`px-2 py-1 rounded text-xs font-medium ${
+                user.subscription_tier === 'max' ? 'bg-purple-100 text-purple-700' :
+                user.subscription_tier === 'pro' ? 'bg-blue-100 text-blue-700' :
+                'bg-gray-100 text-gray-700'
+              }`}>
+                {user.subscription_tier.toUpperCase()}
+              </div>
+            )}
           </div>
           
           <>
@@ -500,6 +553,19 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
           setShowChartModal(false)
         }}
       />
+      
+      {/* User Menu Dropdown - positioned relative to the user button */}
+      {showUserMenu && userButtonRef.current && (
+        <div
+          className="fixed z-50"
+          style={{
+            top: userButtonRef.current.getBoundingClientRect().bottom + 8,
+            left: userButtonRef.current.getBoundingClientRect().left
+          }}
+        >
+          <UserMenu onClose={() => setShowUserMenu(false)} />
+        </div>
+      )}
     </div>
   )
 }

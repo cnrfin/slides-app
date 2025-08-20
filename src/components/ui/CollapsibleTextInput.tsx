@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import ReactDOM from 'react-dom'
 import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen, AlertCircle, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { openai } from '@/lib/openai'
 import useSlideStore from '@/stores/slideStore'
 import { nanoid } from 'nanoid'
@@ -9,12 +10,16 @@ import { populateTemplate } from '@/utils/template.utils'
 import { useTemplates } from '@/hooks/useTemplates'
 import Modal from './Modal'
 import { showToast, clearLoadingToasts } from './Toast'
+import { getUserStudentProfiles, getCurrentUser } from '@/lib/database'
 
 interface StudentProfile {
   id: string
   name: string
-  firstLanguage: string
-  subjects?: string[]
+  target_language?: string
+  native_language?: string
+  level?: string
+  goals?: string[]
+  interests?: string
 }
 
 interface Lesson {
@@ -142,6 +147,7 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
   maxHeight = 400,
   defaultHeight = 0,
 }) => {
+  const navigate = useNavigate()
   const [contentHeight, setContentHeight] = useState(defaultHeight)
   const [isDragging, setIsDragging] = useState(false)
   const [text, setText] = useState('')
@@ -161,6 +167,8 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedData, setGeneratedData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [students, setStudents] = useState<StudentProfile[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(false)
   
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const dragStartY = useRef(0)
@@ -171,14 +179,25 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
   const { templates } = useTemplates()
   const { slides, clearSelection, addSlide } = useSlideStore()
 
-  // Mock student profiles data
-  const mockStudentProfiles: StudentProfile[] = [
-    { id: '1', name: 'Alex Johnson', firstLanguage: 'Spanish', subjects: ['Math', 'Science'] },
-    { id: '2', name: 'Sarah Chen', firstLanguage: 'Mandarin', subjects: ['English', 'History'] },
-    { id: '3', name: 'Marcus Williams', firstLanguage: 'French', subjects: ['Art', 'Music'] },
-    { id: '4', name: 'Emily Davis', firstLanguage: 'German', subjects: ['Biology', 'Chemistry'] },
-    { id: '5', name: 'James Wilson', firstLanguage: 'Italian', subjects: ['Physics', 'Math'] },
-  ]
+  // Load students from Supabase
+  useEffect(() => {
+    loadStudents()
+  }, [])
+
+  const loadStudents = async () => {
+    try {
+      setLoadingStudents(true)
+      const user = await getCurrentUser()
+      if (!user) return
+      
+      const profiles = await getUserStudentProfiles(user.id)
+      setStudents(profiles || [])
+    } catch (error) {
+      console.error('Error loading students:', error)
+    } finally {
+      setLoadingStudents(false)
+    }
+  }
 
   // Mock lessons data
   const mockLessons: Lesson[] = [
@@ -221,10 +240,11 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
     }))
 
   // Filter students based on search query
-  const filteredProfiles = mockStudentProfiles.filter(profile =>
+  const filteredProfiles = students.filter(profile =>
     profile.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
-    profile.firstLanguage?.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
-    profile.subjects?.some(subject => subject.toLowerCase().includes(studentSearchQuery.toLowerCase()))
+    profile.target_language?.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+    profile.native_language?.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+    profile.interests?.toLowerCase().includes(studentSearchQuery.toLowerCase())
   )
 
   // Filter lessons based on search query
@@ -503,9 +523,12 @@ The user's language learning topic/prompt is below.`
       if (currentSelectedProfile) {
         fullPrompt += `\n\nStudent Profile:
 - Name: ${currentSelectedProfile.name}
-- First Language: ${currentSelectedProfile.firstLanguage}
-- Subjects: ${currentSelectedProfile.subjects?.join(', ') || 'Not specified'}
-Please tailor the content appropriately for this student's background.`
+- Target Language: ${currentSelectedProfile.target_language || 'Not specified'}
+- Native Language: ${currentSelectedProfile.native_language || 'Not specified'}
+- Level: ${currentSelectedProfile.level || 'Not specified'}
+- Goals: ${currentSelectedProfile.goals?.join(', ') || 'Not specified'}
+- Interests: ${currentSelectedProfile.interests || 'Not specified'}
+Please tailor the content appropriately for this student's background and language learning needs.`
       }
       
       // Add lesson context if selected
@@ -751,8 +774,8 @@ Please build upon or reference this previous lesson content where appropriate.`
   }
 
   const handleAddNewStudent = () => {
-    // TODO: Implement add new student functionality
-    console.log('Add new student clicked')
+    // Navigate to students page to add a new student
+    navigate('/dashboard/students')
     setShowPopup(false)
     setPopupView('main')
     setStudentSearchQuery('')
@@ -897,7 +920,12 @@ Please build upon or reference this previous lesson content where appropriate.`
 
             {/* Student List */}
             <div className="max-h-48 overflow-y-auto">
-              {filteredProfiles.length > 0 ? (
+              {loadingStudents ? (
+                <div className="px-4 py-6 text-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400 mx-auto" />
+                  <p className="text-sm text-gray-500 mt-2">Loading students...</p>
+                </div>
+              ) : filteredProfiles.length > 0 ? (
                 filteredProfiles.map((profile) => (
                   <button
                     key={profile.id}
@@ -905,11 +933,16 @@ Please build upon or reference this previous lesson content where appropriate.`
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-50 last:border-b-0 transition-colors"
                   >
                     <div className="text-sm font-medium text-gray-700">{profile.name}</div>
+                    {profile.target_language && (
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        Learning {profile.target_language}
+                      </div>
+                    )}
                   </button>
                 ))
               ) : (
                 <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                  No students found
+                  {students.length === 0 ? 'No students added yet' : 'No students found'}
                 </div>
               )}
             </div>
