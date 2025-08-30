@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { Group, Rect, Text, Image, Shape, Path, Line } from 'react-konva'
 import Konva from 'konva'
+
 import { CANVAS_DIMENSIONS, CANVAS_COLORS } from '@/utils/canvas.constants'
 import type { SlideElement, TextContent, ShapeContent, ImageContent, BlurbContent, LineContent, IconContent } from '@/types/slide.types'
 import useSlideStore from '@/stores/slideStore'
@@ -54,6 +55,7 @@ interface ElementRendererProps {
   draggable?: boolean
   dataKey?: string
   showTemplateIndicators?: boolean
+
   onSelect: (e: any, elementId: string) => void
   onDragStart?: (e: any, elementId: string) => void
   onDrag?: (e: any) => void
@@ -72,6 +74,7 @@ isDragTarget = false,
 draggable = true,
 dataKey,
 showTemplateIndicators = false,
+
 onSelect,
 onDragStart,
 onDrag,

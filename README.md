@@ -42,21 +42,61 @@ cd figma-slides-app
 2. Install dependencies:
 ```bash
 npm install
+# or
+pnpm install
 ```
 
 3. Set up environment variables:
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-4. Add your OpenAI API key to `.env`:
+4. Configure your environment variables in `.env.local`:
+
+#### Required Environment Variables:
+
+```env
+# Supabase Configuration (Required)
+VITE_SUPABASE_URL=your_supabase_url_here
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+
+# OpenAI Configuration (Required for AI features)
+VITE_OPENAI_API_KEY=your_openai_api_key_here
+
+# Google OAuth (Required for Google authentication)
+VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
+VITE_GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+VITE_GOOGLE_REDIRECT_URI=http://localhost:5173/auth/google/callback
+
+# Optional
+VITE_GOOGLE_API_KEY=your_google_api_key_here  # Only for public Drive access
 ```
-VITE_OPENAI_API_KEY=your_actual_openai_api_key_here
-```
+
+#### Getting Your API Keys:
+
+**Supabase:**
+1. Go to [supabase.com](https://supabase.com) and create a project
+2. Go to Settings → API
+3. Copy your Project URL and anon public key
+
+**OpenAI:**
+1. Go to [platform.openai.com](https://platform.openai.com)
+2. Navigate to API Keys
+3. Create a new secret key
+
+**Google OAuth:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select existing
+3. Enable Google Drive API and Google Identity
+4. Go to Credentials → Create Credentials → OAuth 2.0 Client ID
+5. Add authorized redirect URIs: `http://localhost:5173/auth/google/callback`
+6. Copy Client ID and Client Secret
 
 5. Start the development server:
 ```bash
 npm run dev
+# or
+pnpm dev
 ```
 
 ## Using the AI Lesson Builder

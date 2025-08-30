@@ -22,6 +22,7 @@ import { FONTS, getAvailableWeights, isWeightAvailable, getClosestAvailableWeigh
 import CircularTailSelector from './CircularTailSelector'
 import BlendModeSelector from './BlendModeSelector'
 import EffectsControls from './EffectsControls'
+
 import { ColorOpacityControl, CustomSlider } from '@/components/ui'
 
 interface BlurbPropertiesPanelProps {
@@ -610,6 +611,8 @@ export default function BlurbPropertiesPanel({ className = '' }: BlurbProperties
         showBlur={true}
         showDropShadow={true}
       />
+      
+
       
       {/* Actions */}
       <div>

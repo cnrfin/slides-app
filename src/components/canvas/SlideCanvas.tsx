@@ -1455,6 +1455,8 @@ export default function SlideCanvas({
         isDragTarget={isDragTarget}
         dataKey={dataKey}
         showTemplateIndicators={showTemplateIndicators}
+        stage={stageRef.current}
+        layer={layerRef.current}
         onSelect={handleElementSelect}
         onDragStart={handleElementDragStart}
         onDrag={handleElementDrag}

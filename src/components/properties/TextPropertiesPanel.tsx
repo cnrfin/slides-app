@@ -22,6 +22,7 @@ import { loadFont } from '@/utils/font.utils'
 import { FONTS, getAvailableWeights, isWeightAvailable, getClosestAvailableWeight } from '@/utils/fonts.config'
 import BlendModeSelector from './BlendModeSelector'
 import EffectsControls from './EffectsControls'
+
 import { ColorOpacityControl } from '@/components/ui'
 
 interface TextPropertiesPanelProps {
@@ -486,6 +487,8 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
         showBlur={true}
         showDropShadow={true}
       />
+      
+
       
       {/* Actions */}
       <div>

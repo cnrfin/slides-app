@@ -5,6 +5,7 @@ import useSlideStore, { useCurrentSlide, useSelectedElements } from '@/stores/sl
 import type { SlideElement, ImageContent, BlendMode } from '@/types/slide.types'
 import BlendModeSelector from './BlendModeSelector'
 import EffectsControls from './EffectsControls'
+
 import { CustomSlider } from '@/components/ui'
 
 export default function ImagePropertiesPanel() {
@@ -360,6 +361,8 @@ export default function ImagePropertiesPanel() {
         showBlur={true}
         showDropShadow={true}
       />
+      
+
       
       {/* Actions */}
       <div>

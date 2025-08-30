@@ -5,6 +5,7 @@ import type { SlideElement, IconContent } from '@/types/slide.types'
 import useSlideStore from '@/stores/slideStore'
 import BlendModeSelector from './BlendModeSelector'
 import EffectsControls from './EffectsControls'
+
 import { ColorOpacityControl, CustomSlider } from '@/components/ui'
 import { getIconPath } from '@/utils/icon.utils'
 
@@ -103,6 +104,8 @@ export default function IconPropertiesPanel({ element }: IconPropertiesPanelProp
         showBlur={true}
         showDropShadow={true}
       />
+      
+
       
       {/* Actions */}
       <div>

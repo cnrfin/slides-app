@@ -10,6 +10,7 @@ import { useSelectedElements, useCurrentSlide } from '@/stores/slideStore'
 import type { ElementStyle, ShapeContent, BlendMode } from '@/types/slide.types'
 import BlendModeSelector from './BlendModeSelector'
 import EffectsControls from './EffectsControls'
+
 import { ColorOpacityControl, CustomSlider } from '@/components/ui'
 
 interface ShapePropertiesPanelProps {
@@ -316,6 +317,8 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
         showBlur={true}
         showDropShadow={true}
       />
+      
+
       
       {/* Actions */}
       <div>

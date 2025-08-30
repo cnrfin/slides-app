@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { Lock, Unlock } from 'lucide-react'
 import useSlideStore, { useCurrentSlide, useSelectedElements } from '@/stores/slideStore'
 import type { SlideElement, TableContent } from '@/types/slide.types'
+
 import { CustomSlider } from '@/components/ui'
 
 export default function TablePropertiesPanel() {
@@ -58,6 +59,8 @@ export default function TablePropertiesPanel() {
   
   return (
     <div className="space-y-4">
+      
+
       
       {/* Opacity */}
       <div className="pb-3">

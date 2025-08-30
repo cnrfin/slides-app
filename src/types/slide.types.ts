@@ -253,6 +253,8 @@ export interface GroupContent {
   elementIds: string[]
 }
 
+
+
 export interface ElementStyle {
   // Text styles
   fontFamily?: string
@@ -296,6 +298,8 @@ export interface ElementStyle {
   
   // Blend mode
   blendMode?: BlendMode
+  
+
   
   // Other
   padding?: number | { top: number; right: number; bottom: number; left: number }
@@ -413,3 +417,5 @@ export interface TemplateConfig {
   difficulty?: 'beginner' | 'intermediate' | 'advanced'
   estimatedTime?: number // in minutes
 }
+
+
