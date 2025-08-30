@@ -1,1 +1,2 @@
-/* Main styles are in styles/globals.css using Tailwind CSS */
+/* Import global styles */
+@import './styles/globals.css';

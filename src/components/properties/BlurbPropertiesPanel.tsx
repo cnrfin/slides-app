@@ -21,6 +21,7 @@ import type { BlurbContent, ElementStyle, BlendMode } from '@/types/slide.types'
 import { FONTS, getAvailableWeights, isWeightAvailable, getClosestAvailableWeight } from '@/utils/fonts.config'
 import CircularTailSelector from './CircularTailSelector'
 import BlendModeSelector from './BlendModeSelector'
+import EffectsControls from './EffectsControls'
 import { ColorOpacityControl, CustomSlider } from '@/components/ui'
 
 interface BlurbPropertiesPanelProps {
@@ -601,6 +602,14 @@ export default function BlurbPropertiesPanel({ className = '' }: BlurbProperties
           onChange={(blendMode: BlendMode) => handleStyleChange({ blendMode })}
         />
       </div>
+      
+      {/* Effects */}
+      <EffectsControls
+        style={style}
+        onChange={handleStyleChange}
+        showBlur={true}
+        showDropShadow={true}
+      />
       
       {/* Actions */}
       <div>

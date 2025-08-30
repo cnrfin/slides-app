@@ -4,6 +4,7 @@ import { Lock, Unlock } from 'lucide-react'
 import type { SlideElement, IconContent } from '@/types/slide.types'
 import useSlideStore from '@/stores/slideStore'
 import BlendModeSelector from './BlendModeSelector'
+import EffectsControls from './EffectsControls'
 import { ColorOpacityControl, CustomSlider } from '@/components/ui'
 import { getIconPath } from '@/utils/icon.utils'
 
@@ -94,6 +95,14 @@ export default function IconPropertiesPanel({ element }: IconPropertiesPanelProp
           onChange={(blendMode) => handleStyleUpdate({ blendMode })}
         />
       </div>
+      
+      {/* Effects */}
+      <EffectsControls
+        style={element.style || {}}
+        onChange={handleStyleUpdate}
+        showBlur={true}
+        showDropShadow={true}
+      />
       
       {/* Actions */}
       <div>

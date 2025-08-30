@@ -9,7 +9,7 @@ export const ConversationQuestionsTemplate: SlideTemplate = {
   id: 'conversation-questions',
   name: 'Conversation Questions',
   category: 'conversation',
-  description: '4 Conversation Questions with Image',
+  description: '4 discussion questions with image',
   background: "#ffffff",
   elements: [
     {

@@ -87,23 +87,52 @@ export async function saveLesson(presentation: Presentation, slides: Slide[]) {
       
       if (isValidUUID) {
         // This is an update - the ID is already a valid UUID from the database
-        const { data, error: lessonError } = await supabase
+        // First check if the lesson exists
+        const { data: existingLesson, error: checkError } = await supabase
           .from('lessons')
-          .update({
-            title: presentation.title,
-            description: presentation.description,
-            slide_order: presentation.slides,
-            target_language: presentation.settings?.language,
-            version: presentation.version,
-            last_opened_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
+          .select('id')
           .eq('id', presentation.id)
-          .select()
           .single()
+        
+        if (checkError || !existingLesson) {
+          // Lesson doesn't exist, create a new one with a new ID
+          console.log('Lesson with ID not found, creating new lesson:', presentation.id)
+          const { data, error: lessonError } = await supabase
+            .from('lessons')
+            .insert({
+              user_id: user.id,
+              title: presentation.title,
+              description: presentation.description,
+              slide_order: presentation.slides,
+              target_language: presentation.settings?.language,
+              version: presentation.version,
+              last_opened_at: new Date().toISOString(),
+            })
+            .select()
+            .single()
 
-        if (lessonError) throw lessonError
-        lesson = data
+          if (lessonError) throw lessonError
+          lesson = data
+        } else {
+          // Lesson exists, update it
+          const { data, error: lessonError } = await supabase
+            .from('lessons')
+            .update({
+              title: presentation.title,
+              description: presentation.description,
+              slide_order: presentation.slides,
+              target_language: presentation.settings?.language,
+              version: presentation.version,
+              last_opened_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', presentation.id)
+            .select()
+            .single()
+
+          if (lessonError) throw lessonError
+          lesson = data
+        }
       } else {
         // This is a new lesson - let the database generate the UUID
         const { data, error: lessonError } = await supabase
@@ -130,11 +159,47 @@ export async function saveLesson(presentation: Presentation, slides: Slide[]) {
         elements: {}
       }
 
+      // First, get all existing slides for this lesson to identify which ones to delete
+      const { data: existingSlides, error: fetchError } = await supabase
+        .from('slides')
+        .select('id')
+        .eq('lesson_id', lesson.id)
+
+      if (fetchError) {
+        console.error('Error fetching existing slides:', fetchError)
+      }
+
       // Save slides with the proper lesson ID
       const savedSlides = []
+      const currentSlideIds = new Set<string>() // Track which slide IDs are currently active
+      
       for (const slide of slides) {
         const savedSlide = await saveSlide(slide, lesson.id, idMapping)
         savedSlides.push(savedSlide)
+        currentSlideIds.add(savedSlide.id)
+      }
+
+      // Delete slides that are no longer in the presentation
+      if (existingSlides) {
+        const slidesToDelete = existingSlides
+          .filter(existingSlide => !currentSlideIds.has(existingSlide.id))
+          .map(slide => slide.id)
+
+        if (slidesToDelete.length > 0) {
+          console.log(`🗑️ Deleting ${slidesToDelete.length} orphaned slides:`, slidesToDelete)
+          
+          // Delete the orphaned slides (this will cascade delete their elements)
+          const { error: deleteError } = await supabase
+            .from('slides')
+            .delete()
+            .in('id', slidesToDelete)
+
+          if (deleteError) {
+            console.error('Error deleting orphaned slides:', deleteError)
+          } else {
+            console.log('✅ Successfully deleted orphaned slides')
+          }
+        }
       }
 
       // Update slide_order with the new slide IDs if needed
@@ -509,8 +574,16 @@ export async function createStudentProfile(profile: any) {
 
 export async function trackLessonGeneration(userId: string, promptData: any) {
   try {
+    console.log('📊 Tracking lesson generation:', {
+      userId,
+      studentProfileId: promptData.studentProfileId,
+      promptLength: promptData.promptText?.length,
+      slidesGenerated: promptData.slidesGenerated,
+      model: promptData.modelUsed
+    })
+    
     // Record in prompt history
-    await supabase
+    const { data, error } = await supabase
       .from('prompt_history')
       .insert({
         user_id: userId,
@@ -523,11 +596,19 @@ export async function trackLessonGeneration(userId: string, promptData: any) {
         model_used: promptData.modelUsed,
         generation_time_ms: promptData.generationTimeMs,
       })
+      .select()
+    
+    if (error) {
+      console.error('❌ Error inserting into prompt_history:', error)
+      throw error
+    }
+    
+    console.log('✅ Successfully tracked prompt in prompt_history:', data)
 
     // Update usage tracking for current month
     const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM format
     
-    await supabase
+    const { data: usageData, error: usageError } = await supabase
       .from('usage_tracking')
       .upsert({
         user_id: userId,
@@ -537,9 +618,24 @@ export async function trackLessonGeneration(userId: string, promptData: any) {
         onConflict: 'user_id,month_year',
         ignoreDuplicates: false
       })
+      .select()
+    
+    if (usageError) {
+      console.error('❌ Error updating usage_tracking:', usageError)
+      // Don't throw for usage tracking errors
+    } else {
+      console.log('✅ Successfully updated usage tracking:', usageData)
+    }
 
   } catch (error) {
-    console.error('Error tracking lesson generation:', error)
+    console.error('❌ Error tracking lesson generation:', error)
+    // Log more details about the error
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack
+      })
+    }
     // Don't throw - this shouldn't block lesson creation
   }
 }

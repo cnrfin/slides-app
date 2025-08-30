@@ -3,13 +3,23 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
-import type { Slide, SlideElement, Presentation } from '@/types/slide.types'
+import type { Slide, SlideElement, Presentation, TableContent } from '@/types/slide.types'
 import type { SlideTemplate } from '@/types/template.types'
 import { measureAutoText } from '@/utils/text.utils'
 import { debounce } from 'lodash-es'
 import { saveLesson, loadLesson, loadUserLessons, deleteLesson } from '@/lib/database'
 import { toast } from '@/utils/toast'
 import { withSessionRecovery } from '@/utils/session-recovery'
+import { 
+  getLuminance, 
+  getOptimalTextColor, 
+  getGradientLuminance,
+  getEffectiveColor 
+} from '@/utils/contrast.utils'
+import { 
+  findBackgroundElements, 
+  getDominantBackgroundColor 
+} from '@/utils/overlap.utils'
 
 interface SlideStore {
   // State
@@ -29,6 +39,7 @@ interface SlideStore {
   createPresentation: (title: string) => void
   updatePresentationTitle: (title: string) => void
   addSlide: (template?: SlideTemplate) => string
+  applyTemplateToSlide: (slideId: string, template: SlideTemplate) => void
   deleteSlide: (slideId: string) => void
   deleteSelectedSlide: () => void
   duplicateSlide: (slideId: string) => string
@@ -76,12 +87,22 @@ interface SlideStore {
   debouncedSaveHistory: () => void
   
   // Database operations
-  saveToDatabase: () => Promise<void>
+  saveToDatabase: (silent?: boolean) => Promise<void>
   loadFromDatabase: (lessonId: string) => Promise<void>
   loadUserLessons: () => Promise<any[]>
   deleteFromDatabase: (lessonId: string) => Promise<void>
   enableAutoSave: () => void
   disableAutoSave: () => void
+  resetStore: () => void
+  hasUnsavedChanges: () => boolean
+  
+  // Contrast adjustment
+  adjustTextContrastForSlide: (slideId: string, options?: { 
+    respectUserColors?: boolean 
+  }) => void
+  adjustTextContrastForAllSlides: (options?: { 
+    respectUserColors?: boolean 
+  }) => void
 }
 
 // History management
@@ -154,19 +175,26 @@ const debouncedHistorySave = debounce((get: any, set: any) => {
   
   // Trigger auto-save if enabled
   if (state.autoSaveEnabled && state.presentation) {
-    debouncedAutoSave(get)
+    debouncedAutoSave(get, set)
   }
 }, 500)
 
 // Create debounced auto-save function
-const debouncedAutoSave = debounce(async (get: any) => {
+const debouncedAutoSave = debounce(async (get: any, set: any) => {
   const state = get()
   if (state.autoSaveEnabled && state.presentation && !state.isSaving) {
     try {
-      // For auto-save, we don't need to update IDs since they should already be valid UUIDs
-      // after the first manual save
-      await saveLesson(state.presentation, state.slides)
-      // Silently update last saved time - no toast for auto-save
+      // Check if this presentation has been saved to database before
+      // (has a valid UUID as ID)
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state.presentation.id)
+      
+      if (isValidUUID) {
+        // This presentation exists in database, safe to auto-save
+        // Call saveToDatabase with silent flag to avoid toast notifications
+        const saveToDb = get().saveToDatabase
+        await saveToDb(true) // silent save for auto-save
+      }
+      // If not a valid UUID, skip auto-save (user hasn't manually saved yet)
     } catch (error) {
       console.error('Auto-save failed:', error)
       // Don't show error toast for auto-save failures
@@ -333,6 +361,89 @@ const useSlideStore = create<SlideStore>()(
         return slideId
       },
 
+      applyTemplateToSlide: (slideId, template) => {
+        set((state) => {
+          const slide = state.slides.find(s => s.id === slideId)
+          if (!slide) return
+          
+          // Clear existing elements
+          slide.elements = []
+          
+          // Create new elements from template
+          if (template && template.elements.length > 0) {
+            template.elements.forEach(templateElement => {
+              // Use template dimensions if provided, otherwise measure text for auto-sizing
+              let width = templateElement.width || 100
+              let height = templateElement.height || 50
+              
+              // Only auto-measure text if dimensions aren't explicitly set in the template
+              if (templateElement.type === 'text' && templateElement.content && (!templateElement.width || !templateElement.height)) {
+                const textContent = templateElement.content as any
+                // Add bullets to text if enabled
+                let textToMeasure = textContent.text || ''
+                if (templateElement.style?.listStyle === 'bullet') {
+                  const lines = textToMeasure.split('\n')
+                  textToMeasure = lines.map(line => line.trim() ? `• ${line}` : line).join('\n')
+                }
+                const dimensions = measureAutoText({
+                  text: textToMeasure,
+                  fontSize: templateElement.style?.fontSize || 16,
+                  fontFamily: templateElement.style?.fontFamily || 'Arial',
+                  lineHeight: templateElement.style?.lineHeight || 1.2,
+                  padding: 0 // No padding for tight fit
+                })
+                // Only override if template didn't specify dimensions
+                if (!templateElement.width) width = dimensions.width
+                if (!templateElement.height) height = dimensions.height
+              }
+              
+              const newElement: SlideElement = {
+                id: nanoid(),
+                type: templateElement.type || 'text',
+                x: templateElement.x || 0,
+                y: templateElement.y || 0,
+                width,
+                height,
+                rotation: templateElement.rotation,
+                opacity: templateElement.opacity,
+                locked: templateElement.locked,
+                visible: templateElement.visible !== false,
+                content: templateElement.content || { text: '' },
+                style: templateElement.style,
+                animations: templateElement.animations,
+                interactions: templateElement.interactions,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }
+              
+              slide.elements.push(newElement)
+            })
+          }
+          
+          // Update slide background and template reference
+          slide.background = template?.background || '#ffffff'
+          slide.templateId = template?.id
+          slide.updatedAt = new Date().toISOString()
+          
+          // Clear element selection
+          state.selectedElementIds = []
+        })
+        
+        // Save to history after applying template
+        const state = get()
+        saveToHistory(state)
+        set(s => {
+          s.canUndo = historyManager.currentIndex > 0
+          s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
+          s.lastSaved = new Date().toISOString()
+        })
+        
+        // Trigger auto-save
+        if (state.autoSaveEnabled && state.presentation) {
+          debouncedAutoSave(get, set)
+        }
+      },
+
       deleteSlide: (slideId) => {
         set((state) => {
           const index = state.slides.findIndex(s => s.id === slideId)
@@ -344,6 +455,11 @@ const useSlideStore = create<SlideStore>()(
             state.presentation.slides = state.presentation.slides.filter(id => id !== slideId)
             state.presentation.updatedAt = new Date().toISOString()
           }
+          
+          // Update slide order for remaining slides
+          state.slides.forEach((slide, idx) => {
+            slide.order = idx
+          })
           
           // Update current slide if needed
           if (state.currentSlideId === slideId) {
@@ -376,6 +492,11 @@ const useSlideStore = create<SlideStore>()(
           s.canRedo = historyManager.currentIndex < historyManager.history.length - 1
           s.lastSaved = new Date().toISOString()
         })
+        
+        // Trigger auto-save to persist the deletion to database
+        if (state.autoSaveEnabled && state.presentation) {
+          debouncedAutoSave(get, set)
+        }
       },
 
       duplicateSlide: (slideId) => {
@@ -475,6 +596,16 @@ const useSlideStore = create<SlideStore>()(
           slide.elements.push(newElement)
           slide.updatedAt = new Date().toISOString()
         })
+        
+        // If a text element was added, adjust its contrast
+        // Only for text elements, not blurbs (blurbs handle their own text color)
+        if (element.type === 'text') {
+          const { adjustTextContrastForSlide } = get()
+          // Use a small delay to ensure the element is fully added
+          setTimeout(() => {
+            adjustTextContrastForSlide(slideId, { respectUserColors: true })
+          }, 50)
+        }
         
         // Save to history after adding element
         const state = get()
@@ -742,6 +873,138 @@ const useSlideStore = create<SlideStore>()(
         get().debouncedSaveHistory()
       },
 
+      adjustTextContrastForSlide: (slideId, options = { respectUserColors: true }) => {
+        const state = get()
+        const slide = state.slides.find(s => s.id === slideId)
+        if (!slide) return
+        
+        const updates: Record<string, Partial<SlideElement>> = {}
+        
+        // Process each text element
+        slide.elements.forEach(element => {
+          // Skip non-text elements
+          if (element.type !== 'text') return
+          
+          // Skip if user manually set the color and we're respecting it
+          if (options.respectUserColors && element.metadata?.colorSource === 'user') {
+            return
+          }
+          
+          // Find what this text is overlapping
+          const backgroundColor = getDominantBackgroundColor(
+            element, 
+            slide.elements, 
+            slide.background as string
+          )
+          
+          // Calculate optimal text color
+          const optimalColor = getOptimalTextColor(backgroundColor)
+          
+          // Only update if color would change
+          if (element.style?.color !== optimalColor) {
+            updates[element.id] = {
+              style: {
+                ...element.style,
+                color: optimalColor
+              },
+              metadata: {
+                ...element.metadata,
+                colorSource: 'auto',
+                lastAutoColor: optimalColor,
+                // Preserve original color if this is first auto-adjustment
+                originalColor: element.metadata?.originalColor || element.style?.color
+              }
+            }
+          }
+        })
+        
+        // Process blurb elements (they have text inside)
+        slide.elements.forEach(element => {
+          if (element.type !== 'blurb') return
+          
+          // Skip if user manually set the color and we're respecting it
+          if (options.respectUserColors && element.metadata?.colorSource === 'user') {
+            return
+          }
+          
+          // For blurbs, calculate based on the blurb's own background
+          const blurbBgColor = element.style?.backgroundColor || '#3b82f6'
+          const optimalColor = getOptimalTextColor(blurbBgColor)
+          
+          if (element.style?.color !== optimalColor) {
+            updates[element.id] = {
+              style: {
+                ...element.style,
+                color: optimalColor
+              },
+              metadata: {
+                ...element.metadata,
+                colorSource: 'auto',
+                lastAutoColor: optimalColor,
+                originalColor: element.metadata?.originalColor || element.style?.color
+              }
+            }
+          }
+        })
+        
+        // Process table cells
+        slide.elements.forEach(element => {
+          if (element.type !== 'table') return
+          
+          const tableContent = element.content as TableContent
+          const updatedCells = JSON.parse(JSON.stringify(tableContent.cells))
+          let hasChanges = false
+          
+          tableContent.cells.forEach((row, rowIdx) => {
+            row.forEach((cell, colIdx) => {
+              // Skip if user manually set this cell's color
+              if (cell.style?.color && element.metadata?.[`cell_${rowIdx}_${colIdx}_colorSource`] === 'user') {
+                return
+              }
+              
+              const cellBgColor = cell.style?.background || '#ffffff'
+              const optimalColor = getOptimalTextColor(cellBgColor)
+              
+              if (cell.style?.color !== optimalColor) {
+                updatedCells[rowIdx][colIdx] = {
+                  ...cell,
+                  style: {
+                    ...cell.style,
+                    color: optimalColor
+                  }
+                }
+                hasChanges = true
+              }
+            })
+          })
+          
+          if (hasChanges) {
+            updates[element.id] = {
+              content: {
+                ...tableContent,
+                cells: updatedCells
+              },
+              metadata: {
+                ...element.metadata,
+                lastAutoAdjustment: new Date().toISOString()
+              }
+            }
+          }
+        })
+        
+        // Batch update all elements
+        if (Object.keys(updates).length > 0) {
+          get().batchUpdateElements(slideId, updates)
+        }
+      },
+      
+      adjustTextContrastForAllSlides: (options = { respectUserColors: true }) => {
+        const state = get()
+        state.slides.forEach(slide => {
+          get().adjustTextContrastForSlide(slide.id, options)
+        })
+      },
+
       undo: () => set((state) => {
         if (historyManager.currentIndex > 0) {
           historyManager.currentIndex--
@@ -763,7 +1026,7 @@ const useSlideStore = create<SlideStore>()(
       }),
 
       // Database operations
-      saveToDatabase: async () => {
+      saveToDatabase: async (silent = false) => {
         const state = get()
         if (!state.presentation || state.isSaving) return
 
@@ -832,11 +1095,15 @@ const useSlideStore = create<SlideStore>()(
             draft.isSaving = false
           })
           
-          toast.success('Lesson saved successfully!')
+          if (!silent) {
+            toast.success('Lesson saved successfully!')
+          }
         } catch (error) {
           console.error('Error saving to database:', error)
           set(draft => { draft.isSaving = false })
-          toast.error('Failed to save lesson. Please try again.')
+          if (!silent) {
+            toast.error('Failed to save lesson. Please try again.')
+          }
         }
       },
 
@@ -896,6 +1163,45 @@ const useSlideStore = create<SlideStore>()(
       disableAutoSave: () => set(state => {
         state.autoSaveEnabled = false
       }),
+
+      resetStore: () => {
+        // Clear history
+        historyManager.history = []
+        historyManager.currentIndex = -1
+        
+        // Reset state to initial values
+        set(state => {
+          state.presentation = null
+          state.slides = []
+          state.currentSlideId = null
+          state.selectedSlideId = null
+          state.selectedElementIds = []
+          state.showOutsideElements = true
+          state.clipboard = null
+          state.lastSaved = new Date().toISOString()
+          state.canvasContainer = null
+          state.isSaving = false
+          state.autoSaveEnabled = true
+          state.canUndo = false
+          state.canRedo = false
+          state.canPaste = false
+        })
+      },
+
+      hasUnsavedChanges: () => {
+        const state = get()
+        // Check if we have a presentation and it has been modified
+        if (!state.presentation) return false
+        
+        // Check if the presentation has a valid database ID (UUID format)
+        const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state.presentation.id)
+        
+        // If it doesn't have a valid UUID, it hasn't been saved to database yet
+        if (!isValidUUID) return true
+        
+        // If we have history, we have unsaved changes
+        return historyManager.currentIndex > 0
+      },
     }))
   )
 )

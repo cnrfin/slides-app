@@ -19,11 +19,16 @@ import TablePropertiesPanel from '@/components/properties/TablePropertiesPanel'
 import { TabGroup } from '@/components/ui'
 import { FONTS } from '@/utils/fonts.config'
 import ExportDropdown from '@/components/ui/ExportDropdown'
+import { googleDriveService } from '@/services/googleDrive'
+import useAuthStore from '@/stores/authStore'
+import { exportSlidesToPDF } from '@/utils/pdf-export'
+import { toast } from '@/utils/toast'
 
 interface RightSidebarProps {
   onPlaySlideshow?: () => void
   onExportAllPDF?: () => void
   onExportCurrentPDF?: () => void
+  onSaveToDrive?: () => void
 }
 
 
@@ -120,7 +125,7 @@ const THEMES = [
 
 type SidebarView = 'default' | 'fonts' | 'colors' | 'themes'
 
-export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExportCurrentPDF }: RightSidebarProps) {
+export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExportCurrentPDF, onSaveToDrive }: RightSidebarProps) {
   const [currentView, setCurrentView] = useState<SidebarView>('default')
   const [selectedFont, setSelectedFont] = useState(FONTS[0].family)
   const [selectedColorScheme, setSelectedColorScheme] = useState(COLOR_SCHEMES[0])
@@ -129,7 +134,8 @@ export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExport
   const [themeTab, setThemeTab] = useState<'default' | 'custom'>('default')
   
   const selectedElements = useSelectedElements()
-  const { slides, currentSlideId, updateElement } = useSlideStore()
+  const { user } = useAuthStore()
+  const { slides, currentSlideId, updateElement, presentation } = useSlideStore()
   
   // Filter fonts based on search
   const filteredFonts = FONTS.filter(font => 
@@ -170,6 +176,7 @@ export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExport
   // Apply color scheme to all shape elements
   const applyColorSchemeGlobally = (scheme: typeof COLOR_SCHEMES[0]) => {
     setSelectedColorScheme(scheme)
+    const { adjustTextContrastForSlide } = useSlideStore.getState()
     
     slides.forEach(slide => {
       slide.elements.forEach((element, index) => {
@@ -184,12 +191,17 @@ export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExport
           })
         }
       })
+      
+      // After updating shape colors, adjust text contrast
+      // This will only affect text that isn't user-colored
+      adjustTextContrastForSlide(slide.id, { respectUserColors: true })
     })
   }
   
   // Apply theme (font + colors + background)
   const applyThemeGlobally = (theme: typeof THEMES[0]) => {
     setSelectedTheme(theme)
+    const { adjustTextContrastForSlide } = useSlideStore.getState()
     
     slides.forEach(slide => {
       // Update slide background
@@ -202,8 +214,8 @@ export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExport
           updateElement(slide.id, element.id, {
             style: {
               ...element.style,
-              fontFamily: theme.font,
-              color: theme.colors[2] // Use third color for text
+              fontFamily: theme.font
+              // Don't set color here, let contrast adjustment handle it
             }
           })
         } else if (element.type === 'shape' || element.type === 'blurb') {
@@ -215,18 +227,21 @@ export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExport
             }
           })
           
-          // Update text color for blurbs
+          // Update font for blurbs but let contrast adjustment handle color
           if (element.type === 'blurb') {
             updateElement(slide.id, element.id, {
               style: {
                 ...element.style,
-                fontFamily: theme.font,
-                color: colorIndex < 2 ? theme.colors[3] : theme.colors[0] // Light text on dark bg, dark text on light bg
+                fontFamily: theme.font
               }
             })
           }
         }
       })
+      
+      // Adjust text contrast after color changes
+      // This will set optimal text colors based on backgrounds
+      adjustTextContrastForSlide(slide.id, { respectUserColors: true })
     })
   }
   
@@ -250,6 +265,61 @@ export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExport
           <ExportDropdown
             onExportAll={onExportAllPDF || (() => {})}
             onExportCurrent={onExportCurrentPDF || (() => {})}
+            onSaveToDrive={onSaveToDrive || (async () => {
+              if (!user) {
+                toast.error('Please log in to save to Google Drive')
+                return
+              }
+
+              const toastId = toast.loading('Preparing to save to Google Drive...')
+              
+              try {
+                // Generate PDF blob
+                const pdfBlob = await exportSlidesToPDF({
+                  slides,
+                  slideOrder: presentation?.slides,
+                  returnBlob: true
+                })
+                
+                // Upload to Drive
+                const fileName = presentation?.title ? 
+                  `${presentation.title}_${new Date().toISOString().split('T')[0]}.pdf` : 
+                  `presentation_${new Date().toISOString().split('T')[0]}.pdf`
+                
+                const result = await googleDriveService.uploadToDrive(
+                  user.id,
+                  pdfBlob,
+                  fileName,
+                  'application/pdf'
+                )
+                
+                toast.success('Saved to Google Drive successfully!', toastId)
+                
+                // Optionally open the file in Drive
+                if (result.id) {
+                  window.open(`https://drive.google.com/file/d/${result.id}/view`, '_blank')
+                }
+              } catch (error: any) {
+                console.error('Failed to save to Drive:', error)
+                
+                // Dismiss the loading toast first
+                toast.dismiss(toastId)
+                
+                // Provide more specific error messages
+                if (error.message?.includes('cancelled by user')) {
+                  // User closed the popup - no need to show an error
+                  // Toast is already dismissed
+                } else if (error.message?.includes('timeout')) {
+                  toast.error('Authentication timed out. Please try again.')
+                } else if (error.message?.includes('authenticate')) {
+                  toast.error('Please authorize Google Drive access and try again')
+                } else if (error.message?.includes('popup')) {
+                  toast.error('Please allow popups for Google Drive authentication')
+                } else {
+                  toast.error(error.message || 'Failed to save to Google Drive')
+                }
+              }
+            })}
           />
         </div>
       </div>

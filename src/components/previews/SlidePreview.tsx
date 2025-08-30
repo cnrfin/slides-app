@@ -5,6 +5,7 @@ import Konva from 'konva'
 import { CANVAS_DIMENSIONS } from '@/utils/canvas.constants'
 import type { Slide, SlideElement, TextContent, ShapeContent, ImageContent, BlurbContent, LineContent, IconContent, TableContent } from '@/types/slide.types'
 import { getIconPath } from '@/utils/icon.utils'
+import { getKonvaShadowProps } from '@/utils/shadow.utils'
 
 // Preview scale factor (1/4 of original size for performance)
 const PREVIEW_SCALE = 0.25
@@ -20,6 +21,21 @@ interface SlidePreviewProps {
 const parseViewBox = (viewBox: string) => {
   const [x, y, width, height] = viewBox.split(' ').map(Number)
   return { x, y, width, height }
+}
+
+// Helper to get scaled shadow props
+const getScaledShadowProps = (dropShadow: any, scale: number) => {
+  const shadowProps = getKonvaShadowProps(dropShadow)
+  if (!shadowProps.shadowEnabled) return {}
+  
+  return {
+    shadowEnabled: shadowProps.shadowEnabled,
+    shadowOffsetX: shadowProps.shadowOffsetX * scale,
+    shadowOffsetY: shadowProps.shadowOffsetY * scale,
+    shadowBlur: shadowProps.shadowBlur * scale,
+    shadowColor: shadowProps.shadowColor,
+    shadowForStrokeEnabled: shadowProps.shadowForStrokeEnabled
+  }
 }
 
 // Simplified element renderer for preview
@@ -39,15 +55,21 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
     }
   }, [element])
   
-  // Scale all dimensions
-  const scaledProps = useMemo(() => ({
-    x: element.x * scale,
-    y: element.y * scale,
-    width: element.width * scale,
-    height: element.height * scale,
-    rotation: element.rotation || 0,
-    opacity: element.opacity ?? 1,
-  }), [element, scale])
+  // Scale all dimensions and effects
+  const scaledProps = useMemo(() => {
+    const shadowProps = getScaledShadowProps(element.style?.dropShadow, scale)
+    return {
+      x: element.x * scale,
+      y: element.y * scale,
+      width: element.width * scale,
+      height: element.height * scale,
+      rotation: element.rotation || 0,
+      opacity: element.opacity ?? 1,
+      ...shadowProps,
+      filters: element.style?.blur && element.style.blur > 0 ? [Konva.Filters.Blur] : undefined,
+      blurRadius: element.style?.blur ? element.style.blur * scale : undefined,
+    }
+  }, [element, scale])
   
   switch (element.type) {
     case 'text': {
@@ -214,7 +236,12 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
       
       return (
         <Group
-          {...scaledProps}
+          x={scaledProps.x}
+          y={scaledProps.y}
+          rotation={scaledProps.rotation}
+          opacity={scaledProps.opacity}
+          filters={scaledProps.filters}
+          blurRadius={scaledProps.blurRadius}
         >
           <Path
             data={iconData.path}
@@ -229,6 +256,10 @@ const PreviewElement = React.memo(({ element, scale }: { element: SlideElement; 
             strokeWidth={iconData.filled ? 0 : ((element.style?.strokeWidth || 5) / (scaledProps.width / 24))}
             lineCap="round"
             lineJoin="round"
+            shadowForStrokeEnabled={scaledProps.shadowForStrokeEnabled}
+            shadowOffset={scaledProps.shadowOffset}
+            shadowBlur={scaledProps.shadowBlur}
+            shadowColor={scaledProps.shadowColor}
             perfectDrawEnabled={false}
             listening={false}
           />

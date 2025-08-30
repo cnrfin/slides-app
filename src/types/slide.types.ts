@@ -78,6 +78,10 @@ export interface ElementMetadata {
   tableId?: string // ID of parent table if this is a cell text element
   cellRow?: number // Row index in table
   cellCol?: number // Column index in table
+  colorSource?: 'user' | 'auto' | 'default'  // Track color origin
+  originalColor?: string  // Store the user's original color choice
+  lastAutoColor?: string  // Track last auto-adjusted color
+  zIndex?: number // For z-index sorting in overlap detection
   [key: string]: any // Allow other metadata
 }
 
@@ -285,6 +289,10 @@ export interface ElementStyle {
   
   // Shadow
   shadow?: Shadow
+  dropShadow?: DropShadow
+  
+  // Filter effects
+  blur?: number // Blur amount in pixels
   
   // Blend mode
   blendMode?: BlendMode
@@ -320,6 +328,16 @@ export interface Shadow {
   y: number
   blur: number
   color: string
+}
+
+export interface DropShadow {
+  enabled: boolean
+  offsetX: number
+  offsetY: number
+  blur: number
+  spread?: number
+  color: string
+  opacity?: number
 }
 
 export interface Animation {

@@ -1,22 +1,20 @@
 // src/main.tsx
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import AppRouter from './AppRouter'
-import { clearStaleSessionData } from './utils/session-utils'
-import './styles/globals.css'
-import './styles/text-editor.css'
+import AppRouter from './AppRouter.tsx'
+import './index.css'
 
-// Clear any stale session data on app startup
-clearStaleSessionData()
-
-// Disable Konva warnings in development
+// Run Google OAuth setup check in development
 if (import.meta.env.DEV) {
-  // @ts-ignore
-  window.Konva = { enableTrace: false }
+  import('./utils/checkGoogleSetup').then(module => {
+    // Check will run automatically
+  }).catch(error => {
+    console.error('Failed to load setup checker:', error);
+  });
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AppRouter />
-  </React.StrictMode>
+  </React.StrictMode>,
 )

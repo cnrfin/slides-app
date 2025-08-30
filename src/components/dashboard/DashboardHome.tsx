@@ -4,11 +4,14 @@ import { useNavigate } from 'react-router-dom'
 import { Sparkles, BookOpen, FileText, Presentation } from 'lucide-react'
 import AIPromptInput from './AIPromptInput'
 import { getUserStudentProfiles, getCurrentUser } from '@/lib/database'
+import { useLessons } from '@/hooks/useLessons'
+import ToastContainer from '@/components/ui/Toast'
 
 export default function DashboardHome() {
   const navigate = useNavigate()
   const [students, setStudents] = useState<any[]>([])
   const [loadingStudents, setLoadingStudents] = useState(true)
+  const { lessons, loadingLessons, refreshLessons } = useLessons()
 
   // Load students from Supabase
   useEffect(() => {
@@ -72,7 +75,9 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="min-h-full flex flex-col">
+    <>
+      <ToastContainer />
+      <div className="min-h-full flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-8 py-6">
         <h1 className="text-2xl font-semibold text-gray-900">{getGreeting()}</h1>
@@ -100,6 +105,8 @@ export default function DashboardHome() {
               suggestions={suggestions}
               students={students}
               loadingStudents={loadingStudents}
+              lessons={lessons}
+              loadingLessons={loadingLessons}
             />
           </div>
 
@@ -135,5 +142,6 @@ export default function DashboardHome() {
         </div>
       </div>
     </div>
+    </>
   )
 }

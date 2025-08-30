@@ -127,8 +127,8 @@ export default function RecentLessonsPopup({ isOpen, onClose, anchorElement }: R
       data-recent-lessons-popup
       className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 w-80 max-h-[500px] overflow-hidden"
       style={{
-        top: 176,
-        left: 258,
+        bottom: 176,
+        left: 220,
       }}
     >
 

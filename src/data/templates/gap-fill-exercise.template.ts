@@ -9,7 +9,7 @@ export const GapFillExerciseTemplate: SlideTemplate = {
   id: 'gap-fill-exercise',
   name: 'Gap Fill Exercise',
   category: 'vocabulary',
-  description: "Vocabulary 'Fill in the Gaps' Exercise",
+  description: 'Fill in the blanks vocabulary exercise',
   background: "#ffffff",
   elements: [
     {

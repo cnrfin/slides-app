@@ -1,20 +1,26 @@
 // src/components/dashboard/Sidebar.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import useAuthStore from '@/stores/authStore'
+
 import {
-  ChevronRight,
-  ChevronLeft,
+  Menu,
+  PanelLeft,
+  PanelLeftClose,
   Home,
   BookOpen,
   Users,
-  Video,
   Settings,
   CreditCard,
-  FileText,
   LogOut,
-  Menu,
-  X
+  X,
+  Package,
+  Languages,
+  GraduationCap,
+  Sparkles,
+  ChevronDown,
+  FolderOpen,
+  BarChart3
 } from 'lucide-react'
 
 interface NavItem {
@@ -28,11 +34,16 @@ interface SidebarProps {
   onToggleCollapse: () => void
 }
 
+
+
 export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isHoveringToggleButton, setIsHoveringToggleButton] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const { user, signOut } = useAuthStore()
+  const userMenuRef = useRef<HTMLDivElement>(null)
 
   const navItems: NavItem[] = [
     {
@@ -42,8 +53,13 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
     },
     {
       path: '/dashboard/lessons',
-      label: 'My Lessons',
+      label: 'Lessons',
       icon: <BookOpen className="w-5 h-5" strokeWidth={1.5} />
+    },
+    {
+      path: '/dashboard/courses',
+      label: 'Courses',
+      icon: <FolderOpen className="w-5 h-5" strokeWidth={1.5} />
     },
     {
       path: '/dashboard/students',
@@ -51,24 +67,14 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
       icon: <Users className="w-5 h-5" strokeWidth={1.5} />
     },
     {
-      path: '/dashboard/tutorials',
-      label: 'Tutorials',
-      icon: <Video className="w-5 h-5" strokeWidth={1.5} />
+      path: '/dashboard/analytics',
+      label: 'Analytics',
+      icon: <BarChart3 className="w-5 h-5" strokeWidth={1.5} />
     },
     {
-      path: '/canvas',
-      label: 'New Canvas',
-      icon: <FileText className="w-5 h-5" strokeWidth={1.5} />
-    },
-    {
-      path: '/dashboard/settings',
-      label: 'Settings',
-      icon: <Settings className="w-5 h-5" strokeWidth={1.5} />
-    },
-    {
-      path: '/dashboard/billing',
-      label: 'Billing',
-      icon: <CreditCard className="w-5 h-5" strokeWidth={1.5} />
+      path: '/dashboard/addons',
+      label: 'Addons',
+      icon: <Package className="w-5 h-5" strokeWidth={1.5} />
     }
   ]
 
@@ -77,20 +83,24 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
     setIsMobileOpen(false)
   }, [location.pathname])
 
-  // Close mobile menu when clicking outside
+  // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false)
+      }
+      
       const sidebar = document.getElementById('mobile-sidebar')
       if (sidebar && !sidebar.contains(event.target as Node)) {
         setIsMobileOpen(false)
       }
     }
 
-    if (isMobileOpen) {
+    if (isMobileOpen || isUserMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isMobileOpen])
+  }, [isMobileOpen, isUserMenuOpen])
 
   const handleSignOut = async () => {
     try {
@@ -116,6 +126,11 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
     return user?.email?.[0]?.toUpperCase() || 'U'
   }
 
+  const getUserPlan = () => {
+    // This would typically come from user data
+    return 'Max plan'
+  }
+
   return (
     <>
       {/* Mobile Menu Button */}
@@ -123,7 +138,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
         onClick={() => setIsMobileOpen(!isMobileOpen)}
         className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow lg:hidden"
       >
-        {isMobileOpen ? <X className="w-5 h-5" strokeWidth={1.5} /> : <Menu className="w-5 h-5" strokeWidth={1.5} />}
+        {isMobileOpen ? <X className="w-5 h-5" strokeWidth={1.5} /> : <PanelLeft className="w-5 h-5" strokeWidth={1.5} />}
       </button>
 
       {/* Mobile Overlay */}
@@ -137,37 +152,29 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
           isCollapsed ? 'w-16' : 'w-64'
         }`}
       >
-        {/* Toggle Button */}
-        <button
-          onClick={onToggleCollapse}
-          className="absolute -right-3 top-8 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors z-10"
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-3 h-3 text-gray-600" strokeWidth={1.5} />
-          ) : (
-            <ChevronLeft className="w-3 h-3 text-gray-600" strokeWidth={1.5} />
-          )}
-        </button>
-
-        {/* User Profile */}
-        <div className={`p-4 border-b border-gray-100 ${isCollapsed ? 'px-3' : ''}`}>
-          <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm font-medium">
-                {getUserInitials()}
-              </span>
-            </div>
-            {!isCollapsed && (
-              <div className="overflow-hidden">
-                <div className="font-medium text-gray-900 truncate">
-                  {user?.display_name || 'User'}
-                </div>
-                <div className="text-xs text-gray-500 truncate">
-                  {user?.email}
-                </div>
-              </div>
+        {/* Header with Logo and Toggle */}
+        <div className={`h-16 flex items-center border-b border-gray-100 ${isCollapsed ? 'px-3 justify-center' : 'px-4 gap-3'}`}>
+          {/* Toggle Button - shows collapse icon on hover when expanded */}
+          <button
+            onClick={onToggleCollapse}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+            aria-label="Toggle sidebar"
+            onMouseEnter={() => setIsHoveringToggleButton(true)}
+            onMouseLeave={() => setIsHoveringToggleButton(false)}
+          >
+            {!isCollapsed && isHoveringToggleButton ? (
+              <PanelLeftClose className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
+            ) : (
+              <PanelLeft className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
             )}
-          </div>
+          </button>
+
+          {/* App Name - hidden when collapsed */}
+          {!isCollapsed && (
+            <div className="flex items-center overflow-hidden">
+              <span className="text-xl font-semibold text-gray-800">TutorSlides</span>
+            </div>
+          )}
         </div>
 
         {/* Navigation */}
@@ -189,18 +196,113 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
           ))}
         </nav>
 
-        {/* Sign Out */}
-        <div className="p-2 border-t border-gray-100">
-          <button
-            onClick={handleSignOut}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors w-full ${
-              isCollapsed ? 'justify-center' : ''
-            }`}
-            title={isCollapsed ? 'Sign Out' : undefined}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
-            {!isCollapsed && <span>Sign Out</span>}
-          </button>
+        {/* User Profile Section - Now at the bottom */}
+        <div className="p-2 border-t border-gray-100" ref={userMenuRef}>
+          <div className="relative">
+            <button
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors ${
+                isCollapsed ? 'justify-center' : ''
+              }`}
+            >
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-medium">
+                  {getUserInitials()}
+                </span>
+              </div>
+              {!isCollapsed && (
+                <>
+                  <div className="flex-1 text-left">
+                    <div className="font-medium text-sm text-gray-900 truncate">
+                      {user?.display_name || user?.email?.split('@')[0] || 'User'}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">
+                      {getUserPlan()}
+                    </div>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                </>
+              )}
+            </button>
+
+            {/* User Dropdown Menu */}
+            {isUserMenuOpen && (
+              <div className={`absolute bottom-full mb-2 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden dropdown-animation z-[60] ${
+                isCollapsed ? 'left-0 min-w-[240px]' : 'left-0 right-0'
+              }`}>
+                {/* User Info Header */}
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-sm font-medium">
+                        {getUserInitials()}
+                      </span>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <div className="font-medium text-sm text-gray-900 truncate">
+                        {user?.display_name || 'Display Name'}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {getUserPlan()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500 truncate">
+                    {user?.email || 'email@example.com'}
+                  </div>
+                </div>
+
+                {/* Menu Options */}
+                <div className="py-1">
+                  <Link
+                    to="/dashboard/settings"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <Settings className="w-4 h-4" strokeWidth={1.5} />
+                    Settings
+                  </Link>
+                  
+                  <button className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    <span className="flex items-center gap-3">
+                      <Languages className="w-4 h-4" strokeWidth={1.5} />
+                      Language
+                    </span>
+                    <ChevronDown className="w-4 h-4 rotate-[-90deg]" strokeWidth={1.5} />
+                  </button>
+                  
+                  <Link
+                    to="/dashboard/tutorials"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <GraduationCap className="w-4 h-4" strokeWidth={1.5} />
+                    Tutorials
+                  </Link>
+                  
+                  <Link
+                    to="/dashboard/billing"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <Sparkles className="w-4 h-4" strokeWidth={1.5} />
+                    Upgrade plan
+                  </Link>
+                </div>
+
+                {/* Sign Out */}
+                <div className="border-t border-gray-100 py-1">
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" strokeWidth={1.5} />
+                    Log out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -211,23 +313,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* User Profile */}
-        <div className="p-4 border-b border-gray-100 mt-14">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm font-medium">
-                {getUserInitials()}
-              </span>
-            </div>
-            <div className="overflow-hidden">
-              <div className="font-medium text-gray-900 truncate">
-                {user?.display_name || 'User'}
-              </div>
-              <div className="text-xs text-gray-500 truncate">
-                {user?.email}
-              </div>
-            </div>
-          </div>
+        {/* Header with App Name */}
+        <div className="h-16 flex items-center px-4 border-b border-gray-100 mt-14">
+          <span className="text-xl font-semibold text-gray-800">TutorSlides</span>
         </div>
 
         {/* Navigation */}
@@ -248,15 +336,52 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
           ))}
         </nav>
 
-        {/* Sign Out */}
+        {/* User Profile Section - Mobile */}
         <div className="p-2 border-t border-gray-100">
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors w-full"
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
-            <span>Sign Out</span>
-          </button>
+          <div className="px-3 py-2">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-medium">
+                  {getUserInitials()}
+                </span>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="font-medium text-sm text-gray-900 truncate">
+                  {user?.display_name || user?.email?.split('@')[0] || 'User'}
+                </div>
+                <div className="text-xs text-gray-500 truncate">
+                  {getUserPlan()}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Mobile Menu Options */}
+          <div className="mt-2 space-y-1">
+            <Link
+              to="/dashboard/settings"
+              className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              <Settings className="w-4 h-4" strokeWidth={1.5} />
+              Settings
+            </Link>
+            
+            <Link
+              to="/dashboard/billing"
+              className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              <Sparkles className="w-4 h-4" strokeWidth={1.5} />
+              Upgrade plan
+            </Link>
+            
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <LogOut className="w-4 h-4" strokeWidth={1.5} />
+              Log out
+            </button>
+          </div>
         </div>
       </aside>
     </>

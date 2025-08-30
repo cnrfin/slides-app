@@ -1,9 +1,16 @@
 // src/components/dashboard/AIPromptInput.tsx
 import { useState, useRef, useEffect } from 'react'
 import ReactDOM from 'react-dom'
-import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen } from 'lucide-react'
+import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen, ChevronRight, Loader2, FileText, File } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import './AIPromptInput.css'
+import { generateLesson } from '@/services/lessonGeneration'
+import { useTemplates } from '@/hooks/useTemplates'
+import { toast } from '@/utils/toast'
+import { clearLoadingToasts } from '@/components/ui/Toast'
+import type { SlideTemplate } from '@/types/template.types'
+import { parseFile, formatFileSize, type FileUpload } from '@/utils/fileUtils'
+import { EnhancedSlideSelector, type SelectedSlideInstance } from '@/components/ui/SlideSelector'
 
 interface Suggestion {
   icon: string | React.ReactNode
@@ -23,18 +30,15 @@ interface StudentProfile {
 interface Lesson {
   id: string
   title: string
-  description: string
+  description?: string
   vocabulary?: string[]
   grammarPoints?: string[]
   topics?: string[]
   date?: string
-}
-
-interface SlideTemplateInfo {
-  id: string
-  name: string
-  category: string
-  order?: number
+  created_at?: string
+  updated_at?: string
+  target_language?: string
+  slide_order?: string[]
 }
 
 interface AIPromptInputProps {
@@ -42,86 +46,101 @@ interface AIPromptInputProps {
     prompt: string
     selectedStudent?: StudentProfile | null
     selectedLesson?: Lesson | null
-    selectedSlides?: SlideTemplateInfo[]
+    selectedSlides?: SelectedSlideInstance[]
     geniusMode?: boolean
+    uploadedFile?: FileUpload | null
   }) => void
   suggestions?: Suggestion[]
   students?: StudentProfile[]
+  lessons?: Lesson[]
   loadingStudents?: boolean
+  loadingLessons?: boolean
+  isInitiallyExpanded?: boolean
+  initialStudent?: StudentProfile | null
+  initialLesson?: Lesson | null
 }
 
-type PopupView = 'main' | 'slides' | 'student' | 'lesson'
+type PopupView = 'main' | 'student' | 'lesson'
 
 export default function AIPromptInput({ 
   onSubmit,
   suggestions = [],
   students = [],
-  loadingStudents = false 
+  lessons = [],
+  loadingStudents = false,
+  loadingLessons = false,
+  isInitiallyExpanded = false,
+  initialStudent = null,
+  initialLesson = null
 }: AIPromptInputProps) {
   const navigate = useNavigate()
   const [prompt, setPrompt] = useState('')
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(isInitiallyExpanded)
   const [isGenerating, setIsGenerating] = useState(false)
   const [showPopup, setShowPopup] = useState(false)
   const [popupView, setPopupView] = useState<PopupView>('main')
-  const [selectedProfile, setSelectedProfile] = useState<StudentProfile | null>(null)
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
-  const [selectedSlides, setSelectedSlides] = useState<SlideTemplateInfo[]>([])
+  const [selectedProfile, setSelectedProfile] = useState<StudentProfile | null>(initialStudent)
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(initialLesson)
+  const [selectedSlides, setSelectedSlides] = useState<SelectedSlideInstance[]>([])
+  const [showEnhancedSelector, setShowEnhancedSelector] = useState(false)
   const [lessonSearchQuery, setLessonSearchQuery] = useState('')
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
-  const [slideSearchQuery, setSlideSearchQuery] = useState('')
   const [popupPosition, setPopupPosition] = useState<{ bottom: number; left: number } | null>(null)
   const [isGeniusMode, setIsGeniusMode] = useState(false)
   
+  // File upload states
+  const [uploadedFile, setUploadedFile] = useState<FileUpload | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isProcessingFile, setIsProcessingFile] = useState(false)
+  const [showFileContainer, setShowFileContainer] = useState(false)
+  
+  // Scroll state for fade gradient
+  const [showFadeGradient, setShowFadeGradient] = useState(false)
+  
+  const { templates } = useTemplates()
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const plusButtonRef = useRef<HTMLButtonElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const footerScrollRef = useRef<HTMLDivElement>(null)
 
-  // Debug logging for students
+  // Debug logging for data
   useEffect(() => {
     console.log('AIPromptInput - students prop:', students)
+    console.log('AIPromptInput - lessons prop:', lessons)
     console.log('AIPromptInput - loadingStudents:', loadingStudents)
-  }, [students, loadingStudents])
+    console.log('AIPromptInput - loadingLessons:', loadingLessons)
+  }, [students, lessons, loadingStudents, loadingLessons])
 
-  // Mock lessons data (TODO: Load from Supabase)
-  const mockLessons: Lesson[] = [
-    { 
-      id: '1', 
-      title: 'Introduction to Present Perfect', 
-      description: 'Basic introduction to present perfect tense',
-      vocabulary: ['already', 'yet', 'ever', 'never', 'just'],
-      grammarPoints: ['Have/Has + Past Participle', 'Time expressions'],
-      topics: ['Travel experiences', 'Life achievements'],
-      date: '2025-01-15'
-    },
-    { 
-      id: '2', 
-      title: 'Describing People and Places', 
-      description: 'Using adjectives effectively',
-      vocabulary: ['appearance', 'personality', 'landscape', 'architecture'],
-      grammarPoints: ['Comparative and superlative forms', 'Order of adjectives'],
-      topics: ['Famous landmarks', 'Character descriptions'],
-      date: '2025-01-10'
-    },
-    { 
-      id: '3', 
-      title: 'Modal Verbs for Advice', 
-      description: 'Should, could, might for giving advice',
-      vocabulary: ['suggestion', 'recommendation', 'opinion', 'preference'],
-      grammarPoints: ['Modal verbs', 'Conditional sentences'],
-      topics: ['Health and wellness', 'Problem solving'],
-      date: '2025-01-05'
-    },
-  ]
+  // Handle initial expansion from navigation
+  useEffect(() => {
+    if (isInitiallyExpanded && !isExpanded) {
+      setIsExpanded(true)
+    }
+  }, [isInitiallyExpanded])
 
-  // Mock slide templates (TODO: Load from templates)
-  const availableTemplates: SlideTemplateInfo[] = [
-    { id: '1', name: 'Title Slide', category: 'intro' },
-    { id: '2', name: 'Warm Up', category: 'warm-up' },
-    { id: '3', name: 'Vocabulary', category: 'vocabulary' },
-    { id: '4', name: 'Reading Passage', category: 'reading' },
-    { id: '5', name: 'Conversation Questions', category: 'conversation' },
-    { id: '6', name: 'Review', category: 'review' },
-  ]
+  // Handle initial student selection
+  useEffect(() => {
+    if (initialStudent && !selectedProfile) {
+      setSelectedProfile(initialStudent)
+    }
+  }, [initialStudent])
+
+  // Handle initial lesson selection
+  useEffect(() => {
+    if (initialLesson && !selectedLesson) {
+      setSelectedLesson(initialLesson)
+    }
+  }, [initialLesson])
+
+  // Get actual templates from the templates hook
+  const availableTemplates = templates
+    .filter(t => t.category !== 'blank')
+    .map(t => ({
+      id: t.id,
+      name: t.name,
+      category: t.category
+    }))
 
   // Filter functions
   const filteredProfiles = students.filter(profile => {
@@ -134,15 +153,10 @@ export default function AIPromptInput({
     )
   })
 
-  const filteredLessons = mockLessons.filter(lesson =>
+  const filteredLessons = (lessons || []).filter(lesson =>
     lesson.title.toLowerCase().includes(lessonSearchQuery.toLowerCase()) ||
     lesson.description?.toLowerCase().includes(lessonSearchQuery.toLowerCase()) ||
-    lesson.topics?.some(topic => topic.toLowerCase().includes(lessonSearchQuery.toLowerCase()))
-  )
-
-  const filteredSlides = availableTemplates.filter(slide =>
-    slide.name.toLowerCase().includes(slideSearchQuery.toLowerCase()) ||
-    slide.category.toLowerCase().includes(slideSearchQuery.toLowerCase())
+    lesson.topics?.some((topic: string) => topic.toLowerCase().includes(lessonSearchQuery.toLowerCase()))
   )
 
   // Auto-focus when expanded
@@ -151,6 +165,16 @@ export default function AIPromptInput({
       textareaRef.current.focus()
     }
   }, [isExpanded])
+
+  // Check for overflow on mount and when items change
+  useEffect(() => {
+    if (footerScrollRef.current) {
+      const element = footerScrollRef.current
+      const hasOverflow = element.scrollWidth > element.clientWidth
+      const isAtEnd = Math.ceil(element.scrollLeft + element.clientWidth) >= element.scrollWidth
+      setShowFadeGradient(hasOverflow && !isAtEnd)
+    }
+  }, [selectedSlides, selectedProfile, selectedLesson, isProcessingFile, showPopup])
 
   // Handle Cmd/Ctrl + K to expand
   useEffect(() => {
@@ -191,7 +215,6 @@ export default function AIPromptInput({
           setPopupView('main')
           setStudentSearchQuery('')
           setLessonSearchQuery('')
-          setSlideSearchQuery('')
         }
       }
     }
@@ -200,17 +223,145 @@ export default function AIPromptInput({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showPopup])
 
-  const handleSubmit = () => {
+  // File handling functions
+  const handleFileSelect = async (file: File) => {
+    setIsProcessingFile(true)
+    try {
+      const fileUpload = await parseFile(file)
+      setUploadedFile(fileUpload)
+      setShowFileContainer(true)
+      // Show success toast for file upload
+      toast.success(`File "${file.name}" uploaded successfully`)
+    } catch (error) {
+      console.error('Error processing file:', error)
+      // Show error toast for file upload failure
+      toast.error(error instanceof Error ? error.message : 'Failed to process file')
+    } finally {
+      setIsProcessingFile(false)
+    }
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleFileSelect(file)
+    }
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isExpanded) {
+      setIsDragging(true)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    // Only set dragging to false if we're leaving the component entirely
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX
+    const y = e.clientY
+    
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      setIsDragging(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    const file = files[0]
+    
+    if (file) {
+      handleFileSelect(file)
+    }
+  }
+
+  const removeFile = () => {
+    setUploadedFile(null)
+    setShowFileContainer(false)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleSubmit = async () => {
     if (!prompt.trim() || selectedSlides.length === 0) return
     
     setIsGenerating(true)
-    onSubmit({
-      prompt,
-      selectedStudent: selectedProfile,
-      selectedLesson,
-      selectedSlides,
-      geniusMode: isGeniusMode
-    })
+    
+    // Show loading toast
+    const loadingToastId = toast.loading('Generating lesson...')
+    
+    try {
+      // Get the actual template objects for selected slides
+      const selectedTemplateObjects: SlideTemplate[] = []
+      selectedSlides.forEach(slideInstance => {
+        const template = templates.find(t => t.id === slideInstance.templateId)
+        if (template) {
+          selectedTemplateObjects.push(template)
+        }
+      })
+      
+      if (selectedTemplateObjects.length === 0) {
+        throw new Error('Please select at least one slide template')
+      }
+      
+      // Generate lesson using shared service
+      const generatedData = await generateLesson({
+        prompt: prompt.trim(),
+        selectedTemplates: selectedTemplateObjects,
+        selectedProfile: selectedProfile,
+        selectedLesson: selectedLesson,
+        isGeniusMode: isGeniusMode,
+        uploadedFile: uploadedFile
+      })
+      
+      // Clear loading toasts and show success BEFORE navigation
+      clearLoadingToasts()
+      toast.success(`Successfully generated ${selectedTemplateObjects.length} slides!`)
+      
+      // Small delay to ensure toast is visible
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Navigate to canvas with the generated data
+      navigate('/canvas', {
+        state: {
+          action: 'applyGenerated',
+          generatedData,
+          selectedTemplates: selectedTemplateObjects,
+          prompt: prompt.trim()
+        }
+      })
+      
+      // Clear form
+      setPrompt('')
+      setSelectedSlides([])
+      setSelectedProfile(null)
+      setSelectedLesson(null)
+      setIsGeniusMode(false)
+      setIsExpanded(false)
+      removeFile()
+    } catch (error) {
+      console.error('Error generating content:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Failed to generate content'
+      // Clear loading toasts and show error
+      clearLoadingToasts()
+      toast.error(errorMsg)
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -222,6 +373,7 @@ export default function AIPromptInput({
       e.preventDefault()
       setIsExpanded(false)
       setPrompt('')
+      removeFile()
     }
   }
 
@@ -234,7 +386,6 @@ export default function AIPromptInput({
       setPopupView('main')
       setStudentSearchQuery('')
       setLessonSearchQuery('')
-      setSlideSearchQuery('')
     }
   }
 
@@ -250,18 +401,6 @@ export default function AIPromptInput({
     setShowPopup(false)
     setPopupView('main')
     setLessonSearchQuery('')
-  }
-
-  const toggleSlideTemplate = (slide: SlideTemplateInfo) => {
-    setSelectedSlides(prev => {
-      const exists = prev.find(s => s.id === slide.id)
-      if (exists) {
-        const filtered = prev.filter(s => s.id !== slide.id)
-        return filtered.map((s, index) => ({ ...s, order: index + 1 }))
-      } else {
-        return [...prev, { ...slide, order: prev.length + 1 }]
-      }
-    })
   }
 
   const toggleGeniusMode = () => {
@@ -303,6 +442,19 @@ export default function AIPromptInput({
     setStudentSearchQuery('')
   }
 
+  const handleAddNewLesson = () => {
+    // Navigate to lessons page to add a new lesson
+    navigate('/dashboard/lessons')
+    setShowPopup(false)
+    setPopupView('main')
+    setLessonSearchQuery('')
+  }
+
+  const handleOpenEnhancedSelector = () => {
+    setShowPopup(false)
+    setShowEnhancedSelector(true)
+  }
+
   // Render the popup
   const renderPopup = () => {
     if (!showPopup || !isExpanded || !popupPosition) return null
@@ -313,7 +465,7 @@ export default function AIPromptInput({
         style={{ 
           bottom: `${popupPosition.bottom}px`,
           left: `${popupPosition.left}px`,
-          width: popupView === 'slides' ? '400px' : '320px',
+          width: '320px',
           maxHeight: '400px',
           zIndex: 9999
         }}
@@ -322,94 +474,43 @@ export default function AIPromptInput({
           <>
             <div className="p-3">
               <button
-                onClick={() => setPopupView('slides')}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
+                onClick={handleOpenEnhancedSelector}
+                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
               >
-                <Layers size={18} className="text-gray-600" strokeWidth={1.5} />
-                <span className="text-sm text-gray-700">Add slides</span>
+                <div className="flex items-center gap-3">
+                  <Layers size={18} className="text-gray-600" strokeWidth={1.5} />
+                  <span className="text-sm text-gray-700">Add slides</span>
+                </div>
+                <ChevronRight size={16} className="text-gray-400" strokeWidth={1.5} />
               </button>
               <button
                 onClick={() => setPopupView('student')}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
               >
-                <User size={18} className="text-gray-600" strokeWidth={1.5} />
-                <span className="text-sm text-gray-700">Use a student</span>
+                <div className="flex items-center gap-3">
+                  <User size={18} className="text-gray-600" strokeWidth={1.5} />
+                  <span className="text-sm text-gray-700">Use a student</span>
+                </div>
+                <ChevronRight size={16} className="text-gray-400" strokeWidth={1.5} />
               </button>
               <button
                 onClick={() => setPopupView('lesson')}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
               >
-                <BookOpen size={18} className="text-gray-600" strokeWidth={1.5} />
-                <span className="text-sm text-gray-700">Use a lesson</span>
+                <div className="flex items-center gap-3">
+                  <BookOpen size={18} className="text-gray-600" strokeWidth={1.5} />
+                  <span className="text-sm text-gray-700">Use a lesson</span>
+                </div>
+                <ChevronRight size={16} className="text-gray-400" strokeWidth={1.5} />
               </button>
-            </div>
-          </>
-        )}
-
-        {popupView === 'slides' && (
-          <>
-            <div className="flex items-center gap-2 p-3 border-b border-gray-100">
               <button
-                onClick={() => {
-                  setPopupView('main')
-                  setSlideSearchQuery('')
-                }}
-                className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
               >
-                <ArrowLeft size={18} className="text-gray-600" strokeWidth={1.5} />
-              </button>
-              <input
-                type="text"
-                value={slideSearchQuery}
-                onChange={(e) => setSlideSearchQuery(e.target.value)}
-                placeholder="Search templates"
-                className="w-full px-3 py-1.5 text-sm outline-none bg-transparent"
-              />
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-2" style={{ maxHeight: 'calc(400px - 120px)' }}>
-              {filteredSlides.map((slide) => {
-                const selectedSlide = selectedSlides.find(s => s.id === slide.id)
-                const isSelected = !!selectedSlide
-                return (
-                  <button
-                    key={slide.id}
-                    onClick={() => toggleSlideTemplate(slide)}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-left rounded-md transition-colors ${
-                      isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {isSelected && (
-                        <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
-                          {selectedSlide.order}
-                        </div>
-                      )}
-                      {!isSelected && (
-                        <div className="w-6 h-6 border border-gray-300 rounded-full" />
-                      )}
-                      <div>
-                        <div className={`text-sm font-medium ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
-                          {slide.name}
-                        </div>
-                        <div className="text-xs text-gray-500">{slide.category}</div>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="p-3 border-t border-gray-100">
-              <button
-                onClick={() => {
-                  setShowPopup(false)
-                  setPopupView('main')
-                  setSlideSearchQuery('')
-                }}
-                className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Done ({selectedSlides.length} selected)
+                <div className="flex items-center gap-3">
+                  <FileText size={18} className="text-gray-600" strokeWidth={1.5} />
+                  <span className="text-sm text-gray-700">Upload article (.txt, .html, .pdf)</span>
+                </div>
               </button>
             </div>
           </>
@@ -498,7 +599,12 @@ export default function AIPromptInput({
             </div>
 
             <div className="max-h-64 overflow-y-auto">
-              {filteredLessons.length > 0 ? (
+              {loadingLessons ? (
+                <div className="px-4 py-6 text-center">
+                  <div className="w-6 h-6 border-2 border-gray-300 border-t-purple-600 rounded-full animate-spin mx-auto" />
+                  <p className="text-sm text-gray-500 mt-2">Loading lessons...</p>
+                </div>
+              ) : filteredLessons.length > 0 ? (
                 filteredLessons.map((lesson) => (
                   <button
                     key={lesson.id}
@@ -506,13 +612,28 @@ export default function AIPromptInput({
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-50 last:border-b-0 transition-colors"
                   >
                     <div className="text-sm font-medium text-gray-700">{lesson.title}</div>
+                    {lesson.description && (
+                      <div className="text-xs text-gray-500 mt-0.5 truncate">
+                        {lesson.description}
+                      </div>
+                    )}
                   </button>
                 ))
               ) : (
                 <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                  No lessons found
+                  {lessons.length === 0 ? 'No lessons created yet' : 'No lessons found'}
                 </div>
               )}
+            </div>
+
+            <div className="p-3 border-t border-gray-100">
+              <button
+                onClick={handleAddNewLesson}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-gray-50 rounded-md transition-colors text-sm"
+              >
+                <Plus size={16} className="text-gray-600" />
+                <span className="text-gray-700">Create a new lesson</span>
+              </button>
             </div>
           </>
         )}
@@ -525,13 +646,38 @@ export default function AIPromptInput({
     <div className="w-full max-w-3xl">
       {renderPopup()}
       
+      {/* Enhanced Slide Selector Modal */}
+      {showEnhancedSelector && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowEnhancedSelector(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-4xl lg:max-w-6xl h-[90vh] sm:h-[85vh] overflow-hidden">
+            <EnhancedSlideSelector
+              availableTemplates={availableTemplates}
+              onSelectionChange={setSelectedSlides}
+              onClose={() => setShowEnhancedSelector(false)}
+              disabled={isGenerating}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.html,.pdf"
+        onChange={handleFileInputChange}
+        className="hidden"
+      />
+      
       {!isExpanded ? (
         // Collapsed State
         <div className="flex flex-col items-center">
           {/* Build a lesson button */}
           <button
             onClick={() => setIsExpanded(true)}
-            className="relative px-8 py-3 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-full font-medium transition-all hover:scale-105 mb-10 animate-fade-in overflow-hidden shine-button"
+            disabled={isGenerating}
+            className="relative px-8 py-3 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-full font-medium transition-all hover:scale-105 mb-10 animate-fade-in overflow-hidden shine-button disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="relative z-10">Build a lesson</span>
             <div className="shine-effect" />
@@ -575,116 +721,195 @@ export default function AIPromptInput({
         // Expanded State
         <div className="flex flex-col items-center">
           {/* Text input area with footer buttons */}
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-full animate-fade-in">
+          <div 
+            className={`bg-white rounded-lg shadow-lg border w-full animate-fade-in transition-all relative ${
+              isGenerating ? 'opacity-75' : ''
+            } ${
+              isDragging ? 'border-blue-400 border-2 bg-blue-50' : 'border-gray-200'
+            }`}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            {/* Drag overlay */}
+            {isDragging && (
+              <div className="absolute inset-0 bg-blue-50 bg-opacity-90 rounded-lg z-10 flex items-center justify-center pointer-events-none">
+                <div className="text-center">
+                  <File className="w-12 h-12 text-blue-500 mx-auto mb-2" />
+                  <p className="text-blue-700 font-medium">Drop to add to prompt</p>
+                  <p className="text-blue-600 text-sm mt-1">Supports .txt, .html, and .pdf files</p>
+                </div>
+              </div>
+            )}
+            
             <div className="p-1">
               <textarea
                 ref={textareaRef}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Describe the lesson you want to create..."
-                className="w-full px-4 py-3 rounded-lg resize-none focus:outline-none bg-transparent text-gray-700 placeholder-gray-400"
+                placeholder={isGenerating ? "Generating lesson..." : "Describe the lesson you want to create..."}
+                className="w-full px-4 py-3 rounded-lg resize-none focus:outline-none bg-transparent text-gray-700 placeholder-gray-400 disabled:cursor-not-allowed"
                 rows={5}
                 disabled={isGenerating}
                 style={{ minHeight: '120px' }}
               />
               
+              {/* File Upload Container - Square with preview */}
+              {showFileContainer && uploadedFile && (
+                <div className="group relative mx-4 mt-3 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200 animate-slide-up" style={{ width: '200px' }}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="text-xs font-medium text-gray-700 truncate" style={{ maxWidth: '150px' }}>
+                        {uploadedFile.name}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {formatFileSize(uploadedFile.size)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={removeFile}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-200 rounded transition-none"
+                      disabled={isGenerating}
+                    >
+                      <X size={14} className="text-gray-500" />
+                    </button>
+                  </div>
+                  {uploadedFile.content && (
+                    <p className="text-xs text-gray-600 line-clamp-2">
+                      {uploadedFile.content}
+                    </p>
+                  )}
+                </div>
+              )}
+              
               {/* Bottom Toolbar */}
               <div className="flex items-center justify-between px-3 pb-3">
                 {/* Left Section - Plus Button and Selected Items */}
-                <div className="flex items-center gap-2">
-                  {/* Plus Button */}
-                  <button
-                    ref={plusButtonRef}
-                    onClick={togglePopup}
-                    className="w-8 h-8 flex items-center justify-center border border-gray-300 transition-all duration-200 hover:bg-gray-100 active:bg-gray-100 rounded-lg"
-                    style={{
-                      backgroundColor: showPopup ? '#f3f4f6' : 'white'
+                <div className="relative flex items-center flex-1 mr-3" style={{ maxWidth: 'calc(100% - 120px)' }}>
+                  {/* Scrollable container */}
+                  <div 
+                    ref={footerScrollRef}
+                    className="flex items-center gap-2 overflow-x-auto scrollbar-hide" 
+                    style={{ scrollBehavior: 'smooth' }}
+                    onScroll={(e) => {
+                      const element = e.currentTarget
+                      const hasOverflow = element.scrollWidth > element.clientWidth
+                      const isAtEnd = Math.ceil(element.scrollLeft + element.clientWidth) >= element.scrollWidth
+                      setShowFadeGradient(hasOverflow && !isAtEnd)
                     }}
-                    title="Add content"
                   >
-                    <Plus size={16} className="text-gray-600" strokeWidth={1.5} />
-                  </button>
+                    {/* Plus Button */}
+                    <button
+                      ref={plusButtonRef}
+                      onClick={togglePopup}
+                      disabled={isGenerating}
+                      className="w-8 h-8 flex-shrink-0 flex items-center justify-center border border-gray-300 transition-all duration-200 hover:bg-gray-100 active:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        backgroundColor: showPopup ? '#f3f4f6' : 'white'
+                      }}
+                      title="Add content"
+                    >
+                      <Plus size={16} className="text-gray-600" strokeWidth={1.5} />
+                    </button>
 
-                  {/* Genius Mode Toggle Button with scale animation */}
-                  <button
-                    onClick={toggleGeniusMode}
-                    onMouseDown={(e) => { 
-                      const target = e.currentTarget;
-                      target.style.transform = 'scale(0.95)';
-                    }}
-                    onMouseUp={(e) => { 
-                      const target = e.currentTarget;
-                      target.style.transform = 'scale(1)';
-                    }}
-                    onMouseLeave={(e) => { 
-                      const target = e.currentTarget;
-                      target.style.transform = 'scale(1)';
-                    }}
-                    className={`px-3 h-8 flex items-center justify-center transition-all duration-200 rounded-lg border ${
-                      isGeniusMode 
-                        ? 'border-purple-700 text-purple-700 bg-purple-50' 
-                        : 'border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
-                    }`}
-                    title={isGeniusMode ? 'Genius mode enabled' : 'Enable Genius mode'}
-                  >
-                    <Brain size={16} strokeWidth={1.5} className="mr-1.5" />
-                    <span className="text-sm font-medium">Genius</span>
-                  </button>
+                    {/* Genius Mode Toggle Button with scale animation */}
+                    <button
+                      onClick={toggleGeniusMode}
+                      disabled={isGenerating}
+                      onMouseDown={(e) => { 
+                        const target = e.currentTarget;
+                        target.style.transform = 'scale(0.95)';
+                      }}
+                      onMouseUp={(e) => { 
+                        const target = e.currentTarget;
+                        target.style.transform = 'scale(1)';
+                      }}
+                      onMouseLeave={(e) => { 
+                        const target = e.currentTarget;
+                        target.style.transform = 'scale(1)';
+                      }}
+                      className={`px-3 h-8 flex-shrink-0 flex items-center justify-center transition-all duration-200 rounded-lg border ${
+                        isGeniusMode 
+                          ? 'border-purple-700 text-purple-700 bg-purple-50' 
+                          : 'border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
+                      }`}
+                      title={isGeniusMode ? 'Genius mode enabled' : 'Enable Genius mode'}
+                    >
+                      <Brain size={16} strokeWidth={1.5} className="mr-1.5" />
+                      <span className="text-sm font-medium">Genius</span>
+                    </button>
 
-                  {/* Selected Slides Indicator */}
-                  {selectedSlides.length > 0 && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
-                      <Layers size={14} className="text-gray-600" />
-                      <span className="text-gray-700 whitespace-nowrap">
-                        {selectedSlides.length} slide{selectedSlides.length !== 1 ? 's' : ''}
-                      </span>
-                      <button
-                        onClick={clearSelectedSlides}
-                        className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  )}
+                    {/* Selected Slides Indicator */}
+                    {selectedSlides.length > 0 && (
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
+                        <Layers size={14} className="text-gray-600" />
+                        <span className="text-gray-700 whitespace-nowrap">
+                          {selectedSlides.length} slide{selectedSlides.length !== 1 ? 's' : ''}
+                        </span>
+                        <button
+                          onClick={clearSelectedSlides}
+                          className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
 
-                  {/* Selected Profile Indicator */}
-                  {selectedProfile && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
-                      <User size={14} className="text-gray-600" />
-                      <span className="text-gray-700 whitespace-nowrap">
-                        {selectedProfile.name}
-                      </span>
-                      <button
-                        onClick={clearSelectedProfile}
-                        className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  )}
+                    {/* Selected Profile Indicator */}
+                    {selectedProfile && (
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
+                        <User size={14} className="text-gray-600" />
+                        <span className="text-gray-700 whitespace-nowrap">
+                          {selectedProfile.name}
+                        </span>
+                        <button
+                          onClick={clearSelectedProfile}
+                          className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
 
-                  {/* Selected Lesson Indicator */}
-                  {selectedLesson && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
-                      <BookOpen size={14} className="text-gray-600" />
-                      <span className="text-gray-700 whitespace-nowrap">
-                        {selectedLesson.title}
-                      </span>
-                      <button
-                        onClick={clearSelectedLesson}
-                        className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
+                    {/* Selected Lesson Indicator */}
+                    {selectedLesson && (
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
+                        <BookOpen size={14} className="text-gray-600" />
+                        <span className="text-gray-700 whitespace-nowrap">
+                          {selectedLesson.title}
+                        </span>
+                        <button
+                          onClick={clearSelectedLesson}
+                          className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Processing File Indicator */}
+                    {isProcessingFile && (
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
+                        <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+                        <span className="text-gray-700">Processing file...</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Fade gradient overlay - only show when there's more content to scroll */}
+                  {showFadeGradient && (
+                    <div className="absolute right-0 top-0 bottom-0 w-12 pointer-events-none" style={{
+                      background: 'linear-gradient(to right, transparent, white)'
+                    }} />
                   )}
                 </div>
 
                 {/* Generate Button - Solid purple */}
                 <button
                   onClick={handleSubmit}
-                  disabled={!prompt.trim() || selectedSlides.length === 0 || isGenerating}
+                  disabled={!prompt.trim() || selectedSlides.length === 0 || isGenerating || isProcessingFile}
                   className="px-5 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                   tabIndex={-1}
                 >
@@ -736,6 +961,30 @@ export default function AIPromptInput({
           )}
         </div>
       )}
+      
+      <style jsx>{`
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-slide-up {
+          animation: slide-up 0.2s ease-out;
+        }
+        
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
     </div>
   )
 }

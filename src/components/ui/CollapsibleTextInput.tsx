@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import ReactDOM from 'react-dom'
-import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen, AlertCircle, Loader2 } from 'lucide-react'
+import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen, AlertCircle, Loader2, FileText, File } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { openai } from '@/lib/openai'
+import { generateLesson } from '@/services/lessonGeneration'
 import useSlideStore from '@/stores/slideStore'
 import { nanoid } from 'nanoid'
 import type { SlideTemplate } from '@/types/template.types'
@@ -11,6 +11,9 @@ import { useTemplates } from '@/hooks/useTemplates'
 import Modal from './Modal'
 import { showToast, clearLoadingToasts } from './Toast'
 import { getUserStudentProfiles, getCurrentUser } from '@/lib/database'
+import { useLessons } from '@/hooks/useLessons'
+import { parseFile, formatFileSize, type FileUpload } from '@/utils/fileUtils'
+import { EnhancedSlideSelector, type SelectedSlideInstance } from './SlideSelector'
 
 interface StudentProfile {
   id: string
@@ -25,23 +28,20 @@ interface StudentProfile {
 interface Lesson {
   id: string
   title: string
-  description: string
+  description?: string
   vocabulary?: string[]
   grammarPoints?: string[]
   topics?: string[]
   date?: string
-}
-
-interface SlideTemplateInfo {
-  id: string
-  name: string
-  category: string
-  order?: number
+  created_at?: string
+  updated_at?: string
+  target_language?: string
+  slide_order?: string[]
 }
 
 interface CollapsibleTextInputProps {
   placeholder?: string
-  onSubmit?: (text: string, selectedProfile?: StudentProfile, selectedLesson?: Lesson, useGeniusMode?: boolean, selectedSlides?: SlideTemplateInfo[]) => void
+  onSubmit?: (text: string, selectedProfile?: StudentProfile, selectedLesson?: Lesson, useGeniusMode?: boolean, selectedSlides?: SelectedSlideInstance[]) => void
   onHeightChange?: (totalHeight: number) => void
   minHeight?: number
   maxHeight?: number
@@ -49,95 +49,6 @@ interface CollapsibleTextInputProps {
 }
 
 type PopupView = 'main' | 'slides' | 'student' | 'lesson'
-
-// Template data structure examples for OpenAI
-const templateDataStructures: Record<string, any> = {
-  'warm-up': {
-    school: "string - School or institution name",
-    question: ["array of 4 warm-up questions"]
-  },
-  'vocabulary': {
-    school: "string - School or institution name", 
-    vocabulary: [
-      { word: "vocabulary word", meaning: "definition or translation" },
-      "... exactly 5 items"
-    ]
-  },
-  'conversation': {
-    school: "string - School or institution name",
-    question: ["array of 4 conversation questions"]
-  },
-  'reading': {
-    school: "string - School or institution name",
-    title: "string - Reading passage title",
-    passage: "string - The main reading text (keep concise, 2-3 sentences)",
-    question: ["array of 2 comprehension questions"],
-    source: "string - Source citation (optional)"
-  },
-  'review': {
-    school: "string - School or institution name",
-    objective: ["array of 4 lesson objectives or key points"]
-  },
-  'title': {
-    school: "string - School or institution name",
-    title: "string - Lesson title",
-    subtitle: "string - Lesson subtitle or description"
-  },
-  'end': {
-    school: "string - School or institution name"
-  },
-  'objectives': {
-    school: "string - School or institution name",
-    objective: ["array of 4 lesson objectives"]
-  }
-}
-
-// Special data structures for specific vocabulary templates
-const specialTemplateStructures: Record<string, any> = {
-  'synonyms-exercise': {
-    school: "string - School or institution name",
-    vocabulary: [
-      { word: "word1", synonym: "primary synonym for word1", synonym2: "alternate synonym for word1" },
-      { word: "word2", synonym: "primary synonym for word2" },
-      { word: "word3", synonym: "primary synonym for word3", synonym2: "alternate synonym for word3" },
-      { word: "word4", synonym: "primary synonym for word4", synonym2: "alternate synonym for word4" },
-      { word: "word5", synonym: "primary synonym for word5" }
-    ],
-  },
-  'gap-fill-exercise': {
-    school: "string - School or institution name",
-    vocabulary: [
-      { word: "word1", gapfill: "sentence with _____ for word1" },
-      { word: "word2", gapfill: "sentence with _____ for word2" },
-      { word: "word3", gapfill: "sentence with _____ for word3" },
-      { word: "word4", gapfill: "sentence with _____ for word4" },
-      { word: "word5", gapfill: "sentence with _____ for word5" }
-    ]
-  },
-  'vocabulary-6-items': {
-    school: "string - School or institution name",
-    title: "string - Vocabulary title",
-    subtitle: "string - Vocabulary subtitle",
-    vocabulary: [
-      { word: "word1", meaning: "definition1" },
-      { word: "word2", meaning: "definition2" },
-      { word: "word3", meaning: "definition3" },
-      { word: "word4", meaning: "definition4" },
-      { word: "word5", meaning: "definition5" },
-      { word: "word6", meaning: "definition6" }
-    ]
-  },
-  'vocabulary': {
-    school: "string - School or institution name",
-    vocabulary: [
-      { word: "vocabulary word 1", meaning: "definition or meaning 1" },
-      { word: "vocabulary word 2", meaning: "definition or meaning 2" },
-      { word: "vocabulary word 3", meaning: "definition or meaning 3" },
-      { word: "vocabulary word 4", meaning: "definition or meaning 4" },
-      { word: "vocabulary word 5", meaning: "definition or meaning 5" }
-    ],
-  }
-}
 
 const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
   placeholder = "Add a prompt...",
@@ -157,10 +68,10 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
   const [popupView, setPopupView] = useState<PopupView>('main')
   const [selectedProfile, setSelectedProfile] = useState<StudentProfile | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
-  const [selectedSlides, setSelectedSlides] = useState<SlideTemplateInfo[]>([])
+  const [selectedSlides, setSelectedSlides] = useState<SelectedSlideInstance[]>([])
+  const [showEnhancedSelector, setShowEnhancedSelector] = useState(false)
   const [lessonSearchQuery, setLessonSearchQuery] = useState('')
   const [studentSearchQuery, setStudentSearchQuery] = useState('')
-  const [slideSearchQuery, setSlideSearchQuery] = useState('')
   const [popupPosition, setPopupPosition] = useState<{ bottom: number; left: number } | null>(null)
   const [isGeniusMode, setIsGeniusMode] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
@@ -169,12 +80,25 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [students, setStudents] = useState<StudentProfile[]>([])
   const [loadingStudents, setLoadingStudents] = useState(false)
+  const { lessons, loadingLessons } = useLessons()
+  
+  // File upload states
+  const [uploadedFile, setUploadedFile] = useState<FileUpload | null>(null)
+  const [isDraggingFile, setIsDraggingFile] = useState(false)
+  const [isProcessingFile, setIsProcessingFile] = useState(false)
+  const [showFileContainer, setShowFileContainer] = useState(false)
+  
+  // Scroll state for fade gradient
+  const [showFadeGradient, setShowFadeGradient] = useState(false)
   
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const dragStartY = useRef(0)
   const dragStartHeight = useRef(0)
   const justFinishedDragging = useRef(false)
   const plusButtonRef = useRef<HTMLButtonElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const dropZoneRef = useRef<HTMLDivElement>(null)
+  const footerScrollRef = useRef<HTMLDivElement>(null)
 
   const { templates } = useTemplates()
   const { slides, clearSelection, addSlide } = useSlideStore()
@@ -199,39 +123,8 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
     }
   }
 
-  // Mock lessons data
-  const mockLessons: Lesson[] = [
-    { 
-      id: '1', 
-      title: 'Introduction to Present Perfect', 
-      description: 'Basic introduction to present perfect tense',
-      vocabulary: ['already', 'yet', 'ever', 'never', 'just'],
-      grammarPoints: ['Have/Has + Past Participle', 'Time expressions'],
-      topics: ['Travel experiences', 'Life achievements'],
-      date: '2025-01-15'
-    },
-    { 
-      id: '2', 
-      title: 'Describing People and Places', 
-      description: 'Using adjectives effectively',
-      vocabulary: ['appearance', 'personality', 'landscape', 'architecture'],
-      grammarPoints: ['Comparative and superlative forms', 'Order of adjectives'],
-      topics: ['Famous landmarks', 'Character descriptions'],
-      date: '2025-01-10'
-    },
-    { 
-      id: '3', 
-      title: 'Modal Verbs for Advice', 
-      description: 'Should, could, might for giving advice',
-      vocabulary: ['suggestion', 'recommendation', 'opinion', 'preference'],
-      grammarPoints: ['Modal verbs', 'Conditional sentences'],
-      topics: ['Health and wellness', 'Problem solving'],
-      date: '2025-01-05'
-    },
-  ]
-
   // Get actual templates from the templates hook
-  const availableTemplates: SlideTemplateInfo[] = templates
+  const availableTemplates = templates
     .filter(t => t.category !== 'blank')
     .map(t => ({
       id: t.id,
@@ -248,16 +141,10 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
   )
 
   // Filter lessons based on search query
-  const filteredLessons = mockLessons.filter(lesson =>
+  const filteredLessons = (lessons || []).filter(lesson =>
     lesson.title.toLowerCase().includes(lessonSearchQuery.toLowerCase()) ||
     lesson.description?.toLowerCase().includes(lessonSearchQuery.toLowerCase()) ||
-    lesson.topics?.some(topic => topic.toLowerCase().includes(lessonSearchQuery.toLowerCase()))
-  )
-
-  // Filter slide templates based on search query
-  const filteredSlides = availableTemplates.filter(slide =>
-    slide.name.toLowerCase().includes(slideSearchQuery.toLowerCase()) ||
-    slide.category.toLowerCase().includes(slideSearchQuery.toLowerCase())
+    lesson.topics?.some((topic: string) => topic.toLowerCase().includes(lessonSearchQuery.toLowerCase()))
   )
 
   // Notify parent of height changes
@@ -267,6 +154,16 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
       onHeightChange(totalHeight)
     }
   }, [contentHeight, onHeightChange])
+
+  // Check for overflow on mount and when items change
+  useEffect(() => {
+    if (footerScrollRef.current) {
+      const element = footerScrollRef.current
+      const hasOverflow = element.scrollWidth > element.clientWidth
+      const isAtEnd = Math.ceil(element.scrollLeft + element.clientWidth) >= element.scrollWidth
+      setShowFadeGradient(hasOverflow && !isAtEnd)
+    }
+  }, [selectedSlides, selectedProfile, selectedLesson, isProcessingFile, showPopup])
 
   // Update popup position when button is clicked
   useEffect(() => {
@@ -294,7 +191,6 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
           setPopupView('main')
           setStudentSearchQuery('')
           setLessonSearchQuery('')
-          setSlideSearchQuery('')
         }
       }
     }
@@ -408,69 +304,71 @@ const CollapsibleTextInput: React.FC<CollapsibleTextInputProps> = ({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [isExpanded, handleDragHandleClick])
 
-  const generateSystemPrompt = (selectedTemplates: SlideTemplate[], geniusMode: boolean) => {
-    const templateInfo = selectedTemplates.map((template, index) => {
-      const category = template.category
-      // Check if it's a special template that needs a different structure
-      const specialStructure = specialTemplateStructures[template.id]
-      const structure = specialStructure || templateDataStructures[category] || {}
-      
-      return `
-Slide ${index + 1}: ${template.name} (${category} type, template id: ${template.id})
-Expected data structure:
-${JSON.stringify(structure, null, 2)}
-`
-    }).join('\n')
-    
-    const basePrompt = `You are a language learning curriculum designer. Generate JSON data for a language lesson based on the user's prompt.
-
-The lesson should have ${selectedTemplates.length} slides with the following templates:
-${templateInfo}
-
-Return a JSON object with the following structure:
-{
-  "lessonTitle": "Overall lesson title",
-  "slides": [
-    // Array of data objects, one for each slide template in order
-  ]
-}
-
-Important guidelines:
-- Each slide data object should match the expected structure for its template type
-- For vocabulary slides, provide exactly 5 vocabulary items (or as many as specified)
-- For synonyms-exercise: provide vocabulary as an array of 5 objects. Some words should have both 'synonym' and 'synonym2' properties to fill all 8 slots
-- For gap-fill-exercise: provide vocabulary as an array of objects with 'word' and 'gapfill' properties
-- For vocabulary-6-items: provide vocabulary as an array of 6 objects with 'word' and 'meaning' properties
-- For standard vocabulary template: vocabulary should be an array of objects with 'word' and 'meaning' properties
-- For question arrays, provide exactly 4 questions unless otherwise specified
-- For reading slides, provide exactly 2 comprehension questions
-- Keep reading passages concise (2-3 sentences) to fit in the template
-- Keep content appropriate for language learning
-- Make content engaging and educational
-- If a school name is needed, use "Language Learning Academy" as default
-- Ensure all text is clear and concise`
-    
-    // Add advanced reasoning instructions for genius mode
-    if (geniusMode) {
-      return basePrompt + `
-
-ADVANCED REASONING MODE ACTIVATED:
-- Think step-by-step about the educational objectives
-- Consider the pedagogical progression across slides
-- Ensure vocabulary difficulty is appropriately scaffolded
-- Create connections between different slide contents
-- Include more sophisticated language patterns and structures
-- Add cultural context where relevant
-- Consider different learning styles (visual, auditory, kinesthetic)
-- Make questions thought-provoking and discussion-worthy
-- Ensure content builds upon previous concepts systematically
-- Use more creative and engaging examples
-- Consider real-world applications of the language concepts
-
-The user's language learning topic/prompt is below.`
+  // File handling functions
+  const handleFileSelect = async (file: File) => {
+    setIsProcessingFile(true)
+    try {
+      const fileUpload = await parseFile(file)
+      setUploadedFile(fileUpload)
+      setShowFileContainer(true)
+      showToast('success', `File "${file.name}" uploaded successfully`)
+    } catch (error) {
+      console.error('Error processing file:', error)
+      showToast('error', error instanceof Error ? error.message : 'Failed to process file')
+    } finally {
+      setIsProcessingFile(false)
     }
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleFileSelect(file)
+    }
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isExpanded) {
+      setIsDraggingFile(true)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     
-    return basePrompt + `\n\nThe user's language learning topic/prompt is below.`
+    // Check if we're leaving the drop zone entirely
+    if (dropZoneRef.current && !dropZoneRef.current.contains(e.relatedTarget as Node)) {
+      setIsDraggingFile(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingFile(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    const file = files[0]
+    
+    if (file) {
+      handleFileSelect(file)
+    }
+  }
+
+  const removeFile = () => {
+    setUploadedFile(null)
+    setShowFileContainer(false)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const handleGenerate = useCallback(() => {
@@ -503,64 +401,28 @@ The user's language learning topic/prompt is below.`
     
     try {
       // Get the actual template objects for selected slides
-      const selectedTemplateObjects = selectedSlides
-        .map(slide => templates.find(t => t.id === slide.id))
-        .filter((t): t is SlideTemplate => t !== undefined)
+      const selectedTemplateObjects: SlideTemplate[] = []
+      currentSelectedSlides.forEach(slideInstance => {
+        const template = templates.find(t => t.id === slideInstance.templateId)
+        if (template) {
+          selectedTemplateObjects.push(template)
+        }
+      })
       
       if (selectedTemplateObjects.length === 0) {
         throw new Error('Please select at least one slide template')
       }
-
-      // Check if OpenAI API key is configured
-      if (!import.meta.env.VITE_OPENAI_API_KEY) {
-        throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.')
-      }
       
-      // Build the complete prompt with additional context
-      let fullPrompt = currentText
-      
-      // Add student profile context if selected
-      if (currentSelectedProfile) {
-        fullPrompt += `\n\nStudent Profile:
-- Name: ${currentSelectedProfile.name}
-- Target Language: ${currentSelectedProfile.target_language || 'Not specified'}
-- Native Language: ${currentSelectedProfile.native_language || 'Not specified'}
-- Level: ${currentSelectedProfile.level || 'Not specified'}
-- Goals: ${currentSelectedProfile.goals?.join(', ') || 'Not specified'}
-- Interests: ${currentSelectedProfile.interests || 'Not specified'}
-Please tailor the content appropriately for this student's background and language learning needs.`
-      }
-      
-      // Add lesson context if selected
-      if (currentSelectedLesson) {
-        fullPrompt += `\n\nPrevious Lesson Context:
-- Title: ${currentSelectedLesson.title}
-- Description: ${currentSelectedLesson.description}
-- Vocabulary covered: ${currentSelectedLesson.vocabulary?.join(', ') || 'None'}
-- Grammar points: ${currentSelectedLesson.grammarPoints?.join(', ') || 'None'}
-- Topics: ${currentSelectedLesson.topics?.join(', ') || 'None'}
-Please build upon or reference this previous lesson content where appropriate.`
-      }
-      
-      const systemPrompt = generateSystemPrompt(selectedTemplateObjects, currentIsGeniusMode)
-      
-      // Use gpt-5-mini for both modes (genius mode uses different prompting strategy)
-      const model = 'gpt-5-mini'
-      
-      const response = await openai.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: fullPrompt }
-        ],
-        temperature: 1, // GPT-5-mini only supports default temperature of 1
-        response_format: { type: 'json_object' }
+      // Use the shared generateLesson service
+      const data = await generateLesson({
+        prompt: currentText,
+        selectedTemplates: selectedTemplateObjects,
+        selectedProfile: currentSelectedProfile,
+        selectedLesson: currentSelectedLesson,
+        isGeniusMode: currentIsGeniusMode,
+        uploadedFile: uploadedFile
       })
       
-      const content = response.choices[0].message.content
-      if (!content) throw new Error('No content generated')
-      
-      const data = JSON.parse(content)
       setGeneratedData(data)
       
       // Process and add slides
@@ -577,8 +439,11 @@ Please build upon or reference this previous lesson content where appropriate.`
         // Track new slide IDs as we add them
         const newSlideIds: string[] = []
         
-        // Add each template with its generated data
-        selectedTemplateObjects.forEach((template, index) => {
+        // Add each template instance with its generated data
+        currentSelectedSlides.forEach((slideInstance, index) => {
+          const template = templates.find(t => t.id === slideInstance.templateId)
+          if (!template) return
+          
           const slideData = data.slides[index] || {}
           
           // Deep clone the template to ensure we're working with fresh data
@@ -587,7 +452,7 @@ Please build upon or reference this previous lesson content where appropriate.`
           // Special handling for synonyms-exercise to use alternate synonyms
           if (freshTemplate.id === 'synonyms-exercise') {
             // Create modified elements that use synonym2 for duplicate references
-            const modifiedElements = freshTemplate.elements.map((el) => {
+            const modifiedElements = freshTemplate.elements.map((el: any) => {
               if (el.type === 'text' && el.content && 'text' in el.content) {
                 const textContent = el.content as any
                 // Remap duplicate synonym references based on y-position to use synonym2
@@ -606,7 +471,7 @@ Please build upon or reference this previous lesson content where appropriate.`
             
             // Create data keys mapping for modified elements
             const dataKeys: Record<string, string> = {}
-            modifiedElements.forEach(el => {
+            modifiedElements.forEach((el: any) => {
               if (el.type === 'text' && el.content && 'text' in el.content) {
                 const textContent = el.content as any
                 const matches = textContent.text.matchAll(/\{\{([^}]+)\}\}/g)
@@ -639,7 +504,7 @@ Please build upon or reference this previous lesson content where appropriate.`
             const dataKeys: Record<string, string> = {}
             
             // Analyze template elements to find placeholders
-            freshTemplate.elements.forEach(el => {
+            freshTemplate.elements.forEach((el: any) => {
               if (el.type === 'text' && el.content && 'text' in el.content) {
                 const textContent = el.content as any
                 const matches = textContent.text.matchAll(/\{\{([^}]+)\}\}/g)
@@ -696,6 +561,7 @@ Please build upon or reference this previous lesson content where appropriate.`
         setSelectedProfile(null)
         setSelectedLesson(null)
         setIsGeniusMode(false)
+        removeFile()
         setIsAnimating(true)
         setContentHeight(0)
         setTimeout(() => setIsAnimating(false), 200)
@@ -725,7 +591,6 @@ Please build upon or reference this previous lesson content where appropriate.`
       setPopupView('main')
       setStudentSearchQuery('')
       setLessonSearchQuery('')
-      setSlideSearchQuery('')
     }
   }
 
@@ -751,20 +616,6 @@ Please build upon or reference this previous lesson content where appropriate.`
     setSelectedLesson(null)
   }
 
-  const toggleSlideTemplate = (slide: SlideTemplateInfo) => {
-    setSelectedSlides(prev => {
-      const exists = prev.find(s => s.id === slide.id)
-      if (exists) {
-        // Remove and reorder remaining slides
-        const filtered = prev.filter(s => s.id !== slide.id)
-        return filtered.map((s, index) => ({ ...s, order: index + 1 }))
-      } else {
-        // Add with order number
-        return [...prev, { ...slide, order: prev.length + 1 }]
-      }
-    })
-  }
-
   const clearSelectedSlides = () => {
     setSelectedSlides([])
   }
@@ -781,6 +632,19 @@ Please build upon or reference this previous lesson content where appropriate.`
     setStudentSearchQuery('')
   }
 
+  const handleAddNewLesson = () => {
+    // Navigate to lessons page to add a new lesson
+    navigate('/dashboard/lessons')
+    setShowPopup(false)
+    setPopupView('main')
+    setLessonSearchQuery('')
+  }
+
+  const handleOpenEnhancedSelector = () => {
+    setShowPopup(false)
+    setShowEnhancedSelector(true)
+  }
+
   // Render the unified popup
   const renderPopup = () => {
     if (!showPopup || !isExpanded || !popupPosition) return null
@@ -791,7 +655,7 @@ Please build upon or reference this previous lesson content where appropriate.`
         style={{ 
           bottom: `${popupPosition.bottom}px`,
           left: `${popupPosition.left}px`,
-          width: popupView === 'slides' ? '400px' : '320px',
+          width: '320px',
           maxHeight: '400px',
           zIndex: 9
         }}
@@ -800,7 +664,7 @@ Please build upon or reference this previous lesson content where appropriate.`
           <>
             <div className="p-3">
               <button
-                onClick={() => setPopupView('slides')}
+                onClick={handleOpenEnhancedSelector}
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
               >
                 <Layers size={18} className="text-gray-600" strokeWidth={1.5} />
@@ -820,77 +684,12 @@ Please build upon or reference this previous lesson content where appropriate.`
                 <BookOpen size={18} className="text-gray-600" strokeWidth={1.5} />
                 <span className="text-sm text-gray-700">Use a lesson</span>
               </button>
-            </div>
-          </>
-        )}
-
-        {popupView === 'slides' && (
-          <>
-            {/* Search Bar with back button */}
-            <div className="flex items-center gap-2 p-3 border-b border-gray-100">
               <button
-                onClick={() => {
-                  setPopupView('main')
-                  setSlideSearchQuery('')
-                }}
-                className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
               >
-                <ArrowLeft size={18} className="text-gray-600" strokeWidth={1.5} />
-              </button>
-              <input
-                type="text"
-                value={slideSearchQuery}
-                onChange={(e) => setSlideSearchQuery(e.target.value)}
-                placeholder="Search templates"
-                className="w-full px-3 py-1.5 text-sm outline-none bg-transparent"
-              />
-            </div>
-
-            {/* Slide Templates List */}
-            <div className="flex-1 overflow-y-auto p-2" style={{ maxHeight: 'calc(400px - 120px)' }}>
-              {filteredSlides.map((slide) => {
-                const selectedSlide = selectedSlides.find(s => s.id === slide.id)
-                const isSelected = !!selectedSlide
-                return (
-                  <button
-                    key={slide.id}
-                    onClick={() => toggleSlideTemplate(slide)}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-left rounded-md transition-colors ${
-                      isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {isSelected && (
-                        <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-medium">
-                          {selectedSlide.order}
-                        </div>
-                      )}
-                      {!isSelected && (
-                        <div className="w-6 h-6 border border-gray-300 rounded-full" />
-                      )}
-                      <div>
-                        <div className={`text-sm font-medium ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
-                          {slide.name}
-                        </div>
-                        <div className="text-xs text-gray-500">{slide.category}</div>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Done Button */}
-            <div className="p-3 border-t border-gray-100">
-              <button
-                onClick={() => {
-                  setShowPopup(false)
-                  setPopupView('main')
-                  setSlideSearchQuery('')
-                }}
-                className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Done ({selectedSlides.length} selected)
+                <FileText size={18} className="text-gray-600" strokeWidth={1.5} />
+                <span className="text-sm text-gray-700">Upload article (.txt, .html, .pdf)</span>
               </button>
             </div>
           </>
@@ -984,7 +783,12 @@ Please build upon or reference this previous lesson content where appropriate.`
 
             {/* Lesson List */}
             <div className="max-h-64 overflow-y-auto">
-              {filteredLessons.length > 0 ? (
+              {loadingLessons ? (
+                <div className="px-4 py-6 text-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400 mx-auto" />
+                  <p className="text-sm text-gray-500 mt-2">Loading lessons...</p>
+                </div>
+              ) : filteredLessons.length > 0 ? (
                 filteredLessons.map((lesson) => (
                   <button
                     key={lesson.id}
@@ -996,9 +800,20 @@ Please build upon or reference this previous lesson content where appropriate.`
                 ))
               ) : (
                 <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                  No lessons found
+                  {lessons.length === 0 ? 'No lessons created yet' : 'No lessons found'}
                 </div>
               )}
+            </div>
+
+            {/* Add New Lesson Button */}
+            <div className="p-3 border-t border-gray-100">
+              <button
+                onClick={handleAddNewLesson}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-gray-50 rounded-md transition-colors text-sm"
+              >
+                <Plus size={16} className="text-gray-600" />
+                <span className="text-gray-700">Create a new lesson</span>
+              </button>
             </div>
           </>
         )}
@@ -1010,6 +825,34 @@ Please build upon or reference this previous lesson content where appropriate.`
   return (
     <>
       {renderPopup()}
+      
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.html,.pdf"
+        onChange={handleFileInputChange}
+        className="hidden"
+      />
+
+      {/* Enhanced Slide Selector Modal */}
+      {showEnhancedSelector && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => {
+            // Just close the modal without changing selected slides
+            setShowEnhancedSelector(false)
+          }} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-4xl lg:max-w-6xl h-[90vh] sm:h-[85vh] overflow-hidden">
+            <EnhancedSlideSelector
+              availableTemplates={availableTemplates}
+              onSelectionChange={setSelectedSlides}
+              onClose={() => setShowEnhancedSelector(false)}
+              disabled={isGenerating}
+              initialSelection={selectedSlides}
+            />
+          </div>
+        </div>
+      )}
       
       {/* Confirmation Modal */}
       <Modal
@@ -1028,7 +871,7 @@ Please build upon or reference this previous lesson content where appropriate.`
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Selected Templates ({selectedSlides.length}):</h3>
               <ul className="text-sm text-gray-600 space-y-1">
                 {selectedSlides.map((slide, index) => (
-                  <li key={slide.id} className="flex items-center gap-2">
+                  <li key={slide.instanceId} className="flex items-center gap-2">
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{index + 1}</span>
                     <span>{slide.name}</span>
                   </li>
@@ -1040,7 +883,7 @@ Please build upon or reference this previous lesson content where appropriate.`
           {selectedProfile && (
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Student Profile:</h3>
-              <p className="text-sm text-gray-600">{selectedProfile.name} - {selectedProfile.firstLanguage}</p>
+              <p className="text-sm text-gray-600">{selectedProfile.name} - {selectedProfile.target_language}</p>
             </div>
           )}
           
@@ -1161,123 +1004,208 @@ Please build upon or reference this previous lesson content where appropriate.`
           
           {/* Content Container */}
           <div
+            ref={dropZoneRef}
             className={`backdrop-blur-sm overflow-hidden ${
               isAnimating ? 'transition-all duration-200 ease-out' : ''
             } ${
               isExpanded ? 'shadow-sm' : ''
             } ${
               isGenerating ? 'opacity-75' : ''
+            } ${
+              isDraggingFile ? 'border-blue-400 border-2 bg-blue-50' : ''
             }`}
             style={{ 
               height: `${contentHeight}px`,
               borderRadius: '0.5rem',
-              backgroundColor: isGenerating ? '#f9fafb' : 'white',
-              border: isExpanded ? '1px solid #e5e7eb' : 'none',
-              cursor: isGenerating ? 'not-allowed' : 'auto'
+              backgroundColor: isDraggingFile ? '#eff6ff' : (isGenerating ? '#f9fafb' : 'white'),
+              border: isDraggingFile ? '2px solid #60a5fa' : (isExpanded ? '1px solid #e5e7eb' : 'none'),
+              cursor: isGenerating ? 'not-allowed' : 'auto',
+              position: 'relative'
             }}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
           >
+            {/* Drag overlay */}
+            {isDraggingFile && (
+              <div className="absolute inset-0 bg-blue-50 bg-opacity-90 rounded-lg z-10 flex items-center justify-center">
+                <div className="text-center">
+                  <File className="w-12 h-12 text-blue-500 mx-auto mb-2" />
+                  <p className="text-blue-700 font-medium">Drop to add to prompt</p>
+                  <p className="text-blue-600 text-sm mt-1">Supports .txt, .html, and .pdf files</p>
+                </div>
+              </div>
+            )}
+            
             {isExpanded && (
-              <div className="h-full px-5 pt-4 pb-14 flex flex-col relative">
-                <textarea
-                  ref={textareaRef}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={placeholder}
-                  className={`w-full h-full resize-none outline-none text-[15px] placeholder-gray-400 leading-relaxed bg-transparent ${
-                    isGenerating ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
-                  }`}
-                  style={{ 
-                    minHeight: `${Math.max(50, contentHeight - 70)}px`
-                  }}
-                  disabled={isGenerating}
-                />
+              <div className="h-full relative">
+                {/* Main content area with padding */}
+                <div className="h-full px-5 pt-4 pb-14">
+                  <textarea
+                    ref={textareaRef}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={placeholder}
+                    className={`w-full resize-none outline-none text-[15px] placeholder-gray-400 leading-relaxed bg-transparent ${
+                      isGenerating ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                    }`}
+                    style={{ 
+                      minHeight: `${Math.max(50, contentHeight - 70)}px`
+                    }}
+                    disabled={isGenerating}
+                  />
+                </div>
+                
+                {/* File Upload Container - Positioned absolutely at bottom left */}
+                {showFileContainer && uploadedFile && (
+                  <div 
+                    className="group absolute left-5 bg-gray-50 rounded-lg border border-gray-200 animate-slide-up p-3"
+                    style={{ 
+                      bottom: '56px',
+                      width: '200px',
+                      zIndex: 1
+                    }}
+                  >
+                    <div className={`flex items-start justify-between ${uploadedFile.content && contentHeight > 250 ? 'mb-2' : ''}`}>
+                      <div>
+                        <p className="text-xs font-medium text-gray-700 truncate" style={{ maxWidth: '150px' }}>
+                          {uploadedFile.name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {formatFileSize(uploadedFile.size)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={removeFile}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-200 rounded transition-none"
+                        disabled={isGenerating}
+                      >
+                        <X size={14} className="text-gray-500" />
+                      </button>
+                    </div>
+                    {uploadedFile.content && contentHeight > 250 && (
+                      <p className="text-xs text-gray-600 line-clamp-2 animate-fade-in">
+                        {uploadedFile.content}
+                      </p>
+                    )}
+                  </div>
+                )}
                 
                 {/* Bottom Toolbar */}
                 <div className={`absolute bottom-0 left-0 right-0 h-12 flex items-center justify-between px-4 ${
                   isGenerating ? 'opacity-50 pointer-events-none' : ''
-                }`} style={{ backgroundColor: 'white', borderRadius: '0 0 0.5rem 0.5rem' }}>
+                }`} style={{ backgroundColor: 'white', borderRadius: '0 0 0.5rem 0.5rem', zIndex: 2 }}>
                   {/* Left Section - Plus Button and Selected Items */}
-                  <div className="flex items-center gap-2">
-                    {/* Unified Plus Button */}
-                    <button
-                      ref={plusButtonRef}
-                      onClick={togglePopup}
-                      className="w-8 h-8 flex items-center justify-center border border-gray-300 transition-all duration-200 hover:bg-gray-100 active:bg-gray-100"
-                      style={{
-                        borderRadius: '0.5rem',
-                        backgroundColor: showPopup ? '#f3f4f6' : 'white'
+                  <div className="relative flex items-center flex-1 mr-3" style={{ maxWidth: 'calc(100% - 80px)' }}>
+                    {/* Scrollable container */}
+                    <div 
+                      ref={footerScrollRef}
+                      className="flex items-center gap-2 overflow-x-auto scrollbar-hide" 
+                      style={{ scrollBehavior: 'smooth' }}
+                      onScroll={(e) => {
+                        const element = e.currentTarget
+                        const hasOverflow = element.scrollWidth > element.clientWidth
+                        const isAtEnd = Math.ceil(element.scrollLeft + element.clientWidth) >= element.scrollWidth
+                        setShowFadeGradient(hasOverflow && !isAtEnd)
                       }}
-                      title="Add content"
                     >
-                      <Plus size={16} className="text-gray-600" strokeWidth={1.5} />
-                    </button>
+                      {/* Unified Plus Button */}
+                      <button
+                        ref={plusButtonRef}
+                        onClick={togglePopup}
+                        className="w-8 h-8 flex-shrink-0 flex items-center justify-center border border-gray-300 transition-all duration-200 hover:bg-gray-100 active:bg-gray-100"
+                        style={{
+                          borderRadius: '0.5rem',
+                          backgroundColor: showPopup ? '#f3f4f6' : 'white'
+                        }}
+                        title="Add content"
+                      >
+                        <Plus size={16} className="text-gray-600" strokeWidth={1.5} />
+                      </button>
 
-                    {/* Genius Mode Toggle Button */}
-                    <button
-                      onClick={toggleGeniusMode}
-                      onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
-                      onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-                      className={`px-3 h-8 flex items-center justify-center transition-all duration-200 ${isGeniusMode ? 'border-purple-700 text-purple-700' : 'border-gray-300 text-gray-600'}`}
-                      style={{
-                        borderRadius: '0.5rem',
-                        backgroundColor: isGeniusMode ? '#f5f3ff' : 'white',
-                        borderWidth: '1px',
-                        borderStyle: 'solid'
-                      }}
-                      title={isGeniusMode ? 'Genius mode enabled (gpt-5-mini with advanced reasoning)' : 'Enable Genius mode'}
-                    >
-                      <Brain size={16} strokeWidth={1.5} className="mr-1.5" />
-                      <span className="text-sm font-medium">Genius</span>
-                    </button>
+                      {/* Genius Mode Toggle Button */}
+                      <button
+                        onClick={toggleGeniusMode}
+                        onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+                        onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                        className={`px-3 h-8 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${isGeniusMode ? 'border-purple-700 text-purple-700' : 'border-gray-300 text-gray-600'}`}
+                        style={{
+                          borderRadius: '0.5rem',
+                          backgroundColor: isGeniusMode ? '#f5f3ff' : 'white',
+                          borderWidth: '1px',
+                          borderStyle: 'solid'
+                        }}
+                        title={isGeniusMode ? 'Genius mode enabled (gpt-5-mini with advanced reasoning)' : 'Enable Genius mode'}
+                      >
+                        <Brain size={16} strokeWidth={1.5} className="mr-1.5" />
+                        <span className="text-sm font-medium">Genius</span>
+                      </button>
 
-                    {/* Selected Slides Indicator */}
-                    {selectedSlides.length > 0 && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-sm" style={{ borderRadius: '0.5rem' }}>
-                        <Layers size={14} className="text-gray-600" />
-                        <span className="text-gray-700 whitespace-nowrap">
-                          {selectedSlides.length} slide{selectedSlides.length !== 1 ? 's' : ''}
-                        </span>
-                        <button
-                          onClick={clearSelectedSlides}
-                          className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    )}
+                      {/* Selected Slides Indicator */}
+                      {selectedSlides.length > 0 && (
+                        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-sm" style={{ borderRadius: '0.5rem' }}>
+                          <Layers size={14} className="text-gray-600" />
+                          <span className="text-gray-700 whitespace-nowrap">
+                            {selectedSlides.length} slide{selectedSlides.length !== 1 ? 's' : ''}
+                          </span>
+                          <button
+                            onClick={clearSelectedSlides}
+                            className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
 
-                    {/* Selected Profile Indicator */}
-                    {selectedProfile && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-sm" style={{ borderRadius: '0.5rem' }}>
-                        <User size={14} className="text-gray-600" />
-                        <span className="text-gray-700 whitespace-nowrap">
-                          {selectedProfile.name}
-                        </span>
-                        <button
-                          onClick={clearSelectedProfile}
-                          className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    )}
+                      {/* Selected Profile Indicator */}
+                      {selectedProfile && (
+                        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-sm" style={{ borderRadius: '0.5rem' }}>
+                          <User size={14} className="text-gray-600" />
+                          <span className="text-gray-700 whitespace-nowrap">
+                            {selectedProfile.name}
+                          </span>
+                          <button
+                            onClick={clearSelectedProfile}
+                            className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
 
-                    {/* Selected Lesson Indicator */}
-                    {selectedLesson && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-sm" style={{ borderRadius: '0.5rem' }}>
-                        <BookOpen size={14} className="text-gray-600" />
-                        <span className="text-gray-700 whitespace-nowrap">
-                          {selectedLesson.title}
-                        </span>
-                        <button
-                          onClick={clearSelectedLesson}
-                          className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
+                      {/* Selected Lesson Indicator */}
+                      {selectedLesson && (
+                        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-sm" style={{ borderRadius: '0.5rem' }}>
+                          <BookOpen size={14} className="text-gray-600" />
+                          <span className="text-gray-700 whitespace-nowrap">
+                            {selectedLesson.title}
+                          </span>
+                          <button
+                            onClick={clearSelectedLesson}
+                            className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Processing File Indicator */}
+                      {isProcessingFile && (
+                        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+                          <span className="text-gray-700">Processing file...</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Fade gradient overlay - only show when there's more content to scroll */}
+                    {showFadeGradient && (
+                      <div className="absolute right-0 top-0 bottom-0 w-12 pointer-events-none" style={{
+                        background: 'linear-gradient(to right, transparent, white)'
+                      }} />
                     )}
                   </div>
 
@@ -1285,7 +1213,7 @@ Please build upon or reference this previous lesson content where appropriate.`
                   <button 
                     className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     onClick={handleGenerate}
-                    disabled={!text.trim() || selectedSlides.length === 0}
+                    disabled={!text.trim() || selectedSlides.length === 0 || isProcessingFile}
                     tabIndex={-1}
                   >
                     <ArrowUp size={16} strokeWidth={2} />
@@ -1296,6 +1224,52 @@ Please build upon or reference this previous lesson content where appropriate.`
           </div>
         </div>
       </div>
+      
+      <style jsx>{`
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        
+        .animate-slide-up {
+          animation: slide-up 0.2s ease-out;
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-in;
+        }
+        
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </>
   )
 }

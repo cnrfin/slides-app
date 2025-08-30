@@ -13,7 +13,14 @@ import {
   BarChart3,
   Table,
   Sparkles,
-  User
+  ArrowLeft,
+  ChevronDown,
+  Settings,
+  Languages,
+  GraduationCap,
+  LogOut,
+  Save,
+  History
 } from 'lucide-react'
 import useSlideStore from '@/stores/slideStore'
 import useAuthStore from '@/stores/authStore'
@@ -27,13 +34,16 @@ import IconsPopup from './popups/IconsPopup'
 import ChartModal from './popups/ChartModal'
 import TablePopup from './popups/TablePopup'
 import { TabGroup } from '@/components/ui'
-import UserMenu from '@/components/auth/UserMenu'
+import { useNavigate, Link } from 'react-router-dom'
+import RecentLessonsPopup from '@/components/lessons/RecentLessonsPopup'
 
 interface SidebarProps {
   onAddSlide: () => void
+  onApplyTemplateToSlide: (slideId: string) => void
 }
 
-export default function Sidebar({ onAddSlide }: SidebarProps) {
+export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarProps) {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'elements' | 'slides'>('slides')
   const [lessonTitle, setLessonTitle] = useState('')
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -42,13 +52,14 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
   const [showIconsPopup, setShowIconsPopup] = useState(false)
   const [showChartModal, setShowChartModal] = useState(false)
   const [showTablePopup, setShowTablePopup] = useState(false)
-  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [showRecentLessons, setShowRecentLessons] = useState(false)
   const shapeButtonRef = useRef<HTMLButtonElement>(null)
   const iconsButtonRef = useRef<HTMLButtonElement>(null)
   const tableButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
-  const userButtonRef = useRef<HTMLButtonElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
   
   const {
     slides,
@@ -62,10 +73,12 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
     addSlide,
     presentation,
     lastSaved,
-    updatePresentationTitle
+    updatePresentationTitle,
+    saveToDatabase,
+    isSaving
   } = useSlideStore()
   
-  const { user } = useAuthStore()
+  const { user, signOut } = useAuthStore()
   
   const currentSlideIndex = slides.findIndex(s => s.id === currentSlideId)
   const currentSlide = slides.find(s => s.id === currentSlideId)
@@ -259,17 +272,62 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
     { icon: Table, label: 'Table', onClick: () => setShowTablePopup(!showTablePopup) },
   ]
   
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        // Don't close if clicking on Recent Lessons popup
+        const recentLessonsPopup = document.querySelector('[data-recent-lessons-popup]')
+        if (recentLessonsPopup && recentLessonsPopup.contains(event.target as Node)) {
+          return
+        }
+        setIsUserMenuOpen(false)
+        setShowRecentLessons(false)
+      }
+    }
+
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isUserMenuOpen])
+
   // Get user initials for avatar
   const getUserInitials = () => {
-    if (!user) return 'U'
-    if (user.display_name) {
-      const parts = user.display_name.split(' ')
-      if (parts.length >= 2) {
-        return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-      }
-      return user.display_name[0].toUpperCase()
+    if (user?.display_name) {
+      const names = user.display_name.split(' ')
+      return names.map(n => n[0]).join('').toUpperCase().slice(0, 2)
     }
-    return (user.email || 'U')[0].toUpperCase()
+    return user?.email?.[0]?.toUpperCase() || 'U'
+  }
+  
+  const getUserPlan = () => {
+    if (!user) return 'Free'
+    return user.subscription_tier === 'max' ? 'Max plan' :
+           user.subscription_tier === 'pro' ? 'Pro plan' : 
+           'Free plan'
+  }
+  
+  const handleNavigateBack = () => {
+    // Check if there are unsaved changes
+    const event = new CustomEvent('canvas:navigate-back')
+    window.dispatchEvent(event)
+  }
+  
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (error) {
+      console.error('Sign out error:', error)
+    }
+  }
+  
+  const handleSaveLesson = async () => {
+    if (presentation) {
+      await saveToDatabase()
+      setIsUserMenuOpen(false)
+    }
   }
   
   return (
@@ -281,42 +339,14 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
         {/* Header */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            {/* User Profile Button */}
+            {/* Back to Dashboard Button */}
             <button
-              ref={userButtonRef}
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="relative flex items-center justify-center transition-all hover:opacity-80"
-              title={user?.display_name || user?.email || 'User Profile'}
+              onClick={handleNavigateBack}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-[0ms]"
+              title="Back to Dashboard"
             >
-              {user?.avatar_url ? (
-                <img 
-                  src={user.avatar_url} 
-                  alt={user.display_name || user.email}
-                  className="w-10 h-10 rounded-full border-2 border-gray-200"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
-                  {user ? (
-                    <span className="text-white font-semibold text-sm">
-                      {getUserInitials()}
-                    </span>
-                  ) : (
-                    <User className="w-5 h-5 text-white" />
-                  )}
-                </div>
-              )}
+              <ArrowLeft className="w-5 h-5 text-gray-700" strokeWidth={1.5} />
             </button>
-            
-            {/* Subscription Badge */}
-            {user && (
-              <div className={`px-2 py-1 rounded text-xs font-medium ${
-                user.subscription_tier === 'max' ? 'bg-purple-100 text-purple-700' :
-                user.subscription_tier === 'pro' ? 'bg-blue-100 text-blue-700' :
-                'bg-gray-100 text-gray-700'
-              }`}>
-                {user.subscription_tier.toUpperCase()}
-              </div>
-            )}
           </div>
           
           <>
@@ -439,6 +469,18 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
+                          selectSlide(slide.id)
+                          setCurrentSlide(slide.id)
+                          onApplyTemplateToSlide(slide.id)
+                        }}
+                        className="p-1.5 bg-white/90 backdrop-blur-sm rounded hover:bg-gray-100 transition-colors shadow-sm"
+                        title="Apply template to slide"
+                      >
+                        <Plus className="w-3 h-3 text-gray-700" strokeWidth={1} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
                           duplicateSlide(slide.id)
                         }}
                         className="p-1.5 bg-white/90 backdrop-blur-sm rounded hover:bg-gray-100 transition-colors shadow-sm"
@@ -486,21 +528,132 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
           )}
         </div>
         
-        {/* Footer - Only for Slides tab */}
-        {activeTab === 'slides' && (
-          <div className="p-4 border-t border-gray-100">
+        {/* User Profile Section - At the bottom */}
+        <div className="p-2 border-t border-gray-100" ref={userMenuRef}>
+          <div className="relative">
             <button
-              onClick={onAddSlide}
-              onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
-              onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white hover:bg-blue-600 transition-colors font-medium"
-              style={{ borderRadius: '0.5rem' }}
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Add Slides
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-medium">
+                  {getUserInitials()}
+                </span>
+              </div>
+              <div className="flex-1 text-left">
+                <div className="font-medium text-sm text-gray-900 truncate">
+                  {user?.display_name || user?.email?.split('@')[0] || 'User'}
+                </div>
+                <div className="text-xs text-gray-500 truncate">
+                  {getUserPlan()}
+                </div>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
             </button>
+
+            {/* User Dropdown Menu */}
+            {isUserMenuOpen && (
+              <div className="absolute bottom-full mb-2 left-0 right-0 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden dropdown-animation z-[60]">
+                {/* User Info Header */}
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-sm font-medium">
+                        {getUserInitials()}
+                      </span>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <div className="font-medium text-sm text-gray-900 truncate">
+                        {user?.display_name || 'Display Name'}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {getUserPlan()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500 truncate">
+                    {user?.email || 'email@example.com'}
+                  </div>
+                </div>
+
+                {/* Menu Options */}
+                <div className="py-1">
+                  {presentation && (
+                    <button
+                      onClick={handleSaveLesson}
+                      disabled={isSaving}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      {isSaving ? (
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Save className="w-4 h-4" strokeWidth={1.5} />
+                      )}
+                      {isSaving ? 'Saving...' : 'Save Lesson'}
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => setShowRecentLessons(!showRecentLessons)}
+                    className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="flex items-center gap-3">
+                      <History className="w-4 h-4" strokeWidth={1.5} />
+                      Recent Lessons
+                    </span>
+                    <ChevronDown className="w-4 h-4 rotate-[-90deg]" strokeWidth={1.5} />
+                  </button>
+                  
+                  <Link
+                    to="/dashboard/settings"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <Settings className="w-4 h-4" strokeWidth={1.5} />
+                    Settings
+                  </Link>
+                  
+                  <button className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    <span className="flex items-center gap-3">
+                      <Languages className="w-4 h-4" strokeWidth={1.5} />
+                      Language
+                    </span>
+                    <ChevronDown className="w-4 h-4 rotate-[-90deg]" strokeWidth={1.5} />
+                  </button>
+                  
+                  <Link
+                    to="/dashboard/tutorials"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <GraduationCap className="w-4 h-4" strokeWidth={1.5} />
+                    Tutorials
+                  </Link>
+                  
+                  <Link
+                    to="/dashboard/billing"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <Sparkles className="w-4 h-4" strokeWidth={1.5} />
+                    Upgrade plan
+                  </Link>
+                </div>
+
+                {/* Sign Out */}
+                <div className="border-t border-gray-100 py-1">
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" strokeWidth={1.5} />
+                    Log out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
       
       {/* Shape Popup */}
@@ -554,18 +707,12 @@ export default function Sidebar({ onAddSlide }: SidebarProps) {
         }}
       />
       
-      {/* User Menu Dropdown - positioned relative to the user button */}
-      {showUserMenu && userButtonRef.current && (
-        <div
-          className="fixed z-50"
-          style={{
-            top: userButtonRef.current.getBoundingClientRect().bottom + 8,
-            left: userButtonRef.current.getBoundingClientRect().left
-          }}
-        >
-          <UserMenu onClose={() => setShowUserMenu(false)} />
-        </div>
-      )}
+      {/* Recent Lessons Popup */}
+      <RecentLessonsPopup
+        isOpen={showRecentLessons}
+        onClose={() => setShowRecentLessons(false)}
+        anchorElement={userMenuRef.current}
+      />
     </div>
   )
 }

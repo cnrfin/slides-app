@@ -9,7 +9,7 @@ export const TitleTemplate: SlideTemplate = {
   id: 'title',
   name: 'Title',
   category: 'title',
-  description: 'Title Page with Centered Text',
+  description: 'A title page of the lesson',
   background: "#ffffff",
   elements: [
     {

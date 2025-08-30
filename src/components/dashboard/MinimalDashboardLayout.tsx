@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import HistorySidebar from './HistorySidebar'
+import ToastContainer from '@/components/ui/Toast'
 
 export default function MinimalDashboardLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -43,6 +44,9 @@ export default function MinimalDashboardLayout() {
       >
         <Outlet />
       </div>
+      
+      {/* Toast Container - Available for all dashboard pages */}
+      <ToastContainer />
     </div>
   )
 }

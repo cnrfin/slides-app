@@ -21,6 +21,7 @@ import { measureAutoText } from '@/utils/text.utils'
 import { loadFont } from '@/utils/font.utils'
 import { FONTS, getAvailableWeights, isWeightAvailable, getClosestAvailableWeight } from '@/utils/fonts.config'
 import BlendModeSelector from './BlendModeSelector'
+import EffectsControls from './EffectsControls'
 import { ColorOpacityControl } from '@/components/ui'
 
 interface TextPropertiesPanelProps {
@@ -435,12 +436,36 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
       
       {/* Color with integrated Opacity */}
       <div className="pb-3">
-        <label className="text-xs text-gray-600 block mb-2">Color</label>
+        <label className="text-xs text-gray-600 block mb-2">
+          Color
+          {firstTextElement?.metadata?.colorSource === 'auto' && (
+            <span className="ml-2 text-xs text-blue-500">(Auto-adjusted)</span>
+          )}
+        </label>
         <ColorOpacityControl
           style={style}
           opacity={firstTextElement?.opacity || 1}
           colorType="text"
-          onChange={(updates) => updateStyle(updates, true)}
+          onChange={(updates) => {
+            // Mark color as user-set when manually changed
+            if (updates.color || updates.gradientStart || updates.gradientEnd) {
+              textElements.forEach(element => {
+                updateElement(currentSlide.id, element.id, {
+                  style: {
+                    ...element.style,  // Preserve existing style properties
+                    ...updates         // Apply only the color updates
+                  },
+                  metadata: {
+                    ...element.metadata,
+                    colorSource: 'user',
+                    originalColor: updates.color || style.color
+                  }
+                })
+              })
+            } else {
+              updateStyle(updates, true)
+            }
+          }}
           onOpacityChange={handleOpacityChange}
         />
       </div>
@@ -453,6 +478,14 @@ export default function TextPropertiesPanel({ className = '' }: TextPropertiesPa
           onChange={(blendMode: BlendMode) => updateStyle({ blendMode })}
         />
       </div>
+      
+      {/* Effects */}
+      <EffectsControls
+        style={style}
+        onChange={updateStyle}
+        showBlur={true}
+        showDropShadow={true}
+      />
       
       {/* Actions */}
       <div>

@@ -1,8 +1,17 @@
 # Figma Slides App
 
-A powerful slide creation and presentation app with AI-powered lesson building capabilities.
+A powerful slide creation and presentation app with AI-powered lesson building capabilities and seamless Google integration.
 
-## Features
+## ✨ New Features
+
+### Google One Tap Authentication
+- **Quick Sign-In**: Sign in with just one tap using your Google account
+- **Automatic Prompts**: Smart prompts for returning users
+- **Seamless Integration**: Works with existing Supabase authentication
+- **Secure Sessions**: Managed by Supabase with Google OAuth 2.0
+- See [GOOGLE_ONE_TAP_QUICK_START.md](./GOOGLE_ONE_TAP_QUICK_START.md) for setup details
+
+## Core Features
 
 ### AI-Powered Lesson Builder
 The collapsible text input component now integrates with OpenAI's GPT-5 models to generate complete lessons:

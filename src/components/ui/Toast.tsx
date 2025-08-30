@@ -83,6 +83,19 @@ const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 3000, onClo
     }
   }
 
+  const getCloseButtonColor = () => {
+    switch (type) {
+      case 'success':
+        return 'text-green-700 hover:text-green-900'
+      case 'error':
+        return 'text-red-700 hover:text-red-900'
+      case 'info':
+        return 'text-blue-700 hover:text-blue-900'
+      case 'loading':
+        return 'text-blue-700 hover:text-blue-900'
+    }
+  }
+
   return (
     <div
       className={`
@@ -102,7 +115,7 @@ const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 3000, onClo
           onClick={handleClose}
           className="p-1 hover:bg-white/50 rounded transition-colors"
         >
-          <X className="w-4 h-4 text-gray-500" />
+          <X className={`w-4 h-4 ${getCloseButtonColor()}`} />
         </button>
       )}
     </div>

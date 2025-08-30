@@ -4,6 +4,7 @@ import { Lock, Unlock, Scan } from 'lucide-react'
 import useSlideStore, { useCurrentSlide, useSelectedElements } from '@/stores/slideStore'
 import type { SlideElement, ImageContent, BlendMode } from '@/types/slide.types'
 import BlendModeSelector from './BlendModeSelector'
+import EffectsControls from './EffectsControls'
 import { CustomSlider } from '@/components/ui'
 
 export default function ImagePropertiesPanel() {
@@ -341,6 +342,24 @@ export default function ImagePropertiesPanel() {
           onChange={handleBlendModeChange}
         />
       </div>
+      
+      {/* Effects */}
+      <EffectsControls
+        style={firstImage?.style || {}}
+        onChange={(updates) => {
+          if (!currentSlide) return
+          selectedImages.forEach(image => {
+            updateElement(currentSlide.id, image.id, {
+              style: {
+                ...image.style,
+                ...updates
+              }
+            })
+          })
+        }}
+        showBlur={true}
+        showDropShadow={true}
+      />
       
       {/* Actions */}
       <div>

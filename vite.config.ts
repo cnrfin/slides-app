@@ -23,6 +23,7 @@ export default defineConfig({
     include: ['react', 'react-dom', 'konva', 'react-konva'],
   },
   server: {
-    host: '127.0.0.1'
+    host: 'localhost',
+    port: 5173
   },
 })

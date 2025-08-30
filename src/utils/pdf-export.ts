@@ -5,6 +5,7 @@ import { CANVAS_DIMENSIONS } from '@/utils/canvas.constants'
 import { drawSVGPath } from '@/utils/svg-path-parser'
 import { getIconPath } from '@/utils/icon.utils'
 import { applyOpacityToColor } from '@/utils/color.utils'
+import { applyCanvasShadow } from '@/utils/shadow.utils'
 
 export interface ExportPDFOptions {
   slides: Slide[]
@@ -13,6 +14,7 @@ export interface ExportPDFOptions {
   fileName?: string
   quality?: number
   onProgress?: (progress: number) => void
+  returnBlob?: boolean // NEW: Option to return blob instead of downloading
 }
 
 // Preload all images in slides
@@ -46,6 +48,20 @@ async function preloadImages(slides: Slide[]): Promise<Map<string, HTMLImageElem
 
   await Promise.all(imagePromises)
   return imageMap
+}
+
+// Helper function to apply drop shadow to canvas context
+const applyDropShadow = (ctx: CanvasRenderingContext2D, dropShadow?: any) => {
+  applyCanvasShadow(ctx, dropShadow)
+}
+
+// Helper function to apply blur filter
+const applyBlurFilter = (ctx: CanvasRenderingContext2D, blur?: number) => {
+  if (blur && blur > 0) {
+    ctx.filter = `blur(${blur}px)`
+  } else {
+    ctx.filter = 'none'
+  }
 }
 
 // Helper function to map blend mode to canvas composite operation
@@ -102,14 +118,15 @@ const getGradientPoints = (angle: number, x: number, y: number, width: number, h
 /**
  * Exports slides to PDF with high quality
  */
-export async function exportSlidesToPDF({
+export async function exportSlidesToPDF<T extends ExportPDFOptions = ExportPDFOptions>({
   slides,
   slideOrder,
   currentSlideId,
   fileName = 'presentation.pdf',
   quality = 0.95,
-  onProgress
-}: ExportPDFOptions): Promise<void> {
+  onProgress,
+  returnBlob = false
+}: T): Promise<T extends { returnBlob: true } ? Blob : void> {
   try {
     // Preload all images first
     const imageCache = await preloadImages(slides)
@@ -121,30 +138,19 @@ export async function exportSlidesToPDF({
       format: [CANVAS_DIMENSIONS.WIDTH, CANVAS_DIMENSIONS.HEIGHT]
     })
 
-    // Sort slides by their correct order
-    let sortedSlides: Slide[]
+    // Use slides in the exact order they're provided
+    // The slides array from the store is already in the correct order (as displayed in the UI)
+    const sortedSlides = [...slides]
     
-    if (slideOrder && slideOrder.length > 0) {
-      // If we have an explicit slide order, use it
-      sortedSlides = slideOrder
-        .map(id => slides.find(s => s.id === id))
-        .filter((s): s is Slide => s !== undefined)
-    } else {
-      // Otherwise, sort by the order property
-      // First, ensure all slides have valid order values
-      const slidesWithOrder = [...slides].map((slide, index) => ({
-        ...slide,
-        order: slide.order ?? index
-      }))
-      
-      // Sort by order, then by array position as tiebreaker
-      sortedSlides = slidesWithOrder.sort((a, b) => {
-        if (a.order !== b.order) {
-          return a.order - b.order
-        }
-        // If orders are the same, maintain original array order
-        return slides.indexOf(a) - slides.indexOf(b)
-      })
+    // Debug logging
+    console.log('PDF Export - Exporting slides in array order:')
+    sortedSlides.forEach((slide, index) => {
+      console.log(`  Slide ${index + 1}: ID=${slide.id}, order=${slide.order}`)
+    })
+    
+    if (sortedSlides.length === 0) {
+      console.error('No slides to export')
+      throw new Error('No slides to export')
     }
 
     // Use higher resolution for better quality
@@ -232,6 +238,10 @@ export async function exportSlidesToPDF({
               const textContent = element.content as TextContent
               ctx.save()
               
+              // Apply effects
+              applyDropShadow(ctx, element.style?.dropShadow)
+              applyBlurFilter(ctx, element.style?.blur)
+              
               // Always set opacity (default to 1)
               ctx.globalAlpha = elementOpacity
               console.log(`Text element opacity: ${elementOpacity}`)
@@ -241,7 +251,9 @@ export async function exportSlidesToPDF({
               const fontWeight = element.style?.fontWeight || 'normal'
               const fontStyle = element.style?.fontStyle || 'normal'
               
-              ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`
+              // Set font with proper weight handling
+              const fontWeightValue = fontWeight === 'bold' ? 'bold' : fontWeight === 'normal' ? 'normal' : fontWeight
+              ctx.font = `${fontStyle} ${fontWeightValue} ${fontSize}px ${fontFamily}`
               
               // Handle gradient for text
               if (element.style?.gradientStart && element.style?.gradientEnd) {
@@ -273,6 +285,10 @@ export async function exportSlidesToPDF({
               const textAlign = element.style?.textAlign || 'left'
               ctx.textBaseline = 'top'
               
+              // Ensure we have the element's actual dimensions
+              const elementWidth = element.width || 100
+              const elementHeight = element.height || 50
+              
               // Handle text with word wrapping
               const text = textContent.text || ''
               const lines = text.split('\n')
@@ -281,6 +297,11 @@ export async function exportSlidesToPDF({
               
               // Function to wrap text and return wrapped lines
               const wrapText = (text: string, maxWidth: number): string[] => {
+                // Handle empty text
+                if (!text || text.trim() === '') {
+                  return []
+                }
+                
                 const words = text.split(' ')
                 const wrappedLines: string[] = []
                 let currentLine = ''
@@ -304,7 +325,7 @@ export async function exportSlidesToPDF({
               
               // Process each line and wrap if needed
               for (const line of lines) {
-                const wrappedLines = wrapText(line, element.width)
+                const wrappedLines = wrapText(line, elementWidth)
                 
                 for (const wrappedLine of wrappedLines) {
                   // Calculate x position based on alignment for each wrapped line
@@ -315,7 +336,7 @@ export async function exportSlidesToPDF({
                     const words = wrappedLine.split(' ')
                     if (words.length > 1) {
                       const wordsWidth = words.reduce((sum, word) => sum + ctx.measureText(word).width, 0)
-                      const totalSpaceWidth = element.width - wordsWidth
+                      const totalSpaceWidth = elementWidth - wordsWidth
                       const spaceWidth = totalSpaceWidth / (words.length - 1)
                       
                       let currentX = element.x
@@ -332,14 +353,24 @@ export async function exportSlidesToPDF({
                     // Handle other alignments
                     if (textAlign === 'center') {
                       const lineWidth = ctx.measureText(wrappedLine).width
-                      textX = element.x + (element.width - lineWidth) / 2
+                      textX = element.x + (elementWidth - lineWidth) / 2
                     } else if (textAlign === 'right') {
                       const lineWidth = ctx.measureText(wrappedLine).width
-                      textX = element.x + element.width - lineWidth
+                      textX = element.x + elementWidth - lineWidth
                     }
                     ctx.fillText(wrappedLine, textX, y)
                   }
                   y += lineHeight
+                  
+                  // Stop if we've exceeded the element's height
+                  if (y - element.y > elementHeight) {
+                    break
+                  }
+                }
+                
+                // Stop processing lines if we've exceeded height
+                if (y - element.y > elementHeight) {
+                  break
                 }
               }
               
@@ -350,6 +381,10 @@ export async function exportSlidesToPDF({
             case 'shape': {
               const shapeContent = element.content as ShapeContent
               ctx.save()
+              
+              // Apply effects
+              applyDropShadow(ctx, element.style?.dropShadow)
+              applyBlurFilter(ctx, element.style?.blur)
               
               // For shapes, we handle opacity differently - apply it to the colors directly
               // This matches how the canvas renderer handles it
@@ -590,6 +625,10 @@ export async function exportSlidesToPDF({
               if (img) {
                 ctx.save()
                 
+                // Apply effects
+                applyDropShadow(ctx, element.style?.dropShadow)
+                applyBlurFilter(ctx, element.style?.blur)
+                
                 // Always set opacity (default to 1)
                 ctx.globalAlpha = elementOpacity
                 console.log(`Image element opacity: ${elementOpacity}`)
@@ -738,6 +777,10 @@ export async function exportSlidesToPDF({
               if (points.length >= 4) {
                 ctx.save()
                 
+                // Apply effects
+                applyDropShadow(ctx, element.style?.dropShadow)
+                applyBlurFilter(ctx, element.style?.blur)
+                
                 // Always set opacity (default to 1)
                 ctx.globalAlpha = elementOpacity
                 console.log(`Line element opacity: ${elementOpacity}`)
@@ -809,6 +852,10 @@ export async function exportSlidesToPDF({
               }
               
               ctx.save()
+              
+              // Apply effects
+              applyDropShadow(ctx, element.style?.dropShadow)
+              applyBlurFilter(ctx, element.style?.blur)
               
               // Always set opacity (default to 1)
               ctx.globalAlpha = elementOpacity
@@ -906,6 +953,10 @@ export async function exportSlidesToPDF({
               const tableContent = element.content as TableContent
               ctx.save()
               
+              // Apply effects
+              applyDropShadow(ctx, element.style?.dropShadow)
+              applyBlurFilter(ctx, element.style?.blur)
+              
               // Always set opacity (default to 1)
               ctx.globalAlpha = elementOpacity
               console.log(`Table element opacity: ${elementOpacity}`)
@@ -950,6 +1001,10 @@ export async function exportSlidesToPDF({
             case 'blurb': {
               const blurbContent = element.content as BlurbContent
               ctx.save()
+              
+              // Apply effects
+              applyDropShadow(ctx, element.style?.dropShadow)
+              applyBlurFilter(ctx, element.style?.blur)
               
               // Always set opacity (default to 1)
               ctx.globalAlpha = elementOpacity
@@ -1158,6 +1213,11 @@ export async function exportSlidesToPDF({
       onProgress(100)
     }
 
+    // Return blob if requested, otherwise save
+    if (returnBlob) {
+      return pdf.output('blob') as any
+    }
+    
     // Save the PDF
     pdf.save(fileName)
 

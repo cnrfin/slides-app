@@ -9,6 +9,7 @@ import useSlideStore from '@/stores/slideStore'
 import { useSelectedElements, useCurrentSlide } from '@/stores/slideStore'
 import type { ElementStyle, ShapeContent, BlendMode } from '@/types/slide.types'
 import BlendModeSelector from './BlendModeSelector'
+import EffectsControls from './EffectsControls'
 import { ColorOpacityControl, CustomSlider } from '@/components/ui'
 
 interface ShapePropertiesPanelProps {
@@ -307,6 +308,14 @@ export default function ShapePropertiesPanel({ className = '' }: ShapeProperties
           onChange={(blendMode: BlendMode) => updateStyle({ blendMode })}
         />
       </div>
+      
+      {/* Effects */}
+      <EffectsControls
+        style={firstShapeElement?.style || {}}
+        onChange={updateStyle}
+        showBlur={true}
+        showDropShadow={true}
+      />
       
       {/* Actions */}
       <div>

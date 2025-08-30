@@ -9,7 +9,7 @@ export const VocabularyTemplate: SlideTemplate = {
   id: 'vocabulary',
   name: 'Vocabulary',
   category: 'vocabulary',
-  description: 'Introduction of 5 Vocabulary',
+  description: '5 vocabulary words with meanings',
   background: "#ffffff",
   elements: [
     {

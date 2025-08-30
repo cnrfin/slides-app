@@ -9,7 +9,7 @@ export const LessonOverviewTemplate: SlideTemplate = {
   id: 'lesson-overview',
   name: 'Lesson Overview',
   category: 'objectives',
-  description: 'An Overview of the Lesson',
+  description: 'An overview with 4 objectives',
   background: "#ffffff",
   elements: [
     {

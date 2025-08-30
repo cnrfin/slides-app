@@ -618,6 +618,22 @@ select option[disabled] {
   animation-delay: 0.1s;
 }
 
+/* Dropdown animation for user menu */
+@keyframes dropdown-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-animation {
+  animation: dropdown-slide-in 0.15s ease-out;
+}
+
 /* Line clamp utility for text truncation */
 .line-clamp-2 {
   display: -webkit-box;

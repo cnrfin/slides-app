@@ -1,14 +1,15 @@
 // src/components/canvas/ElementRenderer.tsx
-import React, { useMemo, useState, useEffect, useCallback } from 'react'
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { Group, Rect, Text, Image, Shape, Path, Line } from 'react-konva'
+import Konva from 'konva'
 import { CANVAS_DIMENSIONS, CANVAS_COLORS } from '@/utils/canvas.constants'
 import type { SlideElement, TextContent, ShapeContent, ImageContent, BlurbContent, LineContent, IconContent } from '@/types/slide.types'
-import Konva from 'konva'
 import useSlideStore from '@/stores/slideStore'
 import { loadFont } from '@/utils/font.utils'
 import { measureWrappedText } from '@/utils/text.utils'
 import { getIconPath, getIconBounds } from '@/utils/icon.utils'
 import { applyOpacityToColor } from '@/utils/color.utils'
+import { getKonvaShadowProps } from '@/utils/shadow.utils'
 
 // Helper function to parse viewBox string
 const parseViewBox = (viewBox: string) => {
@@ -169,6 +170,191 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
     },
   }), [element.id, element.x, element.y, element.width, element.height, element.rotation, element.locked, element.type, element.style?.blendMode, isEditing, draggable, onSelect, onDragStart, onDrag, onDragEnd, onDoubleClick, onMouseEnter, onMouseLeave])
   
+  // Helper to get drop shadow props for Konva
+  const getDropShadowProps = useCallback(() => {
+    return getKonvaShadowProps(element.style?.dropShadow)
+  }, [element.style?.dropShadow])
+  
+
+  
+  // Helper to get filters for blur effect
+  const getFilters = useCallback(() => {
+    if (element.style?.blur && element.style.blur > 0) {
+      return [Konva.Filters.Blur]
+    }
+    return undefined
+  }, [element.style?.blur])
+  
+  // Helper to check if element needs caching for effects
+  const needsCaching = useMemo(() => {
+    return (element.style?.blur && element.style.blur > 0)
+  }, [element.style?.blur])
+  
+  // Check if element has a border that needs separate rendering when blur is applied
+  const hasBorder = useMemo(() => {
+    return element.style?.borderWidth && element.style.borderWidth > 0
+  }, [element.style?.borderWidth])
+  
+  // Refs for caching elements with blur
+  const textRef = useRef<Konva.Text>(null)
+  const shapeRef = useRef<Konva.Rect>(null)
+  const pathRef = useRef<Konva.Path>(null)
+  const lineRef = useRef<Konva.Line>(null)
+  const imageRef = useRef<Konva.Image>(null)
+  const iconPathRef = useRef<Konva.Path>(null)
+  const blurbGroupRef = useRef<Konva.Group>(null)
+  const tableGroupRef = useRef<Konva.Group>(null)
+  
+  // Apply caching when blur changes
+  useEffect(() => {
+    if (needsCaching) {
+      // Cache configuration for better blur quality
+      const cacheConfig = {
+        x: -(element.style?.blur || 0) * 2,
+        y: -(element.style?.blur || 0) * 2,
+        width: element.width + (element.style?.blur || 0) * 4,
+        height: element.height + (element.style?.blur || 0) * 4,
+        pixelRatio: 2, // Higher pixel ratio for better quality
+        imageSmoothingEnabled: true,
+        drawBorder: false // Don't include border in cached image
+      }
+      
+      // Cache the appropriate element based on type
+      if (element.type === 'text' && textRef.current) {
+        textRef.current.cache(cacheConfig)
+        textRef.current.filters([Konva.Filters.Blur])
+        textRef.current.blurRadius(element.style?.blur || 0)
+      } else if (element.type === 'shape' && shapeRef.current) {
+        shapeRef.current.cache(cacheConfig)
+        shapeRef.current.filters([Konva.Filters.Blur])
+        shapeRef.current.blurRadius(element.style?.blur || 0)
+      } else if (element.type === 'shape' && pathRef.current) {
+        // For paths, we need to account for the path bounds
+        pathRef.current.cache({
+          ...cacheConfig,
+          x: -(element.style?.blur || 0) * 3,
+          y: -(element.style?.blur || 0) * 3,
+          width: element.width + (element.style?.blur || 0) * 6,
+          height: element.height + (element.style?.blur || 0) * 6,
+        })
+        pathRef.current.filters([Konva.Filters.Blur])
+        pathRef.current.blurRadius(element.style?.blur || 0)
+      } else if (element.type === 'line' && lineRef.current) {
+        lineRef.current.cache(cacheConfig)
+        lineRef.current.filters([Konva.Filters.Blur])
+        lineRef.current.blurRadius(element.style?.blur || 0)
+      } else if (element.type === 'image' && imageRef.current && imageObj) {
+        imageRef.current.cache(cacheConfig)
+        imageRef.current.filters([Konva.Filters.Blur])
+        imageRef.current.blurRadius(element.style?.blur || 0)
+      } else if (element.type === 'icon' && iconPathRef.current) {
+        iconPathRef.current.cache({
+          ...cacheConfig,
+          x: -(element.style?.blur || 0) * 3,
+          y: -(element.style?.blur || 0) * 3,
+          width: element.width + (element.style?.blur || 0) * 6,
+          height: element.height + (element.style?.blur || 0) * 6,
+        })
+        iconPathRef.current.filters([Konva.Filters.Blur])
+        iconPathRef.current.blurRadius(element.style?.blur || 0)
+      } else if (element.type === 'blurb' && blurbGroupRef.current) {
+        blurbGroupRef.current.cache(cacheConfig)
+        blurbGroupRef.current.filters([Konva.Filters.Blur])
+        blurbGroupRef.current.blurRadius(element.style?.blur || 0)
+      } else if (element.type === 'table' && tableGroupRef.current) {
+        tableGroupRef.current.cache(cacheConfig)
+        tableGroupRef.current.filters([Konva.Filters.Blur])
+        tableGroupRef.current.blurRadius(element.style?.blur || 0)
+      }
+    } else {
+      // Clear cache when blur is removed
+      if (element.type === 'text' && textRef.current && textRef.current.isCached()) {
+        textRef.current.clearCache()
+      } else if (element.type === 'shape' && shapeRef.current && shapeRef.current.isCached()) {
+        shapeRef.current.clearCache()
+      } else if (element.type === 'shape' && pathRef.current && pathRef.current.isCached()) {
+        pathRef.current.clearCache()
+      } else if (element.type === 'line' && lineRef.current && lineRef.current.isCached()) {
+        lineRef.current.clearCache()
+      } else if (element.type === 'image' && imageRef.current && imageRef.current.isCached()) {
+        imageRef.current.clearCache()
+      } else if (element.type === 'icon' && iconPathRef.current && iconPathRef.current.isCached()) {
+        iconPathRef.current.clearCache()
+      } else if (element.type === 'blurb' && blurbGroupRef.current && blurbGroupRef.current.isCached()) {
+        blurbGroupRef.current.clearCache()
+      } else if (element.type === 'table' && tableGroupRef.current && tableGroupRef.current.isCached()) {
+        tableGroupRef.current.clearCache()
+      }
+    }
+  }, [needsCaching, element.type, element.style?.blur, element.width, element.height, imageObj])
+  
+  // Force re-cache when cached elements have their properties changed
+  useEffect(() => {
+    // Only re-cache if already cached (has blur)
+    if (!needsCaching) return
+    
+    const recacheElement = () => {
+      // Cache configuration for better blur quality
+      const cacheConfig = {
+        x: -(element.style?.blur || 0) * 2,
+        y: -(element.style?.blur || 0) * 2,
+        width: element.width + (element.style?.blur || 0) * 4,
+        height: element.height + (element.style?.blur || 0) * 4,
+        pixelRatio: 2,
+        imageSmoothingEnabled: true
+      }
+      
+      if (element.type === 'text' && textRef.current && textRef.current.isCached()) {
+        textRef.current.cache(cacheConfig)
+      } else if (element.type === 'shape' && shapeRef.current && shapeRef.current.isCached()) {
+        shapeRef.current.cache(cacheConfig)
+      } else if (element.type === 'shape' && pathRef.current && pathRef.current.isCached()) {
+        pathRef.current.cache({
+          ...cacheConfig,
+          x: -(element.style?.blur || 0) * 3,
+          y: -(element.style?.blur || 0) * 3,
+          width: element.width + (element.style?.blur || 0) * 6,
+          height: element.height + (element.style?.blur || 0) * 6,
+        })
+      } else if (element.type === 'line' && lineRef.current && lineRef.current.isCached()) {
+        lineRef.current.cache(cacheConfig)
+      } else if (element.type === 'image' && imageRef.current && imageRef.current.isCached()) {
+        imageRef.current.cache(cacheConfig)
+      } else if (element.type === 'icon' && iconPathRef.current && iconPathRef.current.isCached()) {
+        iconPathRef.current.cache({
+          ...cacheConfig,
+          x: -(element.style?.blur || 0) * 3,
+          y: -(element.style?.blur || 0) * 3,
+          width: element.width + (element.style?.blur || 0) * 6,
+          height: element.height + (element.style?.blur || 0) * 6,
+        })
+      } else if (element.type === 'blurb' && blurbGroupRef.current && blurbGroupRef.current.isCached()) {
+        blurbGroupRef.current.cache(cacheConfig)
+      } else if (element.type === 'table' && tableGroupRef.current && tableGroupRef.current.isCached()) {
+        tableGroupRef.current.cache(cacheConfig)
+      }
+    }
+    
+    // Use a small delay to batch updates
+    const timeoutId = setTimeout(recacheElement, 10)
+    return () => clearTimeout(timeoutId)
+  }, [
+    element.style?.dropShadow?.enabled,
+    element.style?.dropShadow?.offsetX,
+    element.style?.dropShadow?.offsetY,
+    element.style?.dropShadow?.blur,
+    element.style?.dropShadow?.color,
+    element.style?.dropShadow?.opacity,
+    element.style?.color,
+    element.style?.backgroundColor,
+    element.style?.borderColor,
+    element.style?.borderWidth,
+    element.opacity,
+    element.width,
+    element.height,
+    needsCaching
+  ])
+  
   const renderShape = (props: any, additionalProps: any = {}) => {
     const baseOpacity = element.opacity ?? 1
     
@@ -206,6 +392,8 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
             <Text
               {...props}
               {...additionalProps}
+              {...getDropShadowProps()}
+              ref={textRef}
               text={(() => {
                 const originalText = textContent.text || ' '
                 // Add bullets if enabled
@@ -241,6 +429,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
               hitStrokeWidth={0}
               visible={!isEditing}
               opacity={baseOpacity * (additionalProps.opacity || 1)}
+
             />
           </>
         )
@@ -290,9 +479,11 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
           ? applyOpacityToColor(element.style?.borderColor || '#000000', borderOpacity)
           : undefined
         
+        
         const shapeProps = {
           ...props,
           ...additionalProps,
+          ...getDropShadowProps(),
           fill: element.style?.gradientStart && element.style?.gradientEnd ? undefined : fillColor,
           fillLinearGradientStartPoint: element.style?.gradientStart && element.style?.gradientEnd ? 
             getGradientPoints(element.style.gradientAngle || 0, element.width, element.height).start : undefined,
@@ -310,12 +501,14 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
           cornerRadius: actualCornerRadius,
           perfectDrawEnabled: false,
           opacity: baseOpacity * (additionalProps.opacity || 1),
+
         }
         
         if (shapeContent.shape === 'circle') {
           return (
             <Rect
               {...shapeProps}
+              ref={shapeRef}
               cornerRadius={Math.min(element.width, element.height) / 2}
             />
           )
@@ -355,6 +548,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                 opacity={baseOpacity * (additionalProps.opacity || 1)}
               >
                 <Path
+                  ref={pathRef}
                   data={shapeContent.svgPath}
                   x={shapeContent.viewBox ? -parseViewBox(shapeContent.viewBox).x * (element.width / parseViewBox(shapeContent.viewBox).width) : 0}
                   y={shapeContent.viewBox ? -parseViewBox(shapeContent.viewBox).y * (element.height / parseViewBox(shapeContent.viewBox).height) : 0}
@@ -377,13 +571,14 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                     applyOpacityToColor(element.style?.borderColor || '#000000', element.style?.borderOpacity ?? 1) : undefined}
                   strokeWidth={element.style?.borderWidth || 0}
                   perfectDrawEnabled={false}
+                  {...getDropShadowProps()}
                 />
               </Group>
             </>
           )
         }
         
-        return <Rect {...shapeProps} />
+        return <Rect {...shapeProps} ref={shapeRef} />
         
       case 'line':
         const lineContent = element.content as LineContent
@@ -418,6 +613,8 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
             <Line
               {...props}
               {...additionalProps}
+              {...getDropShadowProps()}
+              ref={lineRef}
               points={lineContent.points}
               stroke={element.style?.borderColor || '#000000'}
               strokeWidth={element.style?.borderWidth || 2}
@@ -487,44 +684,10 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
             <Group
               {...props}
               {...additionalProps}
+              ref={blurbGroupRef}
               opacity={baseOpacity * (additionalProps.opacity || 1)}
             >
-              {/* Main bubble body */}
-              <Rect
-                x={tailPosition === 'left-center' ? tailSize : 0}
-                y={tailPosition.startsWith('bottom') ? 0 : (tailPosition.startsWith('top') ? tailSize : 0)}
-                width={element.width - (tailPosition === 'left-center' || tailPosition === 'right-center' ? tailSize : 0)}
-                height={element.height - (tailPosition.startsWith('bottom') || tailPosition.startsWith('top') ? tailSize : 0)}
-                fill={element.style?.backgroundColor || '#3b82f6'}
-                cornerRadius={(() => {
-                  // Calculate actual corner radius from percentage
-                  const bubbleWidth = element.width - (tailPosition === 'left-center' || tailPosition === 'right-center' ? tailSize : 0)
-                  const bubbleHeight = element.height - (tailPosition.startsWith('bottom') || tailPosition.startsWith('top') ? tailSize : 0)
-                  const smallerDimension = Math.min(bubbleWidth, bubbleHeight)
-                  
-                  // Check if individual corners are set
-                  if (element.style?.borderRadiusCorners) {
-                    const corners = element.style.borderRadiusCorners.split(' ').map(Number)
-                    if (corners.length === 4) {
-                      // Convert each percentage to pixels
-                      return corners.map(percent => {
-                        return percent === 100 
-                          ? smallerDimension / 2 
-                          : (percent / 100) * (smallerDimension / 2)
-                      })
-                    }
-                  }
-                  
-                  // Use single radius value
-                  const radiusPercent = element.style?.borderRadius || 25
-                  return radiusPercent === 100 
-                    ? smallerDimension / 2
-                    : (radiusPercent / 100) * (smallerDimension / 2)
-                })()}
-                perfectDrawEnabled={false}
-              />
-              
-              {/* Speech bubble tail */}
+              {/* Speech bubble tail - render FIRST so it's behind the body */}
               <Shape
                 sceneFunc={(context, shape) => {
                   context.beginPath()
@@ -578,6 +741,43 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                   context.fillStrokeShape(shape)
                 }}
                 fill={element.style?.backgroundColor || '#3b82f6'}
+                {...getDropShadowProps()}
+                perfectDrawEnabled={false}
+              />
+              
+              {/* Main bubble body - render SECOND so it's on top of the tail */}
+              <Rect
+                x={tailPosition === 'left-center' ? tailSize : 0}
+                y={tailPosition.startsWith('bottom') ? 0 : (tailPosition.startsWith('top') ? tailSize : 0)}
+                width={element.width - (tailPosition === 'left-center' || tailPosition === 'right-center' ? tailSize : 0)}
+                height={element.height - (tailPosition.startsWith('bottom') || tailPosition.startsWith('top') ? tailSize : 0)}
+                fill={element.style?.backgroundColor || '#3b82f6'}
+                {...getDropShadowProps()}
+                cornerRadius={(() => {
+                  // Calculate actual corner radius from percentage
+                  const bubbleWidth = element.width - (tailPosition === 'left-center' || tailPosition === 'right-center' ? tailSize : 0)
+                  const bubbleHeight = element.height - (tailPosition.startsWith('bottom') || tailPosition.startsWith('top') ? tailSize : 0)
+                  const smallerDimension = Math.min(bubbleWidth, bubbleHeight)
+                  
+                  // Check if individual corners are set
+                  if (element.style?.borderRadiusCorners) {
+                    const corners = element.style.borderRadiusCorners.split(' ').map(Number)
+                    if (corners.length === 4) {
+                      // Convert each percentage to pixels
+                      return corners.map(percent => {
+                        return percent === 100 
+                          ? smallerDimension / 2 
+                          : (percent / 100) * (smallerDimension / 2)
+                      })
+                    }
+                  }
+                  
+                  // Use single radius value
+                  const radiusPercent = element.style?.borderRadius || 25
+                  return radiusPercent === 100 
+                    ? smallerDimension / 2
+                    : (radiusPercent / 100) * (smallerDimension / 2)
+                })()}
                 perfectDrawEnabled={false}
               />
               
@@ -626,6 +826,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
             opacity={baseOpacity * (additionalProps.opacity || 1)}
           >
             <Path
+              ref={iconPathRef}
               data={iconData.path}
               x={element.width / 2}
               y={element.height / 2}
@@ -639,6 +840,7 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
               lineCap="round"
               lineJoin="round"
               perfectDrawEnabled={false}
+              {...getDropShadowProps()}
             />
           </Group>
         )
@@ -678,6 +880,8 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
             <Group
               {...props}
               {...additionalProps}
+              {...getDropShadowProps()}
+              ref={tableGroupRef}
               opacity={baseOpacity * (additionalProps.opacity || 1)}
             >
               {/* Table background */}
@@ -786,6 +990,21 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
       case 'image':
         const imageContent = element.content as ImageContent
         
+        // Helper function for hex to rgba conversion (for images)
+        const hexToRgba = (hex: string, opacity: number) => {
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+          if (result) {
+            const r = parseInt(result[1], 16)
+            const g = parseInt(result[2], 16)
+            const b = parseInt(result[3], 16)
+            return `rgba(${r}, ${g}, ${b}, ${opacity})`
+          }
+          return hex
+        }
+        
+        // Get drop shadow for this image
+        const dropShadow = element.style?.dropShadow
+        
         // Show placeholder UI for placeholder images or while loading
         if (!imageObj || imageContent.isPlaceholder) {
           const isLoading = !imageContent.isPlaceholder && !imageObj
@@ -845,52 +1064,64 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                 const radiusPercent = element.style?.borderRadius || 0
                 const smallerDimension = Math.min(element.width, element.height)
                 
-                // For 100% radius, render as ellipse for perfect circle
-                if (radiusPercent === 100) {
-                  return (
-                    <>
-                      <Shape
+                  // For 100% radius, render as ellipse for perfect circle
+                  if (radiusPercent === 100) {
+                    return (
+                      <>
+                        <Shape
+                          {...props}
+                          {...additionalProps}
+                          {...getDropShadowProps()}
+                          sceneFunc={(context, shape) => {
+                            context.beginPath()
+                            context.ellipse(
+                              element.width / 2,
+                              element.height / 2,
+                              element.width / 2,
+                              element.height / 2,
+                              0,
+                              0,
+                              2 * Math.PI
+                            )
+                            context.closePath()
+                            context.fillStrokeShape(shape)
+                          }}
+                          fill="#f3f4f6"
+                          stroke="#d1d5db"
+                          strokeWidth={2}
+                          dash={[5, 5]}
+                          perfectDrawEnabled={false}
+                          opacity={baseOpacity * (additionalProps.opacity || 1)}
+                          shadowOffsetX={dropShadow?.offsetX || 0}
+                          shadowOffsetY={dropShadow?.offsetY || 0}
+                          shadowBlur={dropShadow?.blur || 0}
+                          shadowColor={dropShadow?.enabled ? hexToRgba(dropShadow?.color || '#000000', dropShadow?.opacity || 0.25) : undefined}
+                          shadowEnabled={dropShadow?.enabled || false}
+                        />
+                      </>
+                    )
+                  } else {
+                    // Regular rounded rectangle
+                    return (
+                      <Rect
                         {...props}
                         {...additionalProps}
-                        sceneFunc={(context, shape) => {
-                          context.beginPath()
-                          context.ellipse(
-                            element.width / 2,
-                            element.height / 2,
-                            element.width / 2,
-                            element.height / 2,
-                            0,
-                            0,
-                            2 * Math.PI
-                          )
-                          context.closePath()
-                          context.fillStrokeShape(shape)
-                        }}
+                        {...getDropShadowProps()}
                         fill="#f3f4f6"
                         stroke="#d1d5db"
                         strokeWidth={2}
                         dash={[5, 5]}
                         perfectDrawEnabled={false}
                         opacity={baseOpacity * (additionalProps.opacity || 1)}
+                        cornerRadius={(radiusPercent / 100) * (smallerDimension / 2)}
+                        shadowOffsetX={dropShadow?.offsetX || 0}
+                        shadowOffsetY={dropShadow?.offsetY || 0}
+                        shadowBlur={dropShadow?.blur || 0}
+                        shadowColor={dropShadow?.enabled ? hexToRgba(dropShadow?.color || '#000000', dropShadow?.opacity || 0.25) : undefined}
+                        shadowEnabled={dropShadow?.enabled || false}
                       />
-                    </>
-                  )
-                } else {
-                  // Regular rounded rectangle
-                  return (
-                    <Rect
-                      {...props}
-                      {...additionalProps}
-                      fill="#f3f4f6"
-                      stroke="#d1d5db"
-                      strokeWidth={2}
-                      dash={[5, 5]}
-                      perfectDrawEnabled={false}
-                      opacity={baseOpacity * (additionalProps.opacity || 1)}
-                      cornerRadius={(radiusPercent / 100) * (smallerDimension / 2)}
-                    />
-                  )
-                }
+                    )
+                  }
               })()}
               {/* Calculate icon and text positions based on element size */}
               {(() => {
@@ -1165,6 +1396,12 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                   width={element.width}
                   height={element.height}
                   opacity={baseOpacity * (additionalProps.opacity || 1)}
+                  ref={imageRef}
+                  shadowOffsetX={dropShadow?.offsetX || 0}
+                  shadowOffsetY={dropShadow?.offsetY || 0}
+                  shadowBlur={dropShadow?.blur || 0}
+                  shadowColor={dropShadow?.enabled ? hexToRgba(dropShadow?.color || '#000000', dropShadow?.opacity || 0.25) : undefined}
+                  shadowEnabled={dropShadow?.enabled || false}
                   crop={(() => {
                     // Calculate crop based on image's natural dimensions and offsets
                     const imgWidth = imageObj.width
@@ -1257,6 +1494,11 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                         height={displayHeight}
                         opacity={0.3}
                         listening={false}
+                        shadowOffsetX={dropShadow?.offsetX || 0}
+                        shadowOffsetY={dropShadow?.offsetY || 0}
+                        shadowBlur={dropShadow?.blur || 0}
+                        shadowColor={dropShadow?.enabled ? hexToRgba(dropShadow?.color || '#000000', dropShadow?.opacity || 0.25) : undefined}
+                        shadowEnabled={dropShadow?.enabled || false}
                       />
                       {/* Frame area at full opacity with clipping */}
                       <Group
@@ -1358,11 +1600,17 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                       }}
                     >
                       <Image
+                        ref={imageRef}
                         image={imageObj}
                         x={0}
                         y={0}
                         width={element.width}
                         height={element.height}
+                        shadowOffsetX={dropShadow.offsetX || 0}
+                        shadowOffsetY={dropShadow.offsetY || 0}
+                        shadowBlur={dropShadow.blur || 0}
+                        shadowColor={hexToRgba(dropShadow.color || '#000000', dropShadow.opacity || 0.25)}
+                        shadowEnabled={dropShadow.enabled}
                       />
                     </Group>
                   )
@@ -1372,8 +1620,14 @@ const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
                     <Image
                       {...props}
                       {...additionalProps}
+                      ref={imageRef}
                       image={imageObj}
                       opacity={baseOpacity * (additionalProps.opacity || 1)}
+                      shadowOffsetX={dropShadow?.offsetX || 0}
+                      shadowOffsetY={dropShadow?.offsetY || 0}
+                      shadowBlur={dropShadow?.blur || 0}
+                      shadowColor={dropShadow?.enabled ? hexToRgba(dropShadow?.color || '#000000', dropShadow?.opacity || 0.25) : undefined}
+                      shadowEnabled={dropShadow?.enabled || false}
                     />
                   )
                 }

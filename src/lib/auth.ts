@@ -2,15 +2,31 @@
 import { supabase } from './supabase'
 
 export async function signInWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}`
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`, // Redirect directly to dashboard after auth
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      }
+    })
+    
+    if (error) {
+      console.error('Google OAuth Error:', error)
+      if (error.message?.includes('provider is not enabled')) {
+        throw new Error('Google authentication is not configured. Please contact support.')
+      }
+      throw error
     }
-  })
-  
-  if (error) throw error
-  return data
+    
+    return data
+  } catch (error) {
+    console.error('Sign in with Google failed:', error)
+    throw error
+  }
 }
 
 export async function signInWithEmail(email: string, password: string) {
@@ -39,6 +55,15 @@ export async function signUpWithEmail(email: string, password: string, displayNa
 }
 
 export async function signOut() {
+  // Import googleLogout from @react-oauth/google to revoke One Tap
+  try {
+    // Dynamically import to avoid issues if not in browser environment
+    const { googleLogout } = await import('@react-oauth/google')
+    googleLogout() // Revoke Google One Tap session
+  } catch (e) {
+    console.log('Google logout not available:', e)
+  }
+  
   const { error } = await supabase.auth.signOut()
   if (error) throw error
 }

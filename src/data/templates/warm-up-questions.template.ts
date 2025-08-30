@@ -9,7 +9,7 @@ export const WarmUpQuestionsTemplate: SlideTemplate = {
   id: 'warm-up-questions',
   name: 'Warm Up Questions',
   category: 'warm-up',
-  description: '4 Warm-Up Conversation Questions',
+  description: '5 warm-up conversation questions',
   background: "#ffffff",
   elements: [
     {
