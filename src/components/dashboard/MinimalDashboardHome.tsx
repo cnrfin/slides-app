@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import useAuthStore from '@/stores/authStore'
 import AIPromptInput from './AIPromptInput'
+import './AIPromptInput.css' // Import for shine animation styles
 import { savePromptToHistory } from '@/lib/prompt-history'
 import { getUserStudentProfiles, getCurrentUser, loadUserLessons } from '@/lib/database'
-import { MessageCircle, Headphones, BookOpen, BookType, CaseUpper } from 'lucide-react'
+import { MessageCircle, Headphones, BookOpen, BookType, CaseUpper, Star } from 'lucide-react'
 
 interface StudentProfile {
   id: string
@@ -177,28 +178,66 @@ export default function MinimalDashboardHome() {
   // Get all suggestions
   const suggestions = lessonTypes
 
-  return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-8 relative">
-      {/* Centered Greeting */}
-      <div className="text-center mb-10 opacity-0 animate-fade-in-delay-1">
-        <h1 className="text-3xl font-normal text-gray-800 mb-2">
-          {getGreeting()}
-        </h1>
-        <p className="text-gray-500">What kind of lesson shall we make?</p>
-      </div>
+  // Check if user is on free plan - be very explicit
+  const subscriptionTier = user?.subscription_tier
+  const isFreePlan = !subscriptionTier || subscriptionTier === 'free' || subscriptionTier === null || subscriptionTier === undefined
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('User object:', user)
+    console.log('User subscription_tier:', subscriptionTier)
+    console.log('Is Free Plan:', isFreePlan)
+  }, [user, subscriptionTier, isFreePlan])
 
-      {/* AI Prompt Input - Now with students and lessons data */}
-      <AIPromptInput 
-        onSubmit={handlePromptSubmit}
-        suggestions={suggestions}
-        students={students}
-        lessons={lessons}
-        loadingStudents={loadingStudents}
-        loadingLessons={loadingLessons}
-        isInitiallyExpanded={navigationState?.expandPrompt}
-        initialStudent={navigationState?.selectedStudent}
-        initialLesson={navigationState?.selectedLesson}
-      />
+  const handleUpgradeClick = () => {
+    navigate('/dashboard/billing')
+  }
+
+  return (
+    <div className="min-h-full flex flex-col px-8">
+      {/* Upgrade Button - Only show for free users */}
+      {isFreePlan && (
+        <div className="flex justify-center pt-8">
+          <button
+            onClick={handleUpgradeClick}
+            className="relative px-4 py-2 bg-app-green-100 hover:bg-app-green-700 text-green-700 hover:text-white rounded-full text-body font-normal transition-all hover:scale-105 overflow-hidden shine-button animate-fade-in"
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              <Star size={18} strokeWidth={0} fill="#f0ba2c" className="text-app-yellow" />
+              <span>Upgrade plan</span>
+            </span>
+            <div className="shine-effect" />
+          </button>
+        </div>
+      )}
+      
+      {/* Main Content - Centered */}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-full max-w-4xl flex flex-col items-center">
+          {/* Centered Greeting */}
+          <div className="text-center mb-10 animate-fade-in-delay-1 w-full">
+            <h1 className="text-h1 text-gray-800 mb-2">
+              {getGreeting()}
+            </h1>
+            <p className="text-body text-gray-500">What kind of lesson shall we make?</p>
+          </div>
+
+          {/* AI Prompt Input - Always expanded */}
+          <div className="w-full flex justify-center">
+            <AIPromptInput 
+              onSubmit={handlePromptSubmit}
+              suggestions={suggestions}
+              students={students}
+              lessons={lessons}
+              loadingStudents={loadingStudents}
+              loadingLessons={loadingLessons}
+              isInitiallyExpanded={true}
+              initialStudent={navigationState?.selectedStudent}
+              initialLesson={navigationState?.selectedLesson}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

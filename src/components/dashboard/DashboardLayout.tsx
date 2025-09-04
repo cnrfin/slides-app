@@ -41,7 +41,7 @@ export default function DashboardLayout() {
   ]
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen" style={{ backgroundColor: '#f6f5f4b3' }}>
       {/* Sidebar */}
       <div className={`${
         isSidebarCollapsed ? 'w-16' : 'w-64'
@@ -50,7 +50,7 @@ export default function DashboardLayout() {
         {/* Logo/Brand */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
           {!isSidebarCollapsed && (
-            <h1 className="text-xl font-semibold text-gray-800">Figma Slides</h1>
+            <h1 className="text-h4 text-gray-800">Figma Slides</h1>
           )}
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -71,17 +71,17 @@ export default function DashboardLayout() {
               key={item.path}
               to={item.path}
               end={item.path === '/dashboard'}
-              className={({ isActive }) => `
-                flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-colors
-                ${isActive 
+              className={({ isActive }) => {
+                const baseClasses = 'flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-colors text-menu'
+                const stateClasses = isActive 
                   ? 'bg-blue-50 text-blue-600' 
                   : 'text-gray-700 hover:bg-gray-50'
-                }
-              `}
+                return `${baseClasses} ${stateClasses}`
+              }}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
               {!isSidebarCollapsed && (
-                <span className="text-sm font-medium">{item.label}</span>
+                <span className="text-menu">{item.label}</span>
               )}
             </NavLink>
           ))}
@@ -102,10 +102,10 @@ export default function DashboardLayout() {
               </div>
               {!isSidebarCollapsed && (
                 <div className="flex-1 text-left">
-                  <div className="text-sm font-medium text-gray-900 truncate">
+                  <div className="text-body-small font-medium text-gray-900 truncate">
                     {user?.display_name || 'User'}
                   </div>
-                  <div className="text-xs text-gray-500 truncate">
+                  <div className="text-caption text-gray-500 truncate mt-2">
                     {user?.email}
                   </div>
                 </div>
@@ -128,7 +128,7 @@ export default function DashboardLayout() {
                 `}>
                   <button
                     onClick={handleSignOut}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-menu text-red-600 hover:bg-red-50"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign Out
@@ -141,8 +141,17 @@ export default function DashboardLayout() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <Outlet />
+      <div className="flex-1 p-2 overflow-hidden w-full h-full">
+        {/* Content Wrapper */}
+        <div 
+          className="p-0.5 bg-white rounded-lg overflow-hidden w-full h-full"
+          style={{ border: '1px solid rgba(126, 117, 114, 0.1)' }}
+        >
+          {/* Content Container */}
+          <div className="p-6 overflow-y-auto overflow-x-auto max-w-full w-full h-full">
+            <Outlet />
+          </div>
+        </div>
       </div>
     </div>
   )

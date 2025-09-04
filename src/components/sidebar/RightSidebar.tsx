@@ -1,7 +1,6 @@
 // src/components/sidebar/RightSidebar.tsx
 import { useState, useEffect } from 'react'
 import { 
-  Play,
   Type,
   Palette,
   Sparkles,
@@ -18,18 +17,8 @@ import IconPropertiesPanel from '@/components/properties/IconPropertiesPanel'
 import TablePropertiesPanel from '@/components/properties/TablePropertiesPanel'
 import { TabGroup } from '@/components/ui'
 import { FONTS } from '@/utils/fonts.config'
-import ExportDropdown from '@/components/ui/ExportDropdown'
-import { googleDriveService } from '@/services/googleDrive'
-import useAuthStore from '@/stores/authStore'
-import { exportSlidesToPDF } from '@/utils/pdf-export'
-import { toast } from '@/utils/toast'
 
-interface RightSidebarProps {
-  onPlaySlideshow?: () => void
-  onExportAllPDF?: () => void
-  onExportCurrentPDF?: () => void
-  onSaveToDrive?: () => void
-}
+interface RightSidebarProps {}
 
 
 
@@ -125,7 +114,7 @@ const THEMES = [
 
 type SidebarView = 'default' | 'fonts' | 'colors' | 'themes'
 
-export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExportCurrentPDF, onSaveToDrive }: RightSidebarProps) {
+export default function RightSidebar({}: RightSidebarProps = {}) {
   const [currentView, setCurrentView] = useState<SidebarView>('default')
   const [selectedFont, setSelectedFont] = useState(FONTS[0].family)
   const [selectedColorScheme, setSelectedColorScheme] = useState(COLOR_SCHEMES[0])
@@ -134,8 +123,7 @@ export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExport
   const [themeTab, setThemeTab] = useState<'default' | 'custom'>('default')
   
   const selectedElements = useSelectedElements()
-  const { user } = useAuthStore()
-  const { slides, currentSlideId, updateElement, presentation } = useSlideStore()
+  const { slides, currentSlideId, updateElement } = useSlideStore()
   
   // Filter fonts based on search
   const filteredFonts = FONTS.filter(font => 
@@ -252,77 +240,7 @@ export default function RightSidebar({ onPlaySlideshow, onExportAllPDF, onExport
   
   return (
     <div className="properties-panel absolute right-0 top-0 bottom-0 w-56 bg-white border-l border-gray-200 shadow-sm z-10 flex flex-col">
-      {/* Header - Always Visible */}
-      <div className="p-4 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={onPlaySlideshow}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Play Slideshow"
-          >
-            <Play className="w-4 h-4 text-gray-600" strokeWidth={1.5} />
-          </button>
-          <ExportDropdown
-            onExportAll={onExportAllPDF || (() => {})}
-            onExportCurrent={onExportCurrentPDF || (() => {})}
-            onSaveToDrive={onSaveToDrive || (async () => {
-              if (!user) {
-                toast.error('Please log in to save to Google Drive')
-                return
-              }
 
-              const toastId = toast.loading('Preparing to save to Google Drive...')
-              
-              try {
-                // Generate PDF blob
-                const pdfBlob = await exportSlidesToPDF({
-                  slides,
-                  slideOrder: presentation?.slides,
-                  returnBlob: true
-                })
-                
-                // Upload to Drive
-                const fileName = presentation?.title ? 
-                  `${presentation.title}_${new Date().toISOString().split('T')[0]}.pdf` : 
-                  `presentation_${new Date().toISOString().split('T')[0]}.pdf`
-                
-                const result = await googleDriveService.uploadToDrive(
-                  user.id,
-                  pdfBlob,
-                  fileName,
-                  'application/pdf'
-                )
-                
-                toast.success('Saved to Google Drive successfully!', toastId)
-                
-                // Optionally open the file in Drive
-                if (result.id) {
-                  window.open(`https://drive.google.com/file/d/${result.id}/view`, '_blank')
-                }
-              } catch (error: any) {
-                console.error('Failed to save to Drive:', error)
-                
-                // Dismiss the loading toast first
-                toast.dismiss(toastId)
-                
-                // Provide more specific error messages
-                if (error.message?.includes('cancelled by user')) {
-                  // User closed the popup - no need to show an error
-                  // Toast is already dismissed
-                } else if (error.message?.includes('timeout')) {
-                  toast.error('Authentication timed out. Please try again.')
-                } else if (error.message?.includes('authenticate')) {
-                  toast.error('Please authorize Google Drive access and try again')
-                } else if (error.message?.includes('popup')) {
-                  toast.error('Please allow popups for Google Drive authentication')
-                } else {
-                  toast.error(error.message || 'Failed to save to Google Drive')
-                }
-              }
-            })}
-          />
-        </div>
-      </div>
       
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto scrollbar-hide">

@@ -9,6 +9,7 @@ import RightSidebar from '@/components/sidebar/RightSidebar'
 import TemplateDesigner from '@/components/TemplateDesigner'
 import DataKeyHelper from '@/components/DataKeyHelper'
 import Sidebar from '@/components/sidebar/Sidebar'
+import GlobalHeader from '@/components/layout/GlobalHeader'
 import { Plus, ChevronLeft, ChevronRight, Undo2, Redo2, Wand2, ArrowLeft, Loader2 } from 'lucide-react'
 import type { SlideTemplate } from '@/types/template.types'
 import { preloadCommonFonts } from '@/utils/font.utils'
@@ -405,8 +406,107 @@ export default function Canvas() {
   }
   
   return (
-    <div className="relative h-screen bg-gray-50 overflow-hidden">
+    <div className="relative h-screen bg-gray-50 overflow-hidden flex flex-col">
+      {/* Global Header */}
+      <GlobalHeader 
+        onNavigateBack={() => handleNavigation('/dashboard')}
+        onPlaySlideshow={() => {
+          console.log('Play slideshow')
+        }}
+        onExportAllPDF={async () => {
+          try {
+            const toastId = toast.loading('Generating PDF for all slides...')
+            const fileName = presentation?.title ? 
+              `${presentation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf` : 
+              'presentation.pdf'
+            await exportSlidesToPDF({
+              slides,
+              slideOrder: presentation?.slides,
+              fileName,
+              onProgress: (progress) => {
+                toast.loading(`Generating PDF... ${Math.round(progress)}%`, toastId)
+              }
+            })
+            toast.success('All slides exported successfully!', toastId)
+          } catch (error) {
+            console.error('Failed to export PDF:', error)
+            toast.error('Failed to export PDF. Please try again.')
+          }
+        }}
+        onExportCurrentPDF={async () => {
+          try {
+            const currentSlide = slides.find(s => s.id === currentSlideId)
+            if (!currentSlide) {
+              toast.error('No slide selected')
+              return
+            }
+            const toastId = toast.loading('Generating PDF for current slide...')
+            const slideIndex = slides.findIndex(s => s.id === currentSlideId) + 1
+            const fileName = presentation?.title ? 
+              `${presentation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_slide_${slideIndex}.pdf` : 
+              `slide_${slideIndex}.pdf`
+            await exportSlidesToPDF({
+              slides: [currentSlide],
+              fileName,
+              onProgress: (progress) => {
+                toast.loading(`Generating PDF... ${Math.round(progress)}%`, toastId)
+              }
+            })
+            toast.success(`Slide ${slideIndex} exported successfully!`, toastId)
+          } catch (error) {
+            console.error('Failed to export PDF:', error)
+            toast.error('Failed to export PDF. Please try again.')
+          }
+        }}
+        onSaveToDrive={async () => {
+          if (!user) {
+            toast.error('Please log in to save to Google Drive')
+            return
+          }
 
+          const toastId = toast.loading('Preparing to save to Google Drive...')
+          
+          try {
+            const pdfBlob = await exportSlidesToPDF({
+              slides,
+              slideOrder: presentation?.slides,
+              returnBlob: true
+            })
+            
+            const fileName = presentation?.title ? 
+              `${presentation.title}_${new Date().toISOString().split('T')[0]}.pdf` : 
+              `presentation_${new Date().toISOString().split('T')[0]}.pdf`
+            
+            const result = await googleDriveService.uploadToDrive(
+              user.id,
+              pdfBlob,
+              fileName,
+              'application/pdf'
+            )
+            
+            toast.success('Saved to Google Drive successfully!', toastId)
+            
+            if (result.id) {
+              window.open(`https://drive.google.com/file/d/${result.id}/view`, '_blank')
+            }
+          } catch (error: any) {
+            console.error('Failed to save to Drive:', error)
+            toast.dismiss(toastId)
+            
+            if (error.message?.includes('cancelled by user')) {
+              // User closed the popup - no need to show an error
+            } else if (error.message?.includes('timeout')) {
+              toast.error('Authentication timed out. Please try again.')
+            } else if (error.message?.includes('authenticate')) {
+              toast.error('Please authorize Google Drive access and try again')
+            } else if (error.message?.includes('popup')) {
+              toast.error('Please allow popups for Google Drive authentication')
+            } else {
+              toast.error(error.message || 'Failed to save to Google Drive')
+            }
+          }
+        }}
+      />
 
       {/* Leave Confirmation Dialog */}
       {showLeaveConfirmation && (
@@ -440,8 +540,8 @@ export default function Canvas() {
         </div>
       )}
 
-      {/* Canvas Area */}
-      <div className="absolute inset-0">
+      {/* Canvas Area - Now flex-1 to fill remaining space */}
+      <div className="relative flex-1">
         <div ref={canvasContainerRef} className="w-full h-full" style={{ backgroundColor: '#f9f9f9' }}>
           <SlideCanvas 
             containerWidth={canvasSize.width}
@@ -459,8 +559,8 @@ export default function Canvas() {
         </div>
       </div>
       
-      {/* Toolbar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2 flex items-center gap-4 z-20">
+      {/* Toolbar - Positioned within canvas area */}
+      <div className="absolute top-16 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2 flex items-center gap-4 z-20">
         <div className="flex items-center gap-2">
           <button
             onClick={undo}
@@ -521,111 +621,7 @@ export default function Canvas() {
         }}
       />
       
-      <RightSidebar 
-        onPlaySlideshow={() => {
-          console.log('Play slideshow')
-        }}
-        onSaveToDrive={async () => {
-          if (!user) {
-            toast.error('Please log in to save to Google Drive')
-            return
-          }
-
-          const toastId = toast.loading('Preparing to save to Google Drive...')
-          
-          try {
-            // Generate PDF blob
-            const pdfBlob = await exportSlidesToPDF({
-              slides,
-              slideOrder: presentation?.slides,
-              returnBlob: true
-            })
-            
-            // Upload to Drive
-            const fileName = presentation?.title ? 
-              `${presentation.title}_${new Date().toISOString().split('T')[0]}.pdf` : 
-              `presentation_${new Date().toISOString().split('T')[0]}.pdf`
-            
-            const result = await googleDriveService.uploadToDrive(
-              user.id,
-              pdfBlob,
-              fileName,
-              'application/pdf'
-            )
-            
-            toast.success('Saved to Google Drive successfully!', toastId)
-            
-            // Optionally open the file in Drive
-            if (result.id) {
-              window.open(`https://drive.google.com/file/d/${result.id}/view`, '_blank')
-            }
-          } catch (error: any) {
-            console.error('Failed to save to Drive:', error)
-            
-            // Dismiss the loading toast first
-            toast.dismiss(toastId)
-            
-            // Provide more specific error messages
-            if (error.message?.includes('cancelled by user')) {
-              // User closed the popup - no need to show an error
-              // Toast is already dismissed
-            } else if (error.message?.includes('timeout')) {
-              toast.error('Authentication timed out. Please try again.')
-            } else if (error.message?.includes('authenticate')) {
-              toast.error('Please authorize Google Drive access and try again')
-            } else if (error.message?.includes('popup')) {
-              toast.error('Please allow popups for Google Drive authentication')
-            } else {
-              toast.error(error.message || 'Failed to save to Google Drive')
-            }
-          }
-        }}
-        onExportAllPDF={async () => {
-          try {
-            const toastId = toast.loading('Generating PDF for all slides...')
-            const fileName = presentation?.title ? 
-              `${presentation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf` : 
-              'presentation.pdf'
-            await exportSlidesToPDF({
-              slides,
-              slideOrder: presentation?.slides,
-              fileName,
-              onProgress: (progress) => {
-                toast.loading(`Generating PDF... ${Math.round(progress)}%`, toastId)
-              }
-            })
-            toast.success('All slides exported successfully!', toastId)
-          } catch (error) {
-            console.error('Failed to export PDF:', error)
-            toast.error('Failed to export PDF. Please try again.')
-          }
-        }}
-        onExportCurrentPDF={async () => {
-          try {
-            const currentSlide = slides.find(s => s.id === currentSlideId)
-            if (!currentSlide) {
-              toast.error('No slide selected')
-              return
-            }
-            const toastId = toast.loading('Generating PDF for current slide...')
-            const slideIndex = slides.findIndex(s => s.id === currentSlideId) + 1
-            const fileName = presentation?.title ? 
-              `${presentation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_slide_${slideIndex}.pdf` : 
-              `slide_${slideIndex}.pdf`
-            await exportSlidesToPDF({
-              slides: [currentSlide],
-              fileName,
-              onProgress: (progress) => {
-                toast.loading(`Generating PDF... ${Math.round(progress)}%`, toastId)
-              }
-            })
-            toast.success(`Slide ${slideIndex} exported successfully!`, toastId)
-          } catch (error) {
-            console.error('Failed to export PDF:', error)
-            toast.error('Failed to export PDF. Please try again.')
-          }
-        }}
-      />
+      <RightSidebar />
       
       <TemplateModal
         isOpen={isTemplateModalOpen}

@@ -4,12 +4,19 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  safelist: [
+    'bg-app-green',
+    'hover:bg-app-green-700',
+    'hover:bg-app-green-800',
+    'bg-app-primary-bg',
+    'border-app-border',
+  ],
   theme: {
     extend: {
       colors: {
-        // Black (Font color)
+        // Black (Primary text and buttons)
         'app-black': {
-          DEFAULT: '#000000',
+          DEFAULT: '#191818',
           50: '#f9fafb',
           100: '#f3f4f6',
           200: '#e5e7eb',
@@ -19,12 +26,12 @@ export default {
           600: '#4b5563',
           700: '#374151',
           800: '#1f2937',
-          900: '#111827',
-          950: '#030712',
+          900: '#191818',
+          950: '#0f0e0e',
         },
-        // White (Background/Card)
+        // White (Text/cards)
         'app-white': {
-          DEFAULT: '#fafafa',
+          DEFAULT: '#ffffff',
           pure: '#ffffff',
           50: '#ffffff',
           100: '#fefefe',
@@ -37,64 +44,70 @@ export default {
           800: '#e8e8e8',
           900: '#e0e0e0',
         },
-        // Light Gray (Secondary Background)
-        'app-light-gray': {
-          DEFAULT: '#f2f2f2',
-          50: '#fafafa',
-          100: '#f7f7f7',
-          200: '#f5f5f5',
-          300: '#f2f2f2',
-          400: '#eeeeee',
-          500: '#e8e8e8',
-          600: '#e0e0e0',
-          700: '#d6d6d6',
-          800: '#cccccc',
-          900: '#bfbfbf',
+
+       
+    
+        'app-pill-bg': {
+          DEFAULT: '#f0eeeb'
         },
-        // Gray
+        // Global border color
+        'app-border': {
+          DEFAULT: '#7e757233'
+        },
+        // Light Background (30% opacity white for cards/components)
+        'app-light-bg': {
+          DEFAULT: 'rgb(255 255 255 / 30%)',
+          solid: '#ffffff4d', // Approximate solid color equivalent
+        },
+        // Secondary Background (70% opacity beige for cards)
+        'app-secondary-bg': {
+          DEFAULT: 'rgb(246 245 244 / 70%)',
+          solid: '#f6f5f4b3', // Approximate solid color equivalent
+        },
+        // Gray (Subtitle text)
         'app-gray': {
-          DEFAULT: '#d0d0d0',
+          DEFAULT: '#62615f',
           50: '#f6f6f6',
           100: '#eeeeee',
           200: '#e5e5e5',
           300: '#d9d9d9',
-          400: '#d0d0d0',
-          500: '#c4c4c4',
-          600: '#b8b8b8',
-          700: '#a8a8a8',
-          800: '#999999',
-          900: '#8a8a8a',
+          400: '#b8b7b6',
+          500: '#949391', // Light gray for other text
+          600: '#62615f', // Gray text for subtitles
+          700: '#4a4948',
+          800: '#333231',
+          900: '#1f1e1d',
         },
-        // Dark Gray
-        'app-dark-gray': {
-          DEFAULT: '#7f7f7f',
-          50: '#e8e8e8',
-          100: '#d1d1d1',
-          200: '#bababa',
-          300: '#a3a3a3',
-          400: '#8c8c8c',
-          500: '#7f7f7f',
-          600: '#6b6b6b',
-          700: '#575757',
-          800: '#434343',
-          900: '#2f2f2f',
+        // Light Gray (Other text)
+        'app-light-gray': {
+          DEFAULT: '#949391',
+          50: '#fafafa',
+          100: '#f7f7f7',
+          200: '#f5f5f5',
+          300: '#e8e8e7',
+          400: '#d0cfce',
+          500: '#b8b7b6',
+          600: '#949391',
+          700: '#7a7977',
+          800: '#62615f',
+          900: '#4a4948',
         },
-        // Green
+        // Green (Primary green for buttons and main actions)
         'app-green': {
-          DEFAULT: '#54cb56',
-          50: '#f0fbf0',
-          100: '#dcf5dd',
-          200: '#baeabb',
-          300: '#97df99',
-          400: '#75d477',
-          500: '#54cb56',
-          600: '#3fb842',
-          700: '#339936',
-          800: '#287a2a',
-          900: '#1f5b21',
-          950: '#0f2e10',
+          DEFAULT: '#017c6e',
+          50: '#f0fdfa',
+          100: '#cde8e4', // Light green for badges
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6',
+          600: '#017c6e', // Primary green
+          700: '#116759', // Green text for badges
+          800: '#0f4a42',
+          900: '#0d3530',
+          950: '#042f2e',
         },
-        // Purple (Main Accent)
+        // Purple (Main Accent) - Keeping original
         'app-purple': {
           DEFAULT: '#9771ff',
           50: '#f5f3ff',
@@ -109,7 +122,7 @@ export default {
           900: '#472aa3',
           950: '#2d1971',
         },
-        // Yellow
+        // Yellow - Keeping original
         'app-yellow': {
           DEFAULT: '#f0ba2c',
           50: '#fefaec',
@@ -124,7 +137,7 @@ export default {
           900: '#7b4a17',
           950: '#462608',
         },
-        // Red
+        // Red - Keeping original
         'app-red': {
           DEFAULT: '#fe6d66',
           50: '#fff0ef',
@@ -139,7 +152,7 @@ export default {
           900: '#9e1d18',
           950: '#560907',
         },
-        // Blue
+        // Blue - Keeping original
         'app-blue': {
           DEFAULT: '#345fd8',
           50: '#f0f5ff',

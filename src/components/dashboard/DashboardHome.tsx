@@ -40,13 +40,11 @@ export default function DashboardHome() {
     }
   }
 
-  // Fixed suggestions for language lessons
+  // Fixed suggestions for language lessons - Only 3 as per new design
   const suggestions = [
     { icon: '💬', text: 'Conversation Practice' },
-    { icon: '👂', text: 'Listening Comprehension' },
     { icon: '📖', text: 'Reading & Vocabulary' },
     { icon: '✍️', text: 'Grammar Exercises' },
-    { icon: '🎯', text: 'Pronunciation Training' },
   ]
 
   const handleGenerate = async (promptData: any) => {
@@ -80,8 +78,8 @@ export default function DashboardHome() {
       <div className="min-h-full flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-8 py-6">
-        <h1 className="text-2xl font-semibold text-gray-900">{getGreeting()}</h1>
-        <p className="mt-1 text-gray-600">What would you like to create today?</p>
+        <h1 className="text-h2 text-gray-900">{getGreeting()}</h1>
+        <p className="text-body mt-1 text-gray-600">What would you like to create today?</p>
       </div>
 
       {/* Main Content */}
@@ -90,13 +88,13 @@ export default function DashboardHome() {
           {/* AI Prompt Input */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-purple-600" />
-              <h2 className="text-lg font-medium text-gray-900">Create with AI</h2>
+              <Sparkles className="w-5 h-5 text-app-purple" />
+              <h2 className="text-h5 text-gray-900">Create with AI</h2>
               {loadingStudents && (
-                <span className="text-xs text-gray-500">(Loading students...)</span>
+                <span className="text-caption text-gray-500">(Loading students...)</span>
               )}
               {!loadingStudents && students.length > 0 && (
-                <span className="text-xs text-green-600">({students.length} student{students.length !== 1 ? 's' : ''} loaded)</span>
+                <span className="text-caption text-green-600">({students.length} student{students.length !== 1 ? 's' : ''} loaded)</span>
               )}
             </div>
             
@@ -117,8 +115,8 @@ export default function DashboardHome() {
               className="p-6 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all"
             >
               <FileText className="w-8 h-8 text-gray-600 mb-3" />
-              <h3 className="font-medium text-gray-900">Blank Canvas</h3>
-              <p className="text-sm text-gray-600 mt-1">Start from scratch</p>
+              <h3 className="text-h6 text-gray-900">Blank Canvas</h3>
+              <p className="text-body-small text-gray-600 mt-1">Start from scratch</p>
             </button>
 
             <button
@@ -126,8 +124,8 @@ export default function DashboardHome() {
               className="p-6 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all"
             >
               <BookOpen className="w-8 h-8 text-gray-600 mb-3" />
-              <h3 className="font-medium text-gray-900">My Lessons</h3>
-              <p className="text-sm text-gray-600 mt-1">Continue working</p>
+              <h3 className="text-h6 text-gray-900">My Lessons</h3>
+              <p className="text-body-small text-gray-600 mt-1">Continue working</p>
             </button>
 
             <button
@@ -135,8 +133,8 @@ export default function DashboardHome() {
               className="p-6 bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all"
             >
               <Presentation className="w-8 h-8 text-gray-600 mb-3" />
-              <h3 className="font-medium text-gray-900">Templates</h3>
-              <p className="text-sm text-gray-600 mt-1">Use a template</p>
+              <h3 className="text-h6 text-gray-900">Templates</h3>
+              <p className="text-body-small text-gray-600 mt-1">Use a template</p>
             </button>
           </div>
         </div>

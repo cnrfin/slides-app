@@ -212,9 +212,9 @@ export default function LessonsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-8 h-8 border-2 border-app-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading lessons...</p>
         </div>
       </div>
@@ -227,13 +227,13 @@ export default function LessonsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Lessons</h1>
-            <p className="text-gray-600 mt-1">Create and manage your lesson materials</p>
+            <h1 className="text-h1 text-gray-900">Lessons</h1>
+            <p className="text-body text-gray-600 mt-1">Create and manage your lesson materials</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleCreateWithAI}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-app-purple-600 text-white rounded-lg hover:bg-app-purple-700 transition-colors"
             >
               <Sparkles className="w-5 h-5" />
               Create with AI
@@ -257,7 +257,7 @@ export default function LessonsPage() {
               placeholder="Search lessons..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500"
             />
           </div>
           {availableLanguages.length > 0 && (
@@ -266,7 +266,7 @@ export default function LessonsPage() {
               <select
                 value={filterLanguage}
                 onChange={(e) => setFilterLanguage(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500"
               >
                 <option value="all">All Languages</option>
                 {availableLanguages.map(lang => (
@@ -282,8 +282,8 @@ export default function LessonsPage() {
       {filteredLessons.length === 0 ? (
         <div className="text-center py-12">
           <FolderOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No lessons found</h3>
-          <p className="text-gray-600 mb-6">
+          <h3 className="text-h5 text-gray-900 mb-2">No lessons found</h3>
+          <p className="text-body text-gray-600 mb-6">
             {searchQuery || filterLanguage !== 'all' 
               ? 'Try adjusting your search or filters'
               : 'Get started by creating your first lesson'}
@@ -299,7 +299,7 @@ export default function LessonsPage() {
               </button>
               <button
                 onClick={handleCreateWithAI}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-app-purple-600 text-white rounded-lg hover:bg-app-purple-700 transition-colors"
               >
                 <Sparkles className="w-5 h-5" />
                 Create with AI
@@ -316,7 +316,7 @@ export default function LessonsPage() {
               onClick={() => handleOpenLesson(lesson.id)}
             >
               {/* Lesson Thumbnail */}
-              <div className="aspect-video relative bg-gradient-to-br from-purple-100 to-blue-100 rounded-t-xl overflow-hidden">
+              <div className="aspect-video relative bg-gradient-to-br from-app-purple-100 to-blue-100 rounded-t-xl overflow-hidden">
                 {lesson.firstSlide ? (
                   <MiniSlidePreview 
                     slide={lesson.firstSlide} 
@@ -339,7 +339,7 @@ export default function LessonsPage() {
                 {/* Play button overlay */}
                 <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 hover:opacity-100">
                   <div className="bg-white rounded-full p-3 shadow-lg">
-                    <Play className="w-6 h-6 text-purple-600" />
+                    <Play className="w-6 h-6 text-app-purple-600" />
                   </div>
                 </div>
               </div>
@@ -347,7 +347,7 @@ export default function LessonsPage() {
               <div className="p-6">
                 {/* Lesson Header */}
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
+                  <h3 className="text-h5 text-gray-900 line-clamp-1">
                     {lesson.title || 'Untitled Lesson'}
                   </h3>
                   <button 
@@ -362,19 +362,19 @@ export default function LessonsPage() {
 
                 {/* Description */}
                 {lesson.description && (
-                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                  <p className="text-body-small text-gray-600 mb-4 line-clamp-2">
                     {lesson.description}
                   </p>
                 )}
 
                 {/* Lesson Stats */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-body-small text-gray-600">
                     <BookOpen className="w-4 h-4" />
                     <span>{lesson.slide_count} slides</span>
                   </div>
                   {lesson.duration && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-body-small text-gray-600">
                       <Clock className="w-4 h-4" />
                       <span>{formatDuration(lesson.duration)}</span>
                     </div>
@@ -384,7 +384,7 @@ export default function LessonsPage() {
                 {/* Language Badge */}
                 {lesson.target_language && (
                   <div className="mb-4">
-                    <span className="inline-flex px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                    <span className="inline-flex px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-caption font-medium">
                       {lesson.target_language}
                     </span>
                   </div>
@@ -392,7 +392,7 @@ export default function LessonsPage() {
 
                 {/* Lesson Actions */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <div className="text-xs text-gray-500">
+                  <div className="text-caption text-gray-500">
                     <Calendar className="w-3 h-3 inline mr-1" />
                     Updated {formatDate(lesson.updated_at)}
                   </div>
@@ -422,7 +422,7 @@ export default function LessonsPage() {
                         e.stopPropagation()
                         setExpandedLessonId(expandedLessonId === lesson.id ? null : lesson.id)
                       }}
-                      className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                      className="p-2 text-app-purple-600 hover:bg-app-purple-50 rounded-lg transition-colors"
                       title="View details"
                     >
                       <ChevronRight className={`w-4 h-4 transition-transform ${expandedLessonId === lesson.id ? 'rotate-90' : ''}`} />
@@ -433,14 +433,14 @@ export default function LessonsPage() {
                 {/* Expanded Details */}
                 {expandedLessonId === lesson.id && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Lesson Details</h4>
-                    <div className="space-y-2 text-sm">
+                    <h4 className="text-body-small font-medium text-gray-700 mb-2">Lesson Details</h4>
+                    <div className="space-y-2 text-body-small">
                       {lesson.vocabulary && lesson.vocabulary.length > 0 && (
                         <div>
                           <span className="text-gray-500">Vocabulary:</span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {lesson.vocabulary.map((word, idx) => (
-                              <span key={idx} className="inline-flex px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                              <span key={idx} className="inline-flex px-2 py-1 bg-gray-100 text-gray-700 rounded text-caption">
                                 {word}
                               </span>
                             ))}
@@ -452,7 +452,7 @@ export default function LessonsPage() {
                           <span className="text-gray-500">Grammar:</span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {lesson.grammarPoints.map((point, idx) => (
-                              <span key={idx} className="inline-flex px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+                              <span key={idx} className="inline-flex px-2 py-1 bg-app-purple-100 text-app-purple-700 rounded text-caption">
                                 {point}
                               </span>
                             ))}

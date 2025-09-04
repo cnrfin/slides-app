@@ -1,5 +1,7 @@
 // src/components/sidebar/Sidebar.tsx
 import { useState, useRef, useEffect } from 'react'
+import ReactDOM from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { 
   Plus,
   Copy,
@@ -13,17 +15,19 @@ import {
   BarChart3,
   Table,
   Sparkles,
-  ArrowLeft,
   ChevronDown,
   Settings,
   Languages,
   GraduationCap,
   LogOut,
   Save,
-  History
+  History,
+  Check
 } from 'lucide-react'
 import useSlideStore from '@/stores/slideStore'
 import useAuthStore from '@/stores/authStore'
+import useLanguageStore from '@/stores/languageStore'
+import { SUPPORTED_LANGUAGES } from '@/i18n/config'
 import SlidePreview from '@/components/previews/SlidePreview'
 import { formatDistanceToNow } from 'date-fns'
 import type { TextContent, ShapeContent, BlurbContent } from '@/types/slide.types'
@@ -42,11 +46,132 @@ interface SidebarProps {
   onApplyTemplateToSlide: (slideId: string) => void
 }
 
+// Language Popup Component
+function LanguagePopup({ isOpen, onClose, anchorElement, userMenuElement }: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  anchorElement: HTMLElement | null;
+  userMenuElement: HTMLElement | null;  // Add reference to user menu
+}) {
+  const { t } = useTranslation('dashboard');
+  const { currentLanguage, setLanguage } = useLanguageStore();
+  const popupRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        popupRef.current && 
+        !popupRef.current.contains(event.target as Node) &&
+        anchorElement && 
+        !anchorElement.contains(event.target as Node)
+      ) {
+        onClose();
+      }
+    };
+    
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 10);
+    
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, anchorElement, onClose]);
+  
+  if (!isOpen) return null;
+  
+  // Calculate position based on user menu dropdown
+  const getPosition = () => {
+    // Try to use the user menu element first for consistent positioning
+    if (userMenuElement) {
+      const menuRect = userMenuElement.getBoundingClientRect();
+      return {
+        top: menuRect.top,  // Align with top of user menu
+        left: menuRect.right + 8  // Position to the right of user menu
+      };
+    }
+    
+    // Fallback to anchor element if no user menu
+    if (anchorElement) {
+      const rect = anchorElement.getBoundingClientRect();
+      return {
+        top: rect.top,
+        left: rect.right + 8
+      };
+    }
+    
+    // Default position
+    return { top: 300, left: 300 };
+  };
+  
+  const position = getPosition();
+  
+  // Adjust position if it would go off screen
+  if (position.left + 200 > window.innerWidth) {
+    position.left = Math.max(10, position.left - 416); // Position to the left with some padding
+  }
+  
+  // Ensure popup doesn't go off the top or bottom of screen
+  if (position.top + 300 > window.innerHeight) {
+    position.top = window.innerHeight - 310;
+  }
+  if (position.top < 10) {
+    position.top = 10;
+  }
+  
+  return ReactDOM.createPortal(
+    <div
+      ref={popupRef}
+      className="fixed bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[200px]"
+      style={{
+        top: `${position.top}px`,
+        left: `${position.left}px`,
+        zIndex: 99999,
+      }}
+    >
+      <div className="px-3 py-2 border-b border-gray-100">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          {t('selectLanguage')}
+        </p>
+      </div>
+      
+      <div className="py-1">
+        {SUPPORTED_LANGUAGES.map((language) => (
+          <button
+            key={language.code}
+            onClick={() => {
+              setLanguage(language.code);
+              onClose();
+            }}
+            className={`
+              w-full flex items-center justify-between px-3 py-2 
+              text-sm hover:bg-gray-50 transition-colors
+              ${currentLanguage === language.code ? 'bg-blue-50 text-blue-700' : 'text-gray-700'}
+            `}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-lg">{language.flag}</span>
+              <span className="font-medium">{language.name}</span>
+            </div>
+            {currentLanguage === language.code && (
+              <Check className="w-4 h-4" strokeWidth={2} />
+            )}
+          </button>
+        ))}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarProps) {
   const navigate = useNavigate()
+  const { t } = useTranslation('dashboard')
+  const { currentLanguage } = useLanguageStore()
   const [activeTab, setActiveTab] = useState<'elements' | 'slides'>('slides')
-  const [lessonTitle, setLessonTitle] = useState('')
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [activeLineTool, setActiveLineTool] = useState(false)
   const [showShapePopup, setShowShapePopup] = useState(false)
   const [showIconsPopup, setShowIconsPopup] = useState(false)
@@ -54,12 +179,19 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
   const [showTablePopup, setShowTablePopup] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [showRecentLessons, setShowRecentLessons] = useState(false)
+  const [showLanguagePopup, setShowLanguagePopup] = useState(false)
   const shapeButtonRef = useRef<HTMLButtonElement>(null)
   const iconsButtonRef = useRef<HTMLButtonElement>(null)
   const tableButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
-  const titleInputRef = useRef<HTMLInputElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const userMenuDropdownRef = useRef<HTMLDivElement>(null)  // Add ref for dropdown menu
+  const languageButtonRef = useRef<HTMLButtonElement>(null)
+  
+  // Get current language display
+  const currentLanguageDisplay = SUPPORTED_LANGUAGES.find(
+    lang => lang.code === currentLanguage
+  );
   
   const {
     slides,
@@ -82,20 +214,6 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
   
   const currentSlideIndex = slides.findIndex(s => s.id === currentSlideId)
   const currentSlide = slides.find(s => s.id === currentSlideId)
-  
-  // Handle title editing
-  useEffect(() => {
-    if (presentation?.title !== undefined) {
-      setLessonTitle(presentation.title || '')
-    }
-  }, [presentation?.title])
-  
-  useEffect(() => {
-    if (isEditingTitle && titleInputRef.current) {
-      titleInputRef.current.focus()
-      titleInputRef.current.select()
-    }
-  }, [isEditingTitle])
 
   // Listen for line mode exit to deactivate line tool
   useEffect(() => {
@@ -117,14 +235,6 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
       window.removeEventListener('keydown', handleEscapePressed)
     }
   }, [activeLineTool])
-  
-  const handleTitleSave = () => {
-    setIsEditingTitle(false)
-    // Use placeholder if title is empty
-    const titleToSave = lessonTitle.trim() || 'Lesson Title'
-    setLessonTitle(titleToSave)
-    updatePresentationTitle(titleToSave)
-  }
   
   const handleAddText = () => {
     if (!currentSlide) return
@@ -307,13 +417,6 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
            user.subscription_tier === 'pro' ? 'Pro plan' : 
            'Free plan'
   }
-  
-  const handleNavigateBack = () => {
-    // Check if there are unsaved changes
-    const event = new CustomEvent('canvas:navigate-back')
-    window.dispatchEvent(event)
-  }
-  
   const handleSignOut = async () => {
     try {
       await signOut()
@@ -333,55 +436,12 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
   return (
     <div
       ref={sidebarRef}
-      className="fixed left-0 top-0 h-screen z-30 transition-all duration-300 w-56"
+      className="absolute left-0 top-0 h-full z-30 transition-all duration-300 w-56"
     >
       <div className="h-full border-r border-gray-200 flex flex-col overflow-hidden bg-white">
-        {/* Header */}
+        {/* Header - Simplified without back button and title */}
         <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            {/* Back to Dashboard Button */}
-            <button
-              onClick={handleNavigateBack}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-[0ms]"
-              title="Back to Dashboard"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-700" strokeWidth={1.5} />
-            </button>
-          </div>
-          
-          <>
-              <div className="mb-1">
-                {isEditingTitle ? (
-                  <input
-                    ref={titleInputRef}
-                    type="text"
-                    value={lessonTitle}
-                    onChange={(e) => setLessonTitle(e.target.value)}
-                    onBlur={handleTitleSave}
-                    placeholder="Lesson Title..."
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleTitleSave()
-                      } else if (e.key === 'Escape') {
-                        setLessonTitle(presentation?.title || '')
-                        setIsEditingTitle(false)
-                      }
-                    }}
-                    className="w-full text-lg font-semibold bg-transparent border-b border-dashed border-gray-300 focus:border-blue-500 outline-none px-1 py-0.5"
-                  />
-                ) : (
-                  <h2
-                    className={`text-lg font-semibold cursor-pointer hover:text-gray-700 truncate ${
-                      !lessonTitle ? 'text-gray-400' : ''
-                    }`}
-                    onClick={() => setIsEditingTitle(true)}
-                  >
-                    {lessonTitle || 'Lesson Title...'}
-                  </h2>
-                )}
-              </div>
-              <p className="text-xs text-gray-500">{formatSavedTime()}</p>
-          </>
+          <p className="text-caption text-gray-500">{formatSavedTime()}</p>
         </div>
         
         {/* Tab Navigation */}
@@ -423,7 +483,7 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                       }`}
                     >
                       <button.icon className={`w-6 h-6 ${isLineToolActive ? 'text-white' : 'text-gray-700'}`} strokeWidth={1} />
-                      <span className={`text-sm ${isLineToolActive ? 'text-white' : 'text-gray-700'}`}>{button.label}</span>
+                      <span className={`text-body-small ${isLineToolActive ? 'text-white' : 'text-gray-700'}`}>{button.label}</span>
                     </button>
                   )
                 })}
@@ -508,7 +568,7 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                     <SlidePreview slide={slide} className="absolute inset-0" />
                     
                     {/* Slide number */}
-                    <div className="absolute bottom-1 right-1 bg-white/80 text-gray-700 text-xs font-medium px-1.5 py-0.5 rounded z-10">
+                    <div className="absolute bottom-1 right-1 bg-white/80 text-gray-700 text-caption font-medium px-1.5 py-0.5 rounded z-10">
                       {index + 1}
                     </div>
                   </div>
@@ -541,10 +601,10 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                 </span>
               </div>
               <div className="flex-1 text-left">
-                <div className="font-medium text-sm text-gray-900 truncate">
+                <div className="text-body-small font-medium text-gray-900 truncate">
                   {user?.display_name || user?.email?.split('@')[0] || 'User'}
                 </div>
-                <div className="text-xs text-gray-500 truncate">
+                <div className="text-caption text-gray-500 truncate">
                   {getUserPlan()}
                 </div>
               </div>
@@ -553,7 +613,10 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
 
             {/* User Dropdown Menu */}
             {isUserMenuOpen && (
-              <div className="absolute bottom-full mb-2 left-0 right-0 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden dropdown-animation z-[60]">
+              <div 
+                ref={userMenuDropdownRef}
+                className="absolute bottom-full mb-2 left-0 right-0 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden dropdown-animation z-[60]"
+              >
                 {/* User Info Header */}
                 <div className="px-4 py-3 border-b border-gray-100">
                   <div className="flex items-center gap-3">
@@ -582,7 +645,7 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                     <button
                       onClick={handleSaveLesson}
                       disabled={isSaving}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      className="w-full flex items-center gap-3 px-4 py-2 text-menu text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
                     >
                       {isSaving ? (
                         <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
@@ -594,8 +657,8 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                   )}
                   
                   <button
-                    onClick={() => setShowRecentLessons(!showRecentLessons)}
-                    className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => setShowRecentLessons(!showRecentLessons)}
+                  className="w-full flex items-center justify-between px-4 py-2 text-menu text-gray-700 hover:bg-gray-50 transition-colors"
                   >
                     <span className="flex items-center gap-3">
                       <History className="w-4 h-4" strokeWidth={1.5} />
@@ -605,25 +668,35 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                   </button>
                   
                   <Link
-                    to="/dashboard/settings"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  to="/dashboard/settings"
+                  className="flex items-center gap-3 px-4 py-2 text-menu text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsUserMenuOpen(false)}
                   >
                     <Settings className="w-4 h-4" strokeWidth={1.5} />
                     Settings
                   </Link>
                   
-                  <button className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <button 
+                    ref={languageButtonRef}
+                    onClick={() => {
+                      console.log('Language button clicked in canvas sidebar');
+                      setShowLanguagePopup(true);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2 text-menu text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
                     <span className="flex items-center gap-3">
                       <Languages className="w-4 h-4" strokeWidth={1.5} />
                       Language
                     </span>
-                    <ChevronDown className="w-4 h-4 rotate-[-90deg]" strokeWidth={1.5} />
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{currentLanguageDisplay?.flag}</span>
+                      <span className="text-xs text-gray-500">{currentLanguageDisplay?.name}</span>
+                    </div>
                   </button>
                   
                   <Link
-                    to="/dashboard/tutorials"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  to="/dashboard/tutorials"
+                  className="flex items-center gap-3 px-4 py-2 text-menu text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsUserMenuOpen(false)}
                   >
                     <GraduationCap className="w-4 h-4" strokeWidth={1.5} />
@@ -631,8 +704,8 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                   </Link>
                   
                   <Link
-                    to="/dashboard/billing"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  to="/dashboard/billing"
+                  className="flex items-center gap-3 px-4 py-2 text-menu text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsUserMenuOpen(false)}
                   >
                     <Sparkles className="w-4 h-4" strokeWidth={1.5} />
@@ -644,7 +717,7 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                 <div className="border-t border-gray-100 py-1">
                   <button
                     onClick={handleSignOut}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2 text-menu text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" strokeWidth={1.5} />
                     Log out
@@ -712,6 +785,14 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
         isOpen={showRecentLessons}
         onClose={() => setShowRecentLessons(false)}
         anchorElement={userMenuRef.current}
+      />
+      
+      {/* Language Popup */}
+      <LanguagePopup 
+        isOpen={showLanguagePopup}
+        onClose={() => setShowLanguagePopup(false)}
+        anchorElement={languageButtonRef.current}
+        userMenuElement={userMenuDropdownRef.current}  // Pass user menu reference
       />
     </div>
   )

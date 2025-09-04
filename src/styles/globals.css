@@ -1,9 +1,66 @@
+/* Import Inter from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Import CJK fonts for internationalization */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
 /* Import table styles */
 @import './table.css';
+
+/* Font Face Declarations */
+@font-face {
+  font-family: 'Martina Plantijn';
+  src: url('/fonts/TestMartinaPlantijn-Light-BF663c36d1dbbe7.otf')
+    format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Typography CSS Custom Properties */
+:root {
+  /* Font Families */
+  --font-heading: 'Martina Plantijn', 'Georgia', serif;
+  --font-body:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Noto Sans SC', 'Noto Sans JP', 'Helvetica Neue', 'Arial', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif;
+
+  /* Font Sizes - Desktop */
+  --text-h1: 2.5rem; /* 40px - Main page titles */
+  --text-h2: 2rem; /* 32px - Section headers */
+  --text-h3: 1.5rem; /* 24px - Subsection headers */
+  --text-h4: 1.25rem; /* 20px - Card titles */
+  --text-h5: 1.125rem; /* 18px - Small headers */
+  --text-h6: 1rem; /* 16px - Tiny headers */
+
+  --text-body-lg: 1.125rem; /* 18px - Large body text */
+  --text-body: 1rem; /* 16px - Regular body text */
+  --text-body-sm: 0.875rem; /* 14px - Small body text */
+  --text-caption: 0.75rem; /* 12px - Captions, labels */
+  --text-micro: 0.625rem; /* 10px - Tiny text */
+
+  /* Line Heights */
+  --leading-heading: 1.2;
+  --leading-body: 1.6;
+  --leading-relaxed: 1.75;
+
+  /* Letter Spacing */
+  --tracking-heading: -0.02em;
+  --tracking-body: 0;
+  --tracking-wide: 0.025em;
+
+  /* Font Weights */
+  --font-light: 300;
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+}
 
 /* Hide scrollbar utilities */
 @layer utilities {
@@ -11,33 +68,33 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-  
+
   /* Hide scrollbar for IE, Edge and Firefox */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
-  
+
   /* Styled scrollbar for shape popup */
   .scrollbar-styled {
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 #f1f1f1;
   }
-  
+
   .scrollbar-styled::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   .scrollbar-styled::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 3px;
   }
-  
+
   .scrollbar-styled::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 3px;
   }
-  
+
   .scrollbar-styled::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
@@ -45,12 +102,21 @@
 
 /* CSS Custom Properties for Color Palette */
 :root {
+  /* Layout */
+  --header-height: 60px;
+
+  /* Border colors */
+  --border-gray: #d9d9d9;
+  --border-app: #7e757233;
   /* Global Box Shadow */
-  --shadow-primary: 0px 2.15px 0.5px -2px rgba(0,0,0,0.25), 0px 24px 24px -16px rgba(8,8,8,0.04), 0px 6px 13px rgba(8,8,8,0.03), 0px 6px 4px -4px rgba(8,8,8,0.05), 0px 5px 1.5px -4px rgba(8,8,8,0.09);
+  --shadow-primary:
+    0px 2.15px 0.5px -2px rgba(0, 0, 0, 0.25),
+    0px 24px 24px -16px rgba(8, 8, 8, 0.04), 0px 6px 13px rgba(8, 8, 8, 0.03),
+    0px 6px 4px -4px rgba(8, 8, 8, 0.05), 0px 5px 1.5px -4px rgba(8, 8, 8, 0.09);
 
   /* Text Input Background */
   --color-text-input-bg: #f1f1f1;
-  
+
   /* Black/Font Color */
   --color-black: #000000;
   --color-black-50: #f9fafb;
@@ -64,7 +130,7 @@
   --color-black-800: #1f2937;
   --color-black-900: #111827;
   --color-black-950: #030712;
-  
+
   /* White (Background/Card) */
   --color-white: #fafafa;
   --color-white-pure: #ffffff;
@@ -78,7 +144,7 @@
   --color-white-700: #f0f0f0;
   --color-white-800: #e8e8e8;
   --color-white-900: #e0e0e0;
-  
+
   /* Light Gray (Secondary Background) */
   --color-light-gray: #f2f2f2;
   --color-light-gray-50: #fafafa;
@@ -91,7 +157,7 @@
   --color-light-gray-700: #d6d6d6;
   --color-light-gray-800: #cccccc;
   --color-light-gray-900: #bfbfbf;
-  
+
   /* Gray */
   --color-gray: #d0d0d0;
   --color-gray-50: #f6f6f6;
@@ -104,7 +170,7 @@
   --color-gray-700: #a8a8a8;
   --color-gray-800: #999999;
   --color-gray-900: #8a8a8a;
-  
+
   /* Dark Gray */
   --color-dark-gray: #7f7f7f;
   --color-dark-gray-50: #e8e8e8;
@@ -117,7 +183,7 @@
   --color-dark-gray-700: #575757;
   --color-dark-gray-800: #434343;
   --color-dark-gray-900: #2f2f2f;
-  
+
   /* Green */
   --color-green: #54cb56;
   --color-green-50: #f0fbf0;
@@ -131,7 +197,7 @@
   --color-green-800: #287a2a;
   --color-green-900: #1f5b21;
   --color-green-950: #0f2e10;
-  
+
   /* Purple (Main Accent) */
   --color-purple: #9771ff;
   --color-purple-50: #f5f3ff;
@@ -145,7 +211,7 @@
   --color-purple-800: #5730c7;
   --color-purple-900: #472aa3;
   --color-purple-950: #2d1971;
-  
+
   /* Yellow */
   --color-yellow: #f0ba2c;
   --color-yellow-50: #fefaec;
@@ -159,7 +225,7 @@
   --color-yellow-800: #975b17;
   --color-yellow-900: #7b4a17;
   --color-yellow-950: #462608;
-  
+
   /* Red */
   --color-red: #fe6d66;
   --color-red-50: #fff0ef;
@@ -173,7 +239,7 @@
   --color-red-800: #c01c15;
   --color-red-900: #9e1d18;
   --color-red-950: #560907;
-  
+
   /* Blue */
   --color-blue: #345fd8;
   --color-blue-50: #f0f5ff;
@@ -191,27 +257,224 @@
 
 /* Hide number input spinners */
 /* Chrome, Safari, Edge, Opera */
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
 /* Firefox */
-input[type="number"] {
+input[type='number'] {
   -moz-appearance: textfield;
+}
+
+/* Typography Utility Classes */
+@layer utilities {
+  /* Heading Styles - Using Martina Plantijn */
+  .text-h1 {
+    font-family: var(--font-heading);
+    font-size: var(--text-h1);
+    font-weight: var(--font-light);
+    line-height: var(--leading-heading);
+    letter-spacing: var(--tracking-heading);
+  }
+
+  .text-h2 {
+    font-family: var(--font-heading);
+    font-size: var(--text-h2);
+    font-weight: var(--font-light);
+    line-height: var(--leading-heading);
+    letter-spacing: var(--tracking-heading);
+  }
+
+  .text-h3 {
+    font-family: var(--font-heading);
+    font-size: var(--text-h3);
+    font-weight: var(--font-light);
+    line-height: var(--leading-heading);
+    letter-spacing: var(--tracking-heading);
+  }
+
+  .text-h4 {
+    font-family: var(--font-heading);
+    font-size: var(--text-h4);
+    font-weight: var(--font-light);
+    line-height: var(--leading-heading);
+    letter-spacing: var(--tracking-heading);
+  }
+
+  .text-h5 {
+    font-family: var(--font-heading);
+    font-size: var(--text-h5);
+    font-weight: var(--font-light);
+    line-height: var(--leading-heading);
+    letter-spacing: var(--tracking-heading);
+  }
+
+  .text-h6 {
+    font-family: var(--font-heading);
+    font-size: var(--text-h6);
+    font-weight: var(--font-light);
+    line-height: var(--leading-heading);
+    letter-spacing: var(--tracking-heading);
+  }
+
+  /* Body Text Styles - Using Inter */
+  .text-body-large {
+    font-family: var(--font-body);
+    font-size: var(--text-body-lg);
+    font-weight: var(--font-regular);
+    line-height: var(--leading-body);
+    letter-spacing: var(--tracking-body);
+  }
+
+  .text-body {
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    font-weight: var(--font-regular);
+    line-height: var(--leading-body);
+    letter-spacing: var(--tracking-body);
+  }
+
+  .text-body-small {
+    font-family: var(--font-body);
+    font-size: var(--text-body-sm);
+    font-weight: var(--font-regular);
+    line-height: var(--leading-body);
+    letter-spacing: var(--tracking-body);
+  }
+
+  .text-caption {
+    font-family: var(--font-body);
+    font-size: var(--text-caption);
+    font-weight: var(--font-regular);
+    line-height: var(--leading-body);
+    letter-spacing: var(--tracking-body);
+  }
+
+  .text-micro {
+    font-family: var(--font-body);
+    font-size: var(--text-micro);
+    font-weight: var(--font-regular);
+    line-height: var(--leading-body);
+    letter-spacing: var(--tracking-wide);
+  }
+
+  /* UI-specific text (buttons, labels, menu items) - Using Inter */
+  .text-button {
+    font-family: var(--font-body);
+    font-size: var(--text-body-sm);
+    font-weight: var(--font-medium);
+    line-height: 1;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .text-label {
+    font-family: var(--font-body);
+    font-size: var(--text-caption);
+    font-weight: var(--font-medium);
+    line-height: 1;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+  }
+
+  .text-menu {
+    font-family: var(--font-body);
+    font-size: var(--text-body-sm);
+    /* font-weight removed to allow utilities like font-bold to work */
+    line-height: var(--leading-body);
+  }
+
+  /* Weight modifiers for body text */
+  .font-light {
+    font-weight: var(--font-light);
+  }
+  .font-regular {
+    font-weight: var(--font-regular);
+  }
+  .font-medium {
+    font-weight: var(--font-medium);
+  }
+  .font-semibold {
+    font-weight: var(--font-semibold);
+  }
+  .font-bold {
+    font-weight: var(--font-bold);
+  }
+
+  /* Responsive Typography (Mobile) */
+  @media (max-width: 768px) {
+    .text-h1 {
+      font-size: 2rem;
+    } /* 32px on mobile */
+    .text-h2 {
+      font-size: 1.75rem;
+    } /* 28px on mobile */
+    .text-h3 {
+      font-size: 1.375rem;
+    } /* 22px on mobile */
+    .text-h4 {
+      font-size: 1.125rem;
+    } /* 18px on mobile */
+    .text-h5 {
+      font-size: 1rem;
+    } /* 16px on mobile */
+    .text-h6 {
+      font-size: 0.875rem;
+    } /* 14px on mobile */
+  }
 }
 
 @layer base {
   html {
     @apply antialiased;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-      sans-serif;
+    font-family: var(--font-body);
   }
-  
+
   body {
     @apply bg-app-white text-app-black;
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: var(--leading-body);
+  }
+
+  /* Apply heading font to all heading elements by default */
+  h1 {
+    @apply text-h1;
+  }
+  h2 {
+    @apply text-h2;
+  }
+  h3 {
+    @apply text-h3;
+  }
+  h4 {
+    @apply text-h4;
+  }
+  h5 {
+    @apply text-h5;
+  }
+  h6 {
+    @apply text-h6;
+  }
+
+  /* Apply body font to text elements */
+  p {
+    font-family: var(--font-body);
+    line-height: var(--leading-body);
+  }
+
+  /* Form elements */
+  label {
+    @apply text-label;
+  }
+  input,
+  textarea,
+  select {
+    font-family: var(--font-body);
+  }
+  button {
+    @apply text-button;
   }
 }
 
@@ -302,7 +565,9 @@ input[type="number"] {
   border: 1px solid var(--color-gray-400);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
   transition: all 0ms ease;
 }
 
@@ -322,7 +587,9 @@ input[type="number"] {
   border: 1px solid var(--color-gray-400);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
   transition: all 0ms ease;
   border-style: solid;
 }
@@ -353,24 +620,32 @@ input[type="number"] {
   border: 1px solid var(--color-gray-400);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
   margin-top: 0;
 }
 
 /* Light theme hover states */
 .slider-light:hover::-webkit-slider-thumb {
   border-color: var(--color-dark-gray-400);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .slider-light:hover::-moz-range-thumb {
   border-color: var(--color-dark-gray-400);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .slider-light:hover::-ms-thumb {
   border-color: var(--color-dark-gray-400);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 /* Active/dragging state */
@@ -459,13 +734,13 @@ input[type="number"] {
 }
 
 /* Cursor styles for canvas pan mode */
-[style*="cursor: grab"] {
+[style*='cursor: grab'] {
   cursor: -webkit-grab !important;
   cursor: -moz-grab !important;
   cursor: grab !important;
 }
 
-[style*="cursor: grabbing"] {
+[style*='cursor: grabbing'] {
   cursor: -webkit-grabbing !important;
   cursor: -moz-grabbing !important;
   cursor: grabbing !important;
@@ -514,42 +789,43 @@ select option[disabled] {
 @layer utilities {
   /* Instant color/background transitions */
   .transition-colors {
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke !important;
+    transition-property:
+      color, background-color, border-color, text-decoration-color, fill, stroke !important;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
     transition-duration: 0ms !important;
   }
-  
+
   /* Transform transitions with 100ms duration */
   .transition-transform {
     transition-property: transform !important;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
     transition-duration: 100ms !important;
   }
-  
+
   /* Shadow transitions instant */
   .transition-shadow {
     transition-property: box-shadow !important;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
     transition-duration: 0ms !important;
   }
-  
+
   /* Opacity transitions instant */
   .transition-opacity {
     transition-property: opacity !important;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
     transition-duration: 0ms !important;
   }
-  
+
   /* Mixed transition-all class: instant colors, smooth transforms */
   .transition-all {
     transition-property: all !important;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
     transition-duration: 100ms !important;
   }
-  
+
   /* Specific property transitions */
   .transition-all {
-    transition: 
+    transition:
       color 0ms cubic-bezier(0.4, 0, 0.2, 1),
       background-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
       border-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
@@ -566,18 +842,18 @@ select option[disabled] {
       font-size 100ms cubic-bezier(0.4, 0, 0.2, 1),
       scale 100ms cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
-  
+
   /* New utility classes for common combinations */
   .transition-colors-transform {
-    transition: 
+    transition:
       color 0ms cubic-bezier(0.4, 0, 0.2, 1),
       background-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
       border-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
       transform 100ms cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
-  
+
   .transition-colors-scale {
-    transition: 
+    transition:
       color 0ms cubic-bezier(0.4, 0, 0.2, 1),
       background-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
       border-color 0ms cubic-bezier(0.4, 0, 0.2, 1),
@@ -634,6 +910,11 @@ select option[disabled] {
   animation: dropdown-slide-in 0.15s ease-out;
 }
 
+.nav-item-active {
+  background-color: #f6f6f6;
+  color: #0d9488;
+}
+
 /* Line clamp utility for text truncation */
 .line-clamp-2 {
   display: -webkit-box;
@@ -641,4 +922,39 @@ select option[disabled] {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Language-specific font adjustments */
+:lang(ja) {
+  font-family:
+    'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo,
+    var(--font-body);
+}
+
+:lang(zh) {
+  font-family:
+    'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    'WenQuanYi Micro Hei', var(--font-body);
+}
+
+/* Adjust line height for better CJK readability */
+:lang(ja),
+:lang(zh) {
+  line-height: 1.6;
+}
+
+/* Ensure proper text rendering for CJK languages */
+:lang(ja),
+:lang(zh) {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* CJK-specific class for better rendering when language is detected */
+.cjk-lang {
+  font-family:
+    'Noto Sans SC', 'Noto Sans JP', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', var(--font-body);
+  line-height: 1.6;
 }

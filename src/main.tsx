@@ -3,6 +3,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import AppRouter from './AppRouter.tsx'
 import './index.css'
+import './i18n/config' // Initialize i18n
 
 // Run Google OAuth setup check in development
 if (import.meta.env.DEV) {

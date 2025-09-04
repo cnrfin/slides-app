@@ -88,7 +88,7 @@ export default function HistorySidebar() {
       {/* History Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed top-4 right-4 z-30 flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 transition-colors group"
+        className="fixed top-5 right-4 z-30 flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 transition-colors group"
         aria-label="View prompt history"
       >
         <History className="w-5 h-5" strokeWidth={1.5} />
@@ -98,7 +98,7 @@ export default function HistorySidebar() {
       {/* Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 animate-in"
+          className="fixed inset-0 backdrop-blur-sm bg-black/50 z-40 animate-in"
           onClick={() => setIsOpen(false)}
         />
       )}

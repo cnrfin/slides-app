@@ -94,8 +94,8 @@ export default function SettingsPage() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+        <h1 className="text-h1 text-gray-900">Settings</h1>
+        <p className="text-body text-gray-600 mt-1">Manage your account settings and preferences</p>
       </div>
 
       {/* Quick Stats */}
@@ -108,10 +108,10 @@ export default function SettingsPage() {
         ].map((stat, index) => (
           <div key={index} className="bg-white border border-gray-200 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">{stat.label}</span>
+              <span className="text-body-small text-gray-600">{stat.label}</span>
               <span className="text-gray-400">{stat.icon}</span>
             </div>
-            <p className="text-lg font-semibold text-gray-900">{stat.value}</p>
+            <p className="text-h5 text-gray-900">{stat.value}</p>
           </div>
         ))}
       </div>
@@ -121,7 +121,7 @@ export default function SettingsPage() {
         {/* Left Column - Settings Navigation */}
         <div className="lg:col-span-1">
           <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-4">SETTINGS</h3>
+            <h3 className="text-label text-gray-500 mb-4">SETTINGS</h3>
             <nav className="space-y-1">
               {sections.map((section, index) => (
                 <button
@@ -135,9 +135,9 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div className="text-left">
-                      <p className="font-medium text-gray-900">{section.title}</p>
+                      <p className="text-body font-medium text-gray-900">{section.title}</p>
                       {section.description && (
-                        <p className="text-xs text-gray-500">{section.description}</p>
+                        <p className="text-caption text-gray-500">{section.description}</p>
                       )}
                     </div>
                   </div>
@@ -149,11 +149,11 @@ export default function SettingsPage() {
             <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
               <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left">
                 <HelpCircle className="w-5 h-5 text-gray-400" />
-                <span className="font-medium text-gray-700">Help & Support</span>
+                <span className="text-body font-medium text-gray-700">Help & Support</span>
               </button>
               <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-red-50 transition-colors text-left">
                 <LogOut className="w-5 h-5 text-red-600" />
-                <span className="font-medium text-red-600">Sign Out</span>
+                <span className="text-body font-medium text-red-600">Sign Out</span>
               </button>
             </div>
           </div>
@@ -168,14 +168,14 @@ export default function SettingsPage() {
                 <User className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Account Information</h2>
-                <p className="text-sm text-gray-600">Update your personal details</p>
+                <h2 className="text-h5 text-gray-900">Account Information</h2>
+                <p className="text-body-small text-gray-600">Update your personal details</p>
               </div>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-body-small font-medium text-gray-700 mb-1">
                   Email Address
                 </label>
                 <div className="flex items-center gap-2">
@@ -242,8 +242,8 @@ export default function SettingsPage() {
                 <Globe className="w-5 h-5 text-green-500" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Language & Region</h2>
-                <p className="text-sm text-gray-600">Set your language and regional preferences</p>
+                <h2 className="text-h5 text-gray-900">Language & Region</h2>
+                <p className="text-body-small text-gray-600">Set your language and regional preferences</p>
               </div>
             </div>
             
@@ -288,8 +288,8 @@ export default function SettingsPage() {
                 <Bell className="w-5 h-5 text-purple-500" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Email Notifications</h2>
-                <p className="text-sm text-gray-600">Choose what emails you want to receive</p>
+                <h2 className="text-h5 text-gray-900">Email Notifications</h2>
+                <p className="text-body-small text-gray-600">Choose what emails you want to receive</p>
               </div>
             </div>
             
@@ -308,8 +308,8 @@ export default function SettingsPage() {
                   className="mt-1"
                 />
                 <div>
-                  <div className="font-medium text-gray-900">Turn off all emails</div>
-                  <div className="text-sm text-gray-600">Opt out of all email communications</div>
+                  <div className="text-body font-medium text-gray-900">Turn off all emails</div>
+                  <div className="text-body-small text-gray-600">Opt out of all email communications</div>
                 </div>
               </label>
 
@@ -327,8 +327,8 @@ export default function SettingsPage() {
                     className="mt-1"
                   />
                   <div>
-                    <div className="font-medium text-gray-900">Lesson Creation Updates</div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-body font-medium text-gray-900">Lesson Creation Updates</div>
+                    <div className="text-body-small text-gray-600">
                       Get notified when your lessons are ready
                     </div>
                   </div>
@@ -347,8 +347,8 @@ export default function SettingsPage() {
                     className="mt-1"
                   />
                   <div>
-                    <div className="font-medium text-gray-900">Weekly Progress Reports</div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-body font-medium text-gray-900">Weekly Progress Reports</div>
+                    <div className="text-body-small text-gray-600">
                       Receive weekly summaries of your teaching activity
                     </div>
                   </div>
@@ -367,8 +367,8 @@ export default function SettingsPage() {
                     className="mt-1"
                   />
                   <div>
-                    <div className="font-medium text-gray-900">Product Announcements</div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-body font-medium text-gray-900">Product Announcements</div>
+                    <div className="text-body-small text-gray-600">
                       Stay updated with new features and improvements
                     </div>
                   </div>
@@ -386,7 +386,7 @@ export default function SettingsPage() {
             {showSaveMessage && (
               <div className="mt-4 flex items-center gap-2 text-green-600">
                 <Check className="w-4 h-4" />
-                <span className="text-sm">Settings saved successfully!</span>
+                <span className="text-body-small">Settings saved successfully!</span>
               </div>
             )}
           </section>
@@ -398,8 +398,8 @@ export default function SettingsPage() {
                 <CreditCard className="w-5 h-5 text-orange-500" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Subscription</h2>
-                <p className="text-sm text-gray-600">
+                <h2 className="text-h5 text-gray-900">Subscription</h2>
+                <p className="text-body-small text-gray-600">
                   Manage your subscription and billing
                 </p>
               </div>
@@ -407,13 +407,13 @@ export default function SettingsPage() {
             
             <div className="bg-gray-50 rounded-lg p-4 mb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600">Current Plan</span>
-                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                <span className="text-body-small text-gray-600">Current Plan</span>
+                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-caption font-medium">
                   Pro
                 </span>
               </div>
-              <p className="text-2xl font-bold text-gray-900">$29/month</p>
-              <p className="text-sm text-gray-600 mt-1">Next billing date: Feb 1, 2025</p>
+              <p className="text-h2 text-gray-900">$29/month</p>
+              <p className="text-body-small text-gray-600 mt-1">Next billing date: Feb 1, 2025</p>
             </div>
             
             <button
@@ -431,14 +431,14 @@ export default function SettingsPage() {
                 <Trash2 className="w-5 h-5 text-red-500" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-red-900">Danger Zone</h2>
-                <p className="text-sm text-gray-600">
+                <h2 className="text-h5 text-red-900">Danger Zone</h2>
+                <p className="text-body-small text-gray-600">
                   Irreversible and destructive actions
                 </p>
               </div>
             </div>
             
-            <p className="text-gray-600 mb-4">
+            <p className="text-body text-gray-600 mb-4">
               Once you delete your account, there is no going back. All your data will be permanently removed.
             </p>
             
@@ -460,10 +460,10 @@ export default function SettingsPage() {
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
                 <Trash2 className="w-5 h-5 text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Delete Account?</h3>
+              <h3 className="text-h5 text-gray-900">Delete Account?</h3>
             </div>
             
-            <p className="text-gray-600 mb-6">
+            <p className="text-body text-gray-600 mb-6">
               This action cannot be undone. All your data including lessons, students, and settings will be permanently deleted.
             </p>
             

@@ -198,53 +198,18 @@ class GoogleDriveSimpleServiceFixed {
    */
   private async saveTokenInfo(userId: string, tokenResponse: any) {
     try {
-      // First, check if a record exists
-      const { data: existing } = await supabase
-        .from('user_addons')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('addon_name', 'google_drive')
-        .maybeSingle();
-
-      const addonData = {
-        user_id: userId,
-        addon_name: 'google_drive',
-        enabled: true,
-        connected_at: new Date().toISOString(),
-        settings: {
+      // Use addonService.enableAddon which will emit the update event
+      const result = await addonService.enableAddon(
+        userId,
+        'google_drive',
+        {
           token_expires_at: new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString(),
           scope: tokenResponse.scope,
           auth_method: 'gis_popup'
         }
-      };
-
-      if (existing) {
-        // Update existing record
-        const { data, error } = await supabase
-          .from('user_addons')
-          .update({
-            enabled: true,
-            connected_at: new Date().toISOString(),
-            settings: addonData.settings
-          })
-          .eq('user_id', userId)
-          .eq('addon_name', 'google_drive')
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data;
-      } else {
-        // Insert new record
-        const { data, error } = await supabase
-          .from('user_addons')
-          .insert(addonData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        return data;
-      }
+      );
+      
+      return result;
     } catch (error) {
       console.error('Error saving token info:', error);
       throw error;

@@ -1,7 +1,7 @@
 // src/components/dashboard/AIPromptInput.tsx
 import { useState, useRef, useEffect } from 'react'
 import ReactDOM from 'react-dom'
-import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen, ChevronRight, Loader2, FileText, File } from 'lucide-react'
+import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen, ChevronRight, Loader2, FileText, File, CornerDownLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import './AIPromptInput.css'
 import { generateLesson } from '@/services/lessonGeneration'
@@ -174,7 +174,7 @@ export default function AIPromptInput({
       const isAtEnd = Math.ceil(element.scrollLeft + element.clientWidth) >= element.scrollWidth
       setShowFadeGradient(hasOverflow && !isAtEnd)
     }
-  }, [selectedSlides, selectedProfile, selectedLesson, isProcessingFile, showPopup])
+  }, [selectedSlides, selectedProfile, selectedLesson, showPopup])
 
   // Handle Cmd/Ctrl + K to expand
   useEffect(() => {
@@ -540,7 +540,7 @@ export default function AIPromptInput({
             <div className="max-h-48 overflow-y-auto">
               {loadingStudents ? (
                 <div className="px-4 py-6 text-center">
-                  <div className="w-6 h-6 border-2 border-gray-300 border-t-purple-600 rounded-full animate-spin mx-auto" />
+                  <div className="w-6 h-6 border-2 border-gray-300 border-t-app-purple-600 rounded-full animate-spin mx-auto" />
                   <p className="text-sm text-gray-500 mt-2">Loading students...</p>
                 </div>
               ) : filteredProfiles.length > 0 ? (
@@ -601,7 +601,7 @@ export default function AIPromptInput({
             <div className="max-h-64 overflow-y-auto">
               {loadingLessons ? (
                 <div className="px-4 py-6 text-center">
-                  <div className="w-6 h-6 border-2 border-gray-300 border-t-purple-600 rounded-full animate-spin mx-auto" />
+                  <div className="w-6 h-6 border-2 border-gray-300 border-t-app-purple-600 rounded-full animate-spin mx-auto" />
                   <p className="text-sm text-gray-500 mt-2">Loading lessons...</p>
                 </div>
               ) : filteredLessons.length > 0 ? (
@@ -671,62 +671,21 @@ export default function AIPromptInput({
       />
       
       {!isExpanded ? (
-        // Collapsed State
-        <div className="flex flex-col items-center">
-          {/* Build a lesson button */}
-          <button
-            onClick={() => setIsExpanded(true)}
-            disabled={isGenerating}
-            className="relative px-8 py-3 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-full font-medium transition-all hover:scale-105 mb-10 animate-fade-in overflow-hidden shine-button disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span className="relative z-10">Build a lesson</span>
-            <div className="shine-effect" />
-          </button>
-          
-          {/* Suggestions - Bento style: 2 on top, 3 below */}
-          {suggestions.length > 0 && (
-            <div className="w-full opacity-0 animate-fade-in-delay-2">
-              <div className="flex flex-col gap-2">
-                {/* Top row - 2 buttons */}
-                <div className="flex gap-2 justify-center">
-                  {suggestions.slice(0, 2).map((suggestion, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleSuggestionClick(suggestion.text)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all text-xs"
-                    >
-                      <span>{suggestion.icon}</span>
-                      <span className="text-gray-600">{suggestion.text}</span>
-                    </button>
-                  ))}
-                </div>
-                {/* Bottom row - 3 buttons */}
-                <div className="flex gap-2 justify-center">
-                  {suggestions.slice(2).map((suggestion, index) => (
-                    <button
-                      key={index + 2}
-                      onClick={() => handleSuggestionClick(suggestion.text)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all text-xs"
-                    >
-                      <span>{suggestion.icon}</span>
-                      <span className="text-gray-600">{suggestion.text}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        // Collapsed State - Empty since we're always expanded by default
+        null
       ) : (
         // Expanded State
         <div className="flex flex-col items-center">
-          {/* Text input area with footer buttons */}
+          {/* New wrapper container with specified styling */}
           <div 
-            className={`bg-white rounded-lg shadow-lg border w-full animate-fade-in transition-all relative ${
-              isGenerating ? 'opacity-75' : ''
-            } ${
-              isDragging ? 'border-blue-400 border-2 bg-blue-50' : 'border-gray-200'
+            className={`w-full animate-fade-in transition-all relative flex flex-col ${
+              isDragging ? 'ring-2 ring-blue-400 bg-blue-50' : ''
             }`}
+            style={{
+              padding: '.375rem',
+              backgroundColor: '#f6f5f4b3',
+              borderRadius: '.75rem'
+            }}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDragOver={handleDragOver}
@@ -743,51 +702,26 @@ export default function AIPromptInput({
               </div>
             )}
             
-            <div className="p-1">
+            {/* Input container with footer buttons */}
+            <div className="bg-white rounded-lg" style={{ border: '1px solid rgba(126, 117, 114, 0.2)' }}>
               <textarea
                 ref={textareaRef}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={isGenerating ? "Generating lesson..." : "Describe the lesson you want to create..."}
-                className="w-full px-4 py-3 rounded-lg resize-none focus:outline-none bg-transparent text-gray-700 placeholder-gray-400 disabled:cursor-not-allowed"
+                className="w-full resize-none focus:outline-none bg-transparent text-gray-700 placeholder-gray-400 disabled:cursor-not-allowed disabled:opacity-75 rounded-t-lg"
                 rows={5}
                 disabled={isGenerating}
-                style={{ minHeight: '120px' }}
+                style={{ 
+                  minHeight: '120px',
+                  padding: '.5rem'
+                }}
               />
               
-              {/* File Upload Container - Square with preview */}
-              {showFileContainer && uploadedFile && (
-                <div className="group relative mx-4 mt-3 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200 animate-slide-up" style={{ width: '200px' }}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="text-xs font-medium text-gray-700 truncate" style={{ maxWidth: '150px' }}>
-                        {uploadedFile.name}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {formatFileSize(uploadedFile.size)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={removeFile}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-200 rounded transition-none"
-                      disabled={isGenerating}
-                    >
-                      <X size={14} className="text-gray-500" />
-                    </button>
-                  </div>
-                  {uploadedFile.content && (
-                    <p className="text-xs text-gray-600 line-clamp-2">
-                      {uploadedFile.content}
-                    </p>
-                  )}
-                </div>
-              )}
-              
-              {/* Bottom Toolbar */}
+              {/* Footer with buttons */}
               <div className="flex items-center justify-between px-3 pb-3">
-                {/* Left Section - Plus Button and Selected Items */}
-                <div className="relative flex items-center flex-1 mr-3" style={{ maxWidth: 'calc(100% - 120px)' }}>
+                <div className="relative flex items-center flex-1 mr-3" style={{ maxWidth: 'calc(100% - 50px)' }}>
                   {/* Scrollable container */}
                   <div 
                     ref={footerScrollRef}
@@ -814,7 +748,7 @@ export default function AIPromptInput({
                       <Plus size={16} className="text-gray-600" strokeWidth={1.5} />
                     </button>
 
-                    {/* Genius Mode Toggle Button with scale animation */}
+                    {/* Genius Mode Toggle Button */}
                     <button
                       onClick={toggleGeniusMode}
                       disabled={isGenerating}
@@ -832,7 +766,7 @@ export default function AIPromptInput({
                       }}
                       className={`px-3 h-8 flex-shrink-0 flex items-center justify-center transition-all duration-200 rounded-lg border ${
                         isGeniusMode 
-                          ? 'border-purple-700 text-purple-700 bg-purple-50' 
+                          ? 'border-app-purple-700 text-app-purple-700 bg-app-purple-50' 
                           : 'border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
                       }`}
                       title={isGeniusMode ? 'Genius mode enabled' : 'Enable Genius mode'}
@@ -888,14 +822,6 @@ export default function AIPromptInput({
                         </button>
                       </div>
                     )}
-
-                    {/* Processing File Indicator */}
-                    {isProcessingFile && (
-                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
-                        <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
-                        <span className="text-gray-700">Processing file...</span>
-                      </div>
-                    )}
                   </div>
                   
                   {/* Fade gradient overlay - only show when there's more content to scroll */}
@@ -905,57 +831,82 @@ export default function AIPromptInput({
                     }} />
                   )}
                 </div>
-
-                {/* Generate Button - Solid purple */}
+                
+                {/* Generate Button - Square with corner-down-left icon */}
                 <button
                   onClick={handleSubmit}
                   disabled={!prompt.trim() || selectedSlides.length === 0 || isGenerating || isProcessingFile}
-                  className="px-5 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                  className="w-10 h-10 flex items-center justify-center bg-app-green text-white rounded-lg hover:bg-app-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   tabIndex={-1}
+                  title="Generate"
                 >
                   {isGenerating ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Generating...
-                    </>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    'Generate'
+                    <CornerDownLeft size={18} className="text-white" strokeWidth={2} />
                   )}
                 </button>
               </div>
             </div>
+              
+            
+            {/* Files Container - Below the input, inside wrapper */}
+            {(showFileContainer || isProcessingFile) && (
+              <div className="my-1 flex flex-wrap gap-2">
+
+                {/* File Upload Container - Square with preview */}
+                {showFileContainer && uploadedFile && (
+                  <div className="group relative p-3 bg-app-blue-50 rounded-lg border border-app-blue-200 animate-slide-up" style={{ width: '200px' }}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="text-xs font-medium text-app-blue-700 truncate" style={{ maxWidth: '150px' }}>
+                          {uploadedFile.name}
+                        </p>
+                        <p className="text-xs text-app-blue-500 mt-0.5">
+                          {formatFileSize(uploadedFile.size)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={removeFile}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-app-blue-100 rounded transition-none"
+                        disabled={isGenerating}
+                      >
+                        <X size={14} className="text-app-blue-500" />
+                      </button>
+                    </div>
+                    {uploadedFile.content && (
+                      <p className="text-xs text-app-blue-500 line-clamp-2">
+                        {uploadedFile.content}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Processing File Indicator */}
+                {isProcessingFile && (
+                  <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+                    <span className="text-gray-700">Processing file...</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
-          {/* Suggestions - Same buttons when expanded */}
+          {/* Suggestions - Only 3 buttons in a single row */}
           {suggestions.length > 0 && (
-            <div className="w-full animate-fade-in mt-10">
-              <div className="flex flex-col gap-2">
-                {/* Top row - 2 buttons */}
-                <div className="flex gap-2 justify-center">
-                  {suggestions.slice(0, 2).map((suggestion, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleSuggestionClick(suggestion.text)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all text-xs"
-                    >
-                      <span>{suggestion.icon}</span>
-                      <span className="text-gray-600">{suggestion.text}</span>
-                    </button>
-                  ))}
-                </div>
-                {/* Bottom row - 3 buttons */}
-                <div className="flex gap-2 justify-center">
-                  {suggestions.slice(2).map((suggestion, index) => (
-                    <button
-                      key={index + 2}
-                      onClick={() => handleSuggestionClick(suggestion.text)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all text-xs"
-                    >
-                      <span>{suggestion.icon}</span>
-                      <span className="text-gray-600">{suggestion.text}</span>
-                    </button>
-                  ))}
-                </div>
+            <div className="w-full animate-fade-in mt-6">
+              <div className="flex gap-2 justify-center">
+                {suggestions.slice(0, 3).map((suggestion, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion.text)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all text-xs"
+                  >
+                    <span>{suggestion.icon}</span>
+                    <span className="text-gray-600">{suggestion.text}</span>
+                  </button>
+                ))}
               </div>
             </div>
           )}

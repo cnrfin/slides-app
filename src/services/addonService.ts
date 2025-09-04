@@ -93,6 +93,11 @@ class AddonService {
       throw error;
     }
 
+    // Emit event to notify UI components
+    window.dispatchEvent(new CustomEvent('addons:updated', { 
+      detail: { action: 'enabled', addonName } 
+    }));
+
     return data;
   }
 
@@ -113,6 +118,11 @@ class AddonService {
       console.error('Error disabling addon:', error);
       throw error;
     }
+
+    // Emit event to notify UI components
+    window.dispatchEvent(new CustomEvent('addons:updated', { 
+      detail: { action: 'disabled', addonName } 
+    }));
   }
 
   /**
