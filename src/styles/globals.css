@@ -62,6 +62,25 @@
   --font-bold: 700;
 }
 
+/* Navigation active state utility class */
+@layer utilities {
+  .nav-active {
+    background-color: var(--nav-active-bg);
+    color: var(--nav-active-text);
+  }
+}
+
+/* Safe area support for mobile devices with notches */
+@layer utilities {
+  .h-safe-area-bottom {
+    height: env(safe-area-inset-bottom, 0);
+  }
+
+  .pb-safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
 /* Hide scrollbar utilities */
 @layer utilities {
   /* Hide scrollbar for Chrome, Safari and Opera */
@@ -98,21 +117,42 @@
   .scrollbar-styled::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
+
+  /* Popup shadow utility class */
+  .shadow-popup {
+    box-shadow: var(--shadow-popup);
+  }
 }
 
 /* CSS Custom Properties for Color Palette */
 :root {
+  /* Active nav item colors */
+  --nav-active-bg: #cde8e4;
+  --nav-active-text: #017c6e;
+
+  /* Theme colors that adapt between light and dark modes */
+  --dark-text: #62615f; /* Gray text in light mode */
+  --dark-heading: #191818; /* Black heading in light mode */
+  --dark-bg: #f6f5f4; /* Light background in light mode */
+  --dark-border: #7e757233; /* Light border in light mode */
+  --dark-accent: #017c6e; /* Green accent in light mode */
+  /* Light mode color scheme */
+  color-scheme: light;
   /* Layout */
   --header-height: 60px;
 
   /* Border colors */
   --border-gray: #d9d9d9;
   --border-app: #7e757233;
-  /* Global Box Shadow */
+
+  /* Box Shadows */
   --shadow-primary:
     0px 2.15px 0.5px -2px rgba(0, 0, 0, 0.25),
     0px 24px 24px -16px rgba(8, 8, 8, 0.04), 0px 6px 13px rgba(8, 8, 8, 0.03),
     0px 6px 4px -4px rgba(8, 8, 8, 0.05), 0px 5px 1.5px -4px rgba(8, 8, 8, 0.09);
+
+  /* Popup shadow for dropdowns, menus, and floating elements */
+  --shadow-popup: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 
   /* Text Input Background */
   --color-text-input-bg: #f1f1f1;
@@ -253,6 +293,251 @@
   --color-blue-800: #182e96;
   --color-blue-900: #192b78;
   --color-blue-950: #121c49;
+}
+
+/* Dark mode CSS variables */
+[data-theme='dark'] {
+  /* Active nav item colors for dark mode */
+  --nav-active-bg: #4dc7ba33;
+  --nav-active-text: #6cd3c9;
+
+  /* Dark mode color scheme */
+  color-scheme: dark;
+
+  /* Core dark mode colors */
+  
+  /* New dark mode background colors */
+  --dark-graybg: rgba(98, 97, 95, 0.1);      /* Gray background with 10% opacity */
+  --dark-lightgraybg: rgba(74, 73, 72, 0.4); /* Light gray background with 40% opacity */
+
+  /* Override layout colors for dark mode */
+  --border-gray: #62615f;
+  --border-app: rgba(98, 97, 95, 0.3);
+  --color-text-input-bg: #242323;
+
+  /* Override main color palette for dark mode */
+  --color-black: #dddcd9; /* Text color in dark mode */
+  --color-black-50: #191818;
+  --color-black-100: #1f1e1e;
+  --color-black-200: #262525;
+  --color-black-300: #333231;
+  --color-black-400: #4a4948;
+  --color-black-500: #62615f;
+  --color-black-600: #7a7977;
+  --color-black-700: #949391;
+  --color-black-800: #b8b7b6;
+  --color-black-900: #dddcd9;
+  --color-black-950: #f0efed;
+
+  /* White (inverted for dark mode) */
+  --color-white: #191818;
+  --color-white-pure: #191818;
+  --color-white-50: #191818;
+  --color-white-100: #1f1e1e;
+  --color-white-200: #242323;
+  --color-white-300: #2a2928;
+  --color-white-400: #302f2e;
+  --color-white-500: #363534;
+  --color-white-600: #3c3b3a;
+  --color-white-700: #424140;
+  --color-white-800: #484746;
+  --color-white-900: #4e4d4c;
+
+  /* Light Gray (adjusted for dark mode) */
+  --color-light-gray: #2a2928;
+  --color-light-gray-50: #191818;
+  --color-light-gray-100: #1f1e1e;
+  --color-light-gray-200: #242323;
+  --color-light-gray-300: #2a2928;
+  --color-light-gray-400: #302f2e;
+  --color-light-gray-500: #363534;
+  --color-light-gray-600: #3c3b3a;
+  --color-light-gray-700: #424140;
+  --color-light-gray-800: #484746;
+  --color-light-gray-900: #4e4d4c;
+
+  /* Gray (adjusted for dark mode) */
+  --color-gray: #62615f;
+  --color-gray-50: #1f1e1e;
+  --color-gray-100: #242323;
+  --color-gray-200: #2a2928;
+  --color-gray-300: #363534;
+  --color-gray-400: #424140;
+  --color-gray-500: #4e4d4c;
+  --color-gray-600: #5a5957;
+  --color-gray-700: #666563;
+  --color-gray-800: #72716f;
+  --color-gray-900: #7e7d7b;
+
+  /* Dark Gray (adjusted for dark mode) */
+  --color-dark-gray: #949391;
+  --color-dark-gray-50: #363534;
+  --color-dark-gray-100: #424140;
+  --color-dark-gray-200: #4e4d4c;
+  --color-dark-gray-300: #5a5957;
+  --color-dark-gray-400: #666563;
+  --color-dark-gray-500: #72716f;
+  --color-dark-gray-600: #7e7d7b;
+  --color-dark-gray-700: #8a8987;
+  --color-dark-gray-800: #969593;
+  --color-dark-gray-900: #a2a19f;
+
+  /* Green (adjusted for dark mode - using accent color) */
+  --color-green: #34968b;
+  --color-green-50: #0a1f1d;
+  --color-green-100: #143e39;
+  --color-green-200: #1e5d56;
+  --color-green-300: #287c73;
+  --color-green-400: #34968b;
+  --color-green-500: #40b0a3;
+  --color-green-600: #55c0b4;
+  --color-green-700: #6ad0c5;
+  --color-green-800: #7fe0d6;
+  --color-green-900: #94f0e7;
+  --color-green-950: #a9fff8;
+
+  /* Purple (slightly adjusted for dark mode) */
+  --color-purple: #a888ff;
+  --color-purple-50: #1a0f3d;
+  --color-purple-100: #2d1971;
+  --color-purple-200: #3f23a5;
+  --color-purple-300: #5730c7;
+  --color-purple-400: #6939eb;
+  --color-purple-500: #7c4fff;
+  --color-purple-600: #9771ff;
+  --color-purple-700: #a888ff;
+  --color-purple-800: #c4b0ff;
+  --color-purple-900: #ddd4ff;
+  --color-purple-950: #f5f3ff;
+
+  /* Keep other accent colors similar but slightly adjusted for dark mode visibility */
+  --color-yellow: #f4c744;
+  --color-red: #ff8078;
+  --color-blue: #4d8fff;
+
+  /* Box shadows for dark mode */
+  --shadow-primary:
+    0px 2px 8px rgba(0, 0, 0, 0.4), 0px 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-popup: 0 2px 8px 0 rgb(0 0 0 / 0.3), 0 1px 4px -1px rgb(0 0 0 / 0.2);
+}
+
+/* Dark mode specific utility classes */
+[data-theme='dark'] .page-bg {
+  background: linear-gradient(
+    180deg,
+    hsla(0, 0%, 100%, 0.03) 0%,
+    hsla(0, 0%, 100%, 0.028) 8.1%,
+    hsla(0, 0%, 100%, 0.025) 15.5%,
+    hsla(0, 0%, 100%, 0.022) 22.5%,
+    hsla(0, 0%, 100%, 0.018) 29%,
+    hsla(0, 0%, 100%, 0.015) 35.3%,
+    hsla(0, 0%, 100%, 0.012) 41.2%,
+    hsla(0, 0%, 100%, 0.009) 47.1%,
+    hsla(0, 0%, 100%, 0.007) 52.9%,
+    hsla(0, 0%, 100%, 0.005) 58.8%,
+    hsla(0, 0%, 100%, 0.003) 64.7%,
+    hsla(0, 0%, 100%, 0.002) 71%,
+    hsla(0, 0%, 100%, 0.001) 77.5%,
+    hsla(0, 0%, 100%, 0) 84.5%
+  );
+}
+
+/* Light mode page background */
+[data-theme='light'] .page-bg,
+:root:not([data-theme='dark']) .page-bg {
+  background: linear-gradient(
+    360deg,
+    rgb(255 255 255 / 50%) 0%,
+    rgb(255 255 255 / 52%) 8.1%,
+    rgb(255 255 255 / 54%) 15.5%,
+    rgb(255 255 255 / 57%) 22.5%,
+    rgb(255 255 255 / 60%) 29%,
+    rgb(255 255 255 / 64%) 35.3%,
+    rgb(255 255 255 / 68%) 41.2%,
+    rgb(255 255 255 / 73%) 47.1%,
+    rgb(255 255 255 / 78%) 52.9%,
+    rgb(255 255 255 / 83%) 58.8%,
+    rgb(255 255 255 / 88%) 64.7%,
+    rgb(255 255 255 / 92%) 71%,
+    rgb(255 255 255 / 96%) 77.5%,
+    rgb(255 255 255 / 99%) 84.5%,
+    hsl(0deg 0% 100%) 100%
+  );
+}
+
+/* Dark mode card backgrounds with transparent whites */
+[data-theme='dark'] .card-bg {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme='dark'] .card-bg-hover:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Dark mode base styles - only for body and root elements */
+[data-theme='dark'] body {
+  background-color: var(--dark-bg);
+  color: var(--dark-text);
+}
+
+/* Dark mode shadow adjustments for inputs and interactive elements */
+[data-theme='dark'] input,
+[data-theme='dark'] textarea,
+[data-theme='dark'] select {
+  background-color: var(--color-text-input-bg);
+  border-color: var(--dark-border);
+  color: var(--dark-text);
+}
+
+[data-theme='dark'] input:focus,
+[data-theme='dark'] textarea:focus,
+[data-theme='dark'] select:focus {
+}
+
+/* Removed hardcoded dark mode overrides - use Tailwind's dark: utilities instead */
+/* Example: text-gray-800 dark:text-dark-heading */
+/* Example: bg-white dark:bg-dark-card */
+/* Example: border-gray-200 dark:border-dark-border */
+
+/* Dark mode dropdown and popup backgrounds */
+[data-theme='dark'] .shadow-popup {
+  box-shadow: var(--shadow-popup);
+}
+
+[data-theme='dark'] .dropdown-animation {
+  background-color: var(--color-white-300);
+}
+
+/* Dark mode button states */
+[data-theme='dark'] .bg-app-green-100 {
+  background-color: rgba(52, 150, 139, 0.15);
+}
+
+[data-theme='dark'] .text-app-green {
+  color: var(--dark-accent);
+}
+
+[data-theme='dark'] .hover\:bg-app-green-700:hover {
+  background-color: rgba(52, 150, 139, 0.8);
+}
+
+/* Dark mode slider adjustments */
+[data-theme='dark'] .slider-light::-webkit-slider-track {
+  background: var(--color-gray-600);
+}
+
+[data-theme='dark'] .slider-light::-moz-range-track {
+  background: var(--color-gray-600);
+}
+
+[data-theme='dark'] .slider-light::-webkit-slider-thumb {
+  background: var(--color-gray-300);
+  border-color: var(--color-gray-500);
+}
+
+[data-theme='dark'] .slider-light::-moz-range-thumb {
+  background: var(--color-gray-300);
+  border-color: var(--color-gray-500);
 }
 
 /* Hide number input spinners */
@@ -894,6 +1179,58 @@ select option[disabled] {
   animation-delay: 0.1s;
 }
 
+/* Greeting animation: blur + fade + move up */
+@keyframes greeting-entrance {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0);
+  }
+}
+
+/* Subtitle animation: blur + fade only (no vertical movement) */
+@keyframes subtitle-entrance {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+  }
+}
+
+/* Animation classes with staggered timing */
+.animate-greeting {
+  animation: greeting-entrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0; /* Start invisible */
+}
+
+.animate-subtitle {
+  animation: subtitle-entrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.3s; /* Start after greeting begins */
+  opacity: 0; /* Start invisible */
+}
+
+/* Quick fade-in animation for immediate content */
+@keyframes quick-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: quick-fade-in 0.3s ease-out forwards;
+}
+
 /* Dropdown animation for user menu */
 @keyframes dropdown-slide-in {
   from {
@@ -957,4 +1294,38 @@ select option[disabled] {
     'Noto Sans SC', 'Noto Sans JP', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', var(--font-body);
   line-height: 1.6;
+}
+
+/* Override heading font weights for CJK languages to ensure proper rendering */
+/* Note: StyledGreeting component handles this with inline styles for mixed language support */
+.cjk-lang .text-h1:not(.styled-greeting),
+.cjk-lang .text-h2:not(.styled-greeting),
+.cjk-lang .text-h3:not(.styled-greeting),
+.cjk-lang .text-h4:not(.styled-greeting),
+.cjk-lang .text-h5:not(.styled-greeting),
+.cjk-lang .text-h6:not(.styled-greeting) {
+  font-weight: var(
+    --font-regular
+  ) !important; /* 400 - regular weight for CJK */
+  font-family:
+    'Noto Sans SC', 'Noto Sans JP', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', var(--font-body);
+}
+
+/* Specific language overrides */
+:lang(ja) .text-h1:not(.styled-greeting),
+:lang(ja) .text-h2:not(.styled-greeting),
+:lang(ja) .text-h3:not(.styled-greeting),
+:lang(ja) .text-h4:not(.styled-greeting),
+:lang(ja) .text-h5:not(.styled-greeting),
+:lang(ja) .text-h6:not(.styled-greeting),
+:lang(zh) .text-h1:not(.styled-greeting),
+:lang(zh) .text-h2:not(.styled-greeting),
+:lang(zh) .text-h3:not(.styled-greeting),
+:lang(zh) .text-h4:not(.styled-greeting),
+:lang(zh) .text-h5:not(.styled-greeting),
+:lang(zh) .text-h6:not(.styled-greeting) {
+  font-weight: var(
+    --font-regular
+  ) !important; /* 400 - regular weight for CJK */
 }

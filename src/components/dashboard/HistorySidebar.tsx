@@ -1,10 +1,12 @@
 // src/components/dashboard/HistorySidebar.tsx
 import { useState, useEffect } from 'react'
 import { History, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import useAuthStore from '@/stores/authStore'
 import { getPromptHistory, type PromptHistoryItem } from '@/lib/prompt-history'
 
 export default function HistorySidebar() {
+  const { t } = useTranslation('dashboard')
   const [isOpen, setIsOpen] = useState(false)
   const [prompts, setPrompts] = useState<PromptHistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -43,10 +45,10 @@ export default function HistorySidebar() {
     const diffHours = Math.floor(diffMs / 3600000)
     const diffDays = Math.floor(diffMs / 86400000)
 
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+    if (diffMins < 1) return t('history.justNow')
+    if (diffMins < 60) return t('history.minutesAgo', { count: diffMins })
+    if (diffHours < 24) return t('history.hoursAgo', { count: diffHours })
+    if (diffDays < 7) return t('history.daysAgo', { count: diffDays })
     
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
@@ -62,8 +64,8 @@ export default function HistorySidebar() {
     
     // Show a brief notification (you might want to add a toast component)
     const notification = document.createElement('div')
-    notification.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in'
-    notification.textContent = 'Prompt copied to clipboard'
+    notification.className = 'fixed bottom-4 right-4 bg-gray-800 dark:bg-dark-card text-white dark:text-dark-text px-4 py-2 rounded-lg shadow-lg z-50 animate-in'
+    notification.textContent = t('history.copiedToClipboard')
     document.body.appendChild(notification)
     
     setTimeout(() => {
@@ -88,11 +90,11 @@ export default function HistorySidebar() {
       {/* History Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed top-5 right-4 z-30 flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 transition-colors group"
+        className="fixed top-5 right-4 z-30 flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors group"
         aria-label="View prompt history"
       >
         <History className="w-5 h-5" strokeWidth={1.5} />
-        <span className="text-sm font-medium">History</span>
+        <span className="text-sm font-medium">{t('history.title')}</span>
       </button>
 
       {/* Overlay */}
@@ -105,19 +107,19 @@ export default function HistorySidebar() {
 
       {/* History Sidebar */}
       <aside
-        className={`fixed right-0 top-0 h-screen w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 ${
+        className={`fixed right-0 top-0 h-screen w-64 bg-white dark:bg-dark-card shadow-xl z-50 transform transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">History</h2>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-heading">{t('history.title')}</h2>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
             aria-label="Close history"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
@@ -125,14 +127,14 @@ export default function HistorySidebar() {
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-purple-600 dark:border-dark-accent border-t-transparent rounded-full animate-spin" />
             </div>
           ) : prompts.length === 0 ? (
             <div className="text-center py-8 px-4">
-              <History className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm">No prompts yet</p>
-              <p className="text-gray-400 text-xs mt-1">
-                Your prompt history will appear here
+              <History className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-500 dark:text-gray-400 text-sm">{t('history.noPromptsYet')}</p>
+              <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
+                {t('history.promptHistoryInfo')}
               </p>
             </div>
           ) : (
@@ -141,12 +143,12 @@ export default function HistorySidebar() {
                 <button
                   key={item.id}
                   onClick={() => handlePromptClick(item.prompt)}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 group"
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-gray-700 group"
                 >
-                  <p className="text-sm text-gray-900 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                  <p className="text-sm text-gray-900 dark:text-gray-200 line-clamp-2 group-hover:text-purple-600 dark:group-hover:text-dark-accent transition-colors">
                     {item.prompt}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                     {formatDate(item.created_at)}
                   </p>
                 </button>
@@ -157,9 +159,9 @@ export default function HistorySidebar() {
 
         {/* Footer */}
         {prompts.length > 0 && (
-          <div className="p-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500 text-center">
-              Click a prompt to copy to clipboard
+          <div className="p-3 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              {t('history.clickToCopy')}
             </p>
           </div>
         )}

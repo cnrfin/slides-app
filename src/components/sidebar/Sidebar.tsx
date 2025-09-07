@@ -57,20 +57,33 @@ function LanguagePopup({ isOpen, onClose, anchorElement, userMenuElement }: {
   const { currentLanguage, setLanguage } = useLanguageStore();
   const popupRef = useRef<HTMLDivElement>(null);
   
+  // Click-outside detection for language popup
   useEffect(() => {
     if (!isOpen) return;
     
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        popupRef.current && 
-        !popupRef.current.contains(event.target as Node) &&
-        anchorElement && 
-        !anchorElement.contains(event.target as Node)
-      ) {
-        onClose();
+      const target = event.target as Node;
+      
+      // Check if click is inside the language popup
+      if (popupRef.current && popupRef.current.contains(target)) {
+        return;
       }
+      
+      // Check if click is on the language button that opened this popup
+      if (anchorElement && anchorElement.contains(target)) {
+        return;
+      }
+      
+      // Check if click is inside the user menu dropdown
+      if (userMenuElement && userMenuElement.contains(target)) {
+        return;
+      }
+      
+      // Clicked outside everything - close the popup
+      onClose();
     };
     
+    // Small delay to avoid immediate closure when opening
     const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
     }, 10);
@@ -79,7 +92,7 @@ function LanguagePopup({ isOpen, onClose, anchorElement, userMenuElement }: {
       clearTimeout(timer);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, anchorElement, onClose]);
+  }, [isOpen, anchorElement, userMenuElement, onClose]);
   
   if (!isOpen) return null;
   
@@ -125,12 +138,14 @@ function LanguagePopup({ isOpen, onClose, anchorElement, userMenuElement }: {
   return ReactDOM.createPortal(
     <div
       ref={popupRef}
+      data-language-popup
       className="fixed bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[200px]"
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`,
         zIndex: 99999,
       }}
+
     >
       <div className="px-3 py-2 border-b border-gray-100">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -143,8 +158,9 @@ function LanguagePopup({ isOpen, onClose, anchorElement, userMenuElement }: {
           <button
             key={language.code}
             onClick={() => {
+              console.log('Language selected:', language.code);
               setLanguage(language.code);
-              onClose();
+              onClose(); // This will trigger closing both menus
             }}
             className={`
               w-full flex items-center justify-between px-3 py-2 
@@ -211,6 +227,15 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
   } = useSlideStore()
   
   const { user, signOut } = useAuthStore()
+  const [avatarError, setAvatarError] = useState(false)
+  
+  // Debug: Log user avatar URL
+  useEffect(() => {
+    if (user) {
+      console.log('Canvas Sidebar - User avatar URL:', user.avatar_url);
+      console.log('Canvas Sidebar - Full user object:', user);
+    }
+  }, [user])
   
   const currentSlideIndex = slides.findIndex(s => s.id === currentSlideId)
   const currentSlide = slides.find(s => s.id === currentSlideId)
@@ -382,23 +407,85 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
     { icon: Table, label: 'Table', onClick: () => setShowTablePopup(!showTablePopup) },
   ]
   
-  // Close user menu when clicking outside
+  // Click-outside detection for user menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        // Don't close if clicking on Recent Lessons popup
-        const recentLessonsPopup = document.querySelector('[data-recent-lessons-popup]')
-        if (recentLessonsPopup && recentLessonsPopup.contains(event.target as Node)) {
-          return
-        }
-        setIsUserMenuOpen(false)
-        setShowRecentLessons(false)
+      const target = event.target as Node;
+      
+      // Don't close if clicking inside user menu area
+      if (userMenuRef.current && userMenuRef.current.contains(target)) {
+        return;
       }
-    }
+      
+      // Don't close if clicking on Recent Lessons popup
+      const recentLessonsPopup = document.querySelector('[data-recent-lessons-popup]');
+      if (recentLessonsPopup && recentLessonsPopup.contains(target)) {
+        return;
+      }
+      
+      // Don't close if clicking on Language popup
+      const languagePopup = document.querySelector('[data-language-popup]');
+      if (languagePopup && languagePopup.contains(target)) {
+        return;
+      }
+      
+      // Close both menus
+      setIsUserMenuOpen(false);
+      setShowRecentLessons(false);
+      setShowLanguagePopup(false);
+    };
 
     if (isUserMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      // Add a small delay to avoid interfering with click events
+      const timer = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 10);
+      
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('mousedown', handleClickOutside);
+      }
+    }
+  }, [isUserMenuOpen])
+  
+  // Reset avatar error when user changes
+  useEffect(() => {
+    setAvatarError(false)
+  }, [user?.avatar_url])
+  
+  // Debug: Track user menu state changes
+  useEffect(() => {
+    console.log('User menu state changed:', isUserMenuOpen);
+    if (isUserMenuOpen) {
+      console.trace('User menu opened from:');
+    } else {
+      console.trace('User menu closed from:');
+    }
+  }, [isUserMenuOpen])
+  
+  // Debug: Global click listener to see what's happening
+  useEffect(() => {
+    const debugClickHandler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      console.log('Global click detected on:', {
+        element: target,
+        className: target.className,
+        id: target.id,
+        tagName: target.tagName,
+        isInsideUserMenu: userMenuRef.current?.contains(target),
+        isInsideDropdown: userMenuDropdownRef.current?.contains(target),
+        currentMenuState: isUserMenuOpen
+      });
+    };
+    
+    document.addEventListener('click', debugClickHandler, true);
+    return () => document.removeEventListener('click', debugClickHandler, true);
+  }, [isUserMenuOpen])
+  
+  // Close language popup when user menu closes
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      setShowLanguagePopup(false)
     }
   }, [isUserMenuOpen])
 
@@ -429,7 +516,6 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
   const handleSaveLesson = async () => {
     if (presentation) {
       await saveToDatabase()
-      setIsUserMenuOpen(false)
     }
   }
   
@@ -592,13 +678,25 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
         <div className="p-2 border-t border-gray-100" ref={userMenuRef}>
           <div className="relative">
             <button
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              onClick={() => {
+                console.log('User avatar clicked, toggling menu from', isUserMenuOpen, 'to', !isUserMenuOpen);
+                setIsUserMenuOpen(!isUserMenuOpen);
+              }}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs font-medium">
-                  {getUserInitials()}
-                </span>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {user?.avatar_url && !avatarError ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.display_name || user.email || 'User avatar'}
+                    className="w-full h-full object-cover"
+                    onError={() => setAvatarError(true)}
+                  />
+                ) : (
+                  <span className="text-white text-xs font-medium">
+                    {getUserInitials()}
+                  </span>
+                )}
               </div>
               <div className="flex-1 text-left">
                 <div className="text-body-small font-medium text-gray-900 truncate">
@@ -615,15 +713,29 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
             {isUserMenuOpen && (
               <div 
                 ref={userMenuDropdownRef}
+                data-user-menu="true"
                 className="absolute bottom-full mb-2 left-0 right-0 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden dropdown-animation z-[60]"
+                onClick={(e) => {
+                  console.log('Click inside user menu');
+                  e.stopPropagation();
+                }}
               >
                 {/* User Info Header */}
                 <div className="px-4 py-3 border-b border-gray-100">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-sm font-medium">
-                        {getUserInitials()}
-                      </span>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {user?.avatar_url && !avatarError ? (
+                        <img
+                          src={user.avatar_url}
+                          alt={user.display_name || user.email || 'User avatar'}
+                          className="w-full h-full object-cover"
+                          onError={() => setAvatarError(true)}
+                        />
+                      ) : (
+                        <span className="text-white text-sm font-medium">
+                          {getUserInitials()}
+                        </span>
+                      )}
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <div className="font-medium text-sm text-gray-900 truncate">
@@ -643,10 +755,13 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                 <div className="py-1">
                   {presentation && (
                     <button
-                      onClick={handleSaveLesson}
-                      disabled={isSaving}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-menu text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                    >
+                    onClick={() => {
+                      handleSaveLesson()
+                      setIsUserMenuOpen(false)
+                      }}
+                    disabled={isSaving}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-menu text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
                       {isSaving ? (
                         <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                       ) : (
@@ -679,8 +794,8 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
                   <button 
                     ref={languageButtonRef}
                     onClick={() => {
-                      console.log('Language button clicked in canvas sidebar');
-                      setShowLanguagePopup(true);
+                      console.log('Language button clicked, current state:', showLanguagePopup);
+                      setShowLanguagePopup(!showLanguagePopup);
                     }}
                     className="w-full flex items-center justify-between px-4 py-2 text-menu text-gray-700 hover:bg-gray-50 transition-colors"
                   >
@@ -790,7 +905,11 @@ export default function Sidebar({ onAddSlide, onApplyTemplateToSlide }: SidebarP
       {/* Language Popup */}
       <LanguagePopup 
         isOpen={showLanguagePopup}
-        onClose={() => setShowLanguagePopup(false)}
+        onClose={() => {
+          setShowLanguagePopup(false);
+          // Also close user menu when language is selected
+          setIsUserMenuOpen(false);
+        }}
         anchorElement={languageButtonRef.current}
         userMenuElement={userMenuDropdownRef.current}  // Pass user menu reference
       />

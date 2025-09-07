@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -10,6 +11,23 @@ export default {
     'hover:bg-app-green-800',
     'bg-app-primary-bg',
     'border-app-border',
+    // Dark mode accent colors for nav items
+    'dark:bg-dark-accent',
+    'dark:bg-dark-accent-500',
+    'dark:bg-dark-accent-600',
+    'dark:bg-dark-accent-700',
+    'dark:text-white',
+    'dark:text-dark-accent-50',
+    'dark:text-dark-accent-100',
+    'dark:text-dark-accent-300',
+    'bg-dark-accent',
+    'bg-dark-accent-500',
+    'bg-dark-accent-600',
+    // New dark mode background colors
+    'dark:bg-dark-graybg',
+    'dark:bg-dark-lightgraybg',
+    'bg-dark-graybg',
+    'bg-dark-lightgraybg',
   ],
   theme: {
     extend: {
@@ -167,6 +185,35 @@ export default {
           900: '#192b78',
           950: '#121c49',
         },
+        
+        // DARK MODE COLORS - Direct hex values, no CSS variables
+        // These are specifically for dark mode usage with dark: prefix
+        'dark': {
+          'text': '#dddcd9',      // Light text for dark mode
+          'heading': '#f0efed',   // Light heading for dark mode
+          'bg': '#191818',        // Dark background
+          'card': '#242323',      // Slightly lighter for cards
+          'cardl': '#62615f1a',
+          'border': '#62615f',    // Dark mode border
+          'accent': '#34968b',    // Teal accent for dark mode (DEFAULT)
+          'input': '#2a2928',     // Input background in dark mode
+          'graybg': 'rgba(98, 97, 95, 0.1)',     // Gray background with 10% opacity
+          'lightgraybg': 'rgba(74, 73, 72, 0.4)', // Light gray background with 40% opacity
+          
+          // Dark Accent Color Shades (Teal) - Full palette
+          'accent-50': '#e6f7f5',   // Lightest teal - almost white with teal tint
+          'accent-100': '#c0ebe7',   // Very light teal
+          'accent-200': '#96dfd8',   // Light teal
+          'accent-300': '#6cd3c9',   // Light-medium teal
+          'accent-400': '#4dc7bb',   // Medium-light teal
+          'accent-500': '#34968b',   // DEFAULT - Base teal accent
+          'accent-600': '#2b7d74',   // Medium-dark teal
+          'accent-700': '#23655e',   // Dark teal
+          'accent-800': '#1b4d47',   // Darker teal
+          'accent-900': '#143531',   // Very dark teal
+          'accent-950': '#0a1f1d',   // Darkest teal - almost black
+        },
+        
         // Keep the original primary and gray colors for backward compatibility
         primary: {
           50: '#f0f9ff',
@@ -178,6 +225,7 @@ export default {
           750: '#293548',
         },
       },
+      
       keyframes: {
         'fade-in': {
           '0%': { opacity: '0' },

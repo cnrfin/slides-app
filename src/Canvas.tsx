@@ -379,6 +379,22 @@ export default function Canvas() {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
+      
+      // Don't clear selection if clicking on sidebar or its contents
+      if (target.closest('.absolute.left-0.top-0')) {
+        return
+      }
+      
+      // Don't clear selection if clicking on user menu
+      if (target.closest('[data-user-menu]')) {
+        return
+      }
+      
+      // Don't clear selection if clicking on language popup
+      if (target.closest('[data-language-popup]')) {
+        return
+      }
+      
       if (
         !target.closest('[class*="fixed left-0 top-0"]') &&
         !target.closest('.konvajs-content') &&

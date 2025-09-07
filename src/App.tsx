@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import SlideCanvas from '@/components/canvas/SlideCanvas'
 import useSlideStore from '@/stores/slideStore'
+import useUIStore from '@/stores/uiStore'
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts'
 import TemplateModal from '@/components/templates/TemplateModal'
 import RightSidebar from '@/components/sidebar/RightSidebar'
@@ -29,6 +30,13 @@ function App() {
   const [currentZoom, setCurrentZoom] = useState(75) // Default to 75% zoom
   const [textInputHeight, setTextInputHeight] = useState(0) // Track text input height
   const [slideBottomY, setSlideBottomY] = useState(0) // Track slide bottom position
+  
+  // Initialize theme on mount
+  const { initializeTheme } = useUIStore()
+  
+  useEffect(() => {
+    initializeTheme()
+  }, [])
   
   // Enable keyboard shortcuts
   useKeyboardShortcuts()

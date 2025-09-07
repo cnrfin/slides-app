@@ -61,5 +61,14 @@
   "dark": "Dunkel",
   "light": "Hell",
   "auto": "Automatisch",
-  "system": "System"
+  "system": "System",
+  "languages": {
+    "en": "Englisch",
+    "es": "Spanisch",
+    "fr": "Französisch",
+    "de": "Deutsch",
+    "it": "Italienisch",
+    "ja": "日本語",
+    "zh": "中文"
+  }
 }

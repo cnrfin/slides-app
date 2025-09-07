@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import useLanguageStore from '@/stores/languageStore';
 import { SUPPORTED_LANGUAGES } from '@/i18n/config';
 
@@ -9,8 +10,23 @@ interface LanguagePopupProps {
 }
 
 export default function LanguagePopup({ anchorElement }: LanguagePopupProps) {
+  const { t } = useTranslation('common');
   const { currentLanguage, isLanguagePopupOpen, setLanguage, closeLanguagePopup } = useLanguageStore();
   const popupRef = useRef<HTMLDivElement>(null);
+  
+  // Map language codes to flag emojis
+  const getFlagEmoji = (code: string) => {
+    const flags: Record<string, string> = {
+      'en': '🇺🇸',
+      'es': '🇪🇸',
+      'fr': '🇫🇷',
+      'de': '🇩🇪',
+      'it': '🇮🇹',
+      'ja': '🇯🇵',
+      'zh': '🇨🇳'
+    };
+    return flags[code] || '';
+  };
   
   useEffect(() => {
     if (!isLanguagePopupOpen) return;
@@ -125,8 +141,8 @@ export default function LanguagePopup({ anchorElement }: LanguagePopupProps) {
             `}
           >
             <div className="flex items-center gap-3">
-              <span className="text-lg">{language.flag}</span>
-              <span className="font-medium">{language.name}</span>
+              <span className="text-lg">{getFlagEmoji(language.code)}</span>
+              <span className="font-medium">{t(`languages.${language.code}` as const)}</span>
             </div>
             {currentLanguage === language.code && (
               <Check className="w-4 h-4" strokeWidth={2} />

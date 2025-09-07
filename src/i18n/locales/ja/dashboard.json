@@ -1,6 +1,8 @@
 {
+  "create": "作成",
   "home": "ホーム",
   "lessons": "レッスン",
+  "allLessons": "全てのレッスン",
   "courses": "コース",
   "students": "生徒",
   "analytics": "分析",
@@ -105,5 +107,194 @@
   "weeklyActive": "週間アクティブ",
   "monthlyActive": "月間アクティブ",
   "growth": "成長率",
-  "performance": "パフォーマンス"
+  "performance": "パフォーマンス",
+  
+  "dashboardHome": {
+    "greetings": {
+      "goodMorning": "おはようございます、{{name}}さん",
+      "goodAfternoon": "こんにちは、{{name}}さん",
+      "goodEvening": "こんばんは、{{name}}さん"
+    },
+    "subtitle": "今日は何を作成しますか？",
+    "createWithAI": "AIで作成",
+    "loadingStudents": "生徒を読み込んでいます...",
+    "student": "人の生徒",
+    "students": "人の生徒",
+    "loaded": "読み込み済み",
+    
+    "suggestions": {
+      "conversationPractice": "会話練習",
+      "readingVocabulary": "読解と語彙",
+      "grammarExercises": "文法練習"
+    },
+    
+    "quickActions": {
+      "blankCanvas": {
+        "title": "空白のキャンバス",
+        "description": "ゼロから始める"
+      },
+      "myLessons": {
+        "title": "マイレッスン",
+        "description": "作業を続ける"
+      },
+      "templates": {
+        "title": "テンプレート",
+        "description": "テンプレートを使用"
+      }
+    },
+    
+    "lessonPrompt": "どんなレッスンを作りましょうか？",
+    
+    "lessonTypes": {
+      "conversation": "会話",
+      "reading": "リーディング",
+      "listening": "リスニング",
+      "toeic": "TOEIC",
+      "pronunciation": "発音"
+    }
+  },
+  
+  "aiPrompt": {
+    "placeholder": "作成したいレッスンを説明してください...",
+    "generatingLesson": "レッスンを生成中...",
+    "addSlides": "スライドを追加",
+    "addStudentContext": "生徒のコンテキストを追加",
+    "addLessonContext": "レッスンのコンテキストを追加",
+    "uploadArticle": "記事をアップロード (.txt, .html, .pdf)",
+    "searchStudents": "生徒を検索",
+    "searchLessons": "レッスンを検索",
+    "loadingStudents": "生徒を読み込み中...",
+    "loadingLessons": "レッスンを読み込み中...",
+    "learning": "学習中",
+    "noStudentsYet": "まだ生徒が追加されていません",
+    "noStudentsFound": "生徒が見つかりません",
+    "noLessonsYet": "まだレッスンが作成されていません",
+    "noLessonsFound": "レッスンが見つかりません",
+    "addNewStudent": "新しい生徒を追加",
+    "createNewLesson": "新しいレッスンを作成",
+    "slide": "スライド",
+    "slides": "スライド",
+    "genius": "ジーニアス",
+    "geniusModeEnabled": "ジーニアスモード有効",
+    "enableGeniusMode": "ジーニアスモードを有効にする",
+    "processingFile": "ファイルを処理中...",
+    "dropToAdd": "ドロップしてプロンプトに追加",
+    "supportedFormats": ".txt、.html、.pdfファイルに対応",
+    "fileUploadedSuccess": "ファイル\"{{fileName}}\"が正常にアップロードされました",
+    "fileProcessError": "ファイルの処理に失敗しました",
+    "selectSlideError": "少なくとも１つのスライドテンプレートを選択してください",
+    "generationSuccess": "{{count}}枚のスライドが正常に生成されました！",
+    "generationError": "コンテンツの生成に失敗しました"
+  },
+  
+  "lessonsPage": {
+    "title": "レッスン",
+    "newLesson": "新しいレッスン",
+    "searchPlaceholder": "レッスンを検索",
+    "loading": "レッスンを読み込み中...",
+    "untitled": "無題のレッスン",
+    "updated": "更新日",
+    "slideCount": "{{count}}スライド",
+    "deleteConfirmation": "このレッスンを削除してもよろしいですか？この操作は元に戻せません。",
+    "deleteSuccess": "レッスンが正常に削除されました",
+    "empty": {
+      "title": "レッスンがありません",
+      "description": "キャンバスとAIツールを使って、学生向けのスライドを数秒で作成しましょう",
+      "createButton": "レッスンを作成"
+    },
+    "emptyCourses": {
+      "title": "コースがありません",
+      "description": "レッスンをコースに整理して、生徒のための構造化された学習パスを作成しましょう",
+      "createButton": "コースを作成"
+    },
+    "actions": {
+      "edit": "レッスンを編集",
+      "delete": "レッスンを削除",
+      "viewDetails": "詳細を表示"
+    },
+    "details": {
+      "title": "レッスンの詳細",
+      "vocabulary": "語彙",
+      "grammar": "文法"
+    },
+    "duration": {
+      "minutes": "{{minutes}}分",
+      "hoursMinutes": "{{hours}}時間{{minutes}}分"
+    },
+    "errors": {
+      "signInRequired": "レッスンを表示するにはサインインしてください",
+      "loadFailed": "レッスンの読み込みに失敗しました",
+      "deleteFailed": "レッスンの削除に失敗しました"
+    }
+  },
+  
+  "history": {
+    "title": "履歴",
+    "justNow": "たった今",
+    "minutesAgo": "{{count}}分前",
+    "minutesAgo_plural": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "hoursAgo_plural": "{{count}}時間前",
+    "daysAgo": "{{count}}日前",
+    "daysAgo_plural": "{{count}}日前",
+    "noPromptsYet": "まだプロンプトがありません",
+    "promptHistoryInfo": "プロンプト履歴がここに表示されます",
+    "copiedToClipboard": "プロンプトがクリップボードにコピーされました",
+    "clickToCopy": "プロンプトをクリックしてコピー"
+  },
+  
+  "studentsPage": {
+    "title": "生徒",
+    "searchPlaceholder": "生徒を検索",
+    "loading": "生徒を読み込み中...",
+    "addStudent": "生徒を追加",
+    "learning": "学習中",
+    "native": "母国語",
+    "lessonCount": "{{count}}レッスン",
+    "progress": "進捗",
+    "goals": "目標",
+    "more": "その他",
+    "added": "追加日",
+    "noStudentsFound": "生徒が見つかりません",
+    "addSuccess": "生徒を追加しました！",
+    "updateSuccess": "生徒を更新しました！",
+    "deleteSuccess": "生徒を削除しました",
+    "deleteConfirmation": "この生徒を削除してもよろしいですか？この操作は取り消せません。",
+    "empty": {
+      "title": "生徒がいません",
+      "description": "生徒の管理を開始し、レッスン作成のコンテキストとしてプロフィールを使用しましょう",
+      "addButton": "生徒を追加",
+      "tryAdjusting": "検索条件を変更してみてください"
+    },
+    "actions": {
+      "edit": "生徒を編集",
+      "delete": "生徒を削除",
+      "createLesson": "レッスンを作成"
+    },
+    "modal": {
+      "addTitle": "新しい生徒を追加",
+      "editTitle": "生徒を編集",
+      "name": "名前",
+      "targetLanguage": "学習言語",
+      "nativeLanguage": "母国語",
+      "selectLanguage": "言語を選択",
+      "level": "レベル",
+      "learningGoals": "学習目標",
+      "goalPlaceholder": "例：会話の流暢さ",
+      "add": "追加",
+      "interests": "興味・趣味",
+      "interestsPlaceholder": "例：音楽、料理、旅行...",
+      "cancel": "キャンセル",
+      "saving": "保存中...",
+      "addStudent": "生徒を追加",
+      "updateStudent": "生徒を更新"
+    },
+    "errors": {
+      "signInRequired": "生徒を表示するにはログインしてください",
+      "loadFailed": "生徒の読み込みに失敗しました",
+      "addFailed": "生徒の追加に失敗しました",
+      "updateFailed": "生徒の更新に失敗しました",
+      "deleteFailed": "生徒の削除に失敗しました"
+    }
+  }
 }

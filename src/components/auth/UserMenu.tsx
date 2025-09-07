@@ -6,7 +6,8 @@ import ReactDOM from 'react-dom'
 import useAuthStore from '@/stores/authStore'
 import useSlideStore from '@/stores/slideStore'
 import useLanguageStore from '@/stores/languageStore'
-import { LogOut, Save, Settings, CreditCard, History, Globe, Check } from 'lucide-react'
+import useUIStore from '@/stores/uiStore'
+import { LogOut, Save, Settings, CreditCard, History, Globe, Check, Moon, Sun } from 'lucide-react'
 import RecentLessonsPopup from '@/components/lessons/RecentLessonsPopup'
 import { SUPPORTED_LANGUAGES } from '@/i18n/config'
 
@@ -86,7 +87,6 @@ function InlineLanguagePopup({ isOpen, onClose, anchorElement }: {
             `}
           >
             <div className="flex items-center gap-3">
-              <span className="text-lg">{language.flag}</span>
               <span className="font-medium">{language.name}</span>
             </div>
             {currentLanguage === language.code && (
@@ -106,6 +106,7 @@ export default function UserMenu({ onClose }: UserMenuProps = {}) {
   const { user, signOut } = useAuthStore()
   const { saveToDatabase, isSaving, presentation } = useSlideStore()
   const { currentLanguage } = useLanguageStore()
+  const { theme, toggleTheme } = useUIStore()
   const menuRef = useRef<HTMLDivElement>(null)
   const languageButtonRef = useRef<HTMLButtonElement>(null)
   const [showRecentLessons, setShowRecentLessons] = useState(false)
@@ -193,6 +194,35 @@ export default function UserMenu({ onClose }: UserMenuProps = {}) {
             {t('recentLessons')}
           </button>
 
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-between px-4 py-2 text-menu text-gray-700 hover:bg-gray-50"
+          >
+            <div className="flex items-center gap-3">
+              {theme === 'dark' ? (
+                <Moon className="w-4 h-4" />
+              ) : (
+                <Sun className="w-4 h-4" />
+              )}
+              <span>{theme === 'dark' ? t('darkMode', 'Dark Mode') : t('lightMode', 'Light Mode')}</span>
+            </div>
+            <div className="flex items-center">
+              <div className="relative inline-flex h-5 w-9 items-center rounded-full bg-gray-200 transition-colors duration-200 ease-in-out"
+                style={{
+                  backgroundColor: theme === 'dark' ? '#34968b' : '#e5e7eb'
+                }}
+              >
+                <span
+                  className="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out"
+                  style={{
+                    transform: theme === 'dark' ? 'translateX(18px)' : 'translateX(2px)'
+                  }}
+                />
+              </div>
+            </div>
+          </button>
+
           {/* Language Selector */}
           <button
             ref={languageButtonRef}
@@ -207,7 +237,6 @@ export default function UserMenu({ onClose }: UserMenuProps = {}) {
               {t('language')}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm">{currentLanguageDisplay?.flag}</span>
               <span className="text-xs text-gray-500">{currentLanguageDisplay?.name}</span>
             </div>
           </button>

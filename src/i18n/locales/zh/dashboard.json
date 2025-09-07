@@ -1,6 +1,8 @@
 {
+  "create": "创建",
   "home": "主页",
   "lessons": "课程",
+  "allLessons": "所有课程",
   "courses": "课程包",
   "students": "学生",
   "analytics": "分析",
@@ -105,5 +107,194 @@
   "weeklyActive": "周活跃",
   "monthlyActive": "月活跃",
   "growth": "增长",
-  "performance": "性能"
+  "performance": "性能",
+  
+  "dashboardHome": {
+    "greetings": {
+      "goodMorning": "早上好 {{name}}",
+      "goodAfternoon": "下午好 {{name}}",
+      "goodEvening": "晚上好 {{name}}"
+    },
+    "subtitle": "今天您想创建什么？",
+    "createWithAI": "使用 AI 创建",
+    "loadingStudents": "正在加载学生...",
+    "student": "个学生",
+    "students": "个学生",
+    "loaded": "已加载",
+    
+    "suggestions": {
+      "conversationPractice": "对话练习",
+      "readingVocabulary": "阅读与词汇",
+      "grammarExercises": "语法练习"
+    },
+    
+    "quickActions": {
+      "blankCanvas": {
+        "title": "空白画布",
+        "description": "从头开始"
+      },
+      "myLessons": {
+        "title": "我的课程",
+        "description": "继续工作"
+      },
+      "templates": {
+        "title": "模板",
+        "description": "使用模板"
+      }
+    },
+    
+    "lessonPrompt": "我们要创建什么类型的课程？",
+    
+    "lessonTypes": {
+      "conversation": "对话",
+      "reading": "阅读",
+      "listening": "听力",
+      "toeic": "TOEIC",
+      "pronunciation": "发音"
+    }
+  },
+  
+  "aiPrompt": {
+    "placeholder": "描述您想创建的课程...",
+    "generatingLesson": "正在生成课程...",
+    "addSlides": "添加幻灯片",
+    "addStudentContext": "添加学生上下文",
+    "addLessonContext": "添加课程上下文",
+    "uploadArticle": "上传文章 (.txt, .html, .pdf)",
+    "searchStudents": "搜索学生",
+    "searchLessons": "搜索课程",
+    "loadingStudents": "正在加载学生...",
+    "loadingLessons": "正在加载课程...",
+    "learning": "正在学习",
+    "noStudentsYet": "尚未添加学生",
+    "noStudentsFound": "未找到学生",
+    "noLessonsYet": "尚未创建课程",
+    "noLessonsFound": "未找到课程",
+    "addNewStudent": "添加新学生",
+    "createNewLesson": "创建新课程",
+    "slide": "幻灯片",
+    "slides": "幻灯片",
+    "genius": "天才",
+    "geniusModeEnabled": "天才模式已启用",
+    "enableGeniusMode": "启用天才模式",
+    "processingFile": "正在处理文件...",
+    "dropToAdd": "拖放以添加到提示",
+    "supportedFormats": "支持 .txt、.html 和 .pdf 文件",
+    "fileUploadedSuccess": "文件\"{{fileName}}\"上传成功",
+    "fileProcessError": "文件处理失败",
+    "selectSlideError": "请至少选择一个幻灯片模板",
+    "generationSuccess": "成功生成{{count}}张幻灯片！",
+    "generationError": "内容生成失败"
+  },
+  
+  "lessonsPage": {
+    "title": "课程",
+    "newLesson": "新课程",
+    "searchPlaceholder": "搜索课程",
+    "loading": "正在加载课程...",
+    "untitled": "无标题课程",
+    "updated": "更新于",
+    "slideCount": "{{count}}张幻灯片",
+    "deleteConfirmation": "您确定要删除这个课程吗？此操作无法撤销。",
+    "deleteSuccess": "课程删除成功",
+    "empty": {
+      "title": "没有课程",
+      "description": "使用我们的画布和AI工具，在几秒钟内创建引人入胜的学生优先幻灯片",
+      "createButton": "创建课程"
+    },
+    "emptyCourses": {
+      "title": "没有课程包",
+      "description": "将您的课程组织成课程包，为学生创建结构化的学习路径",
+      "createButton": "创建课程包"
+    },
+    "actions": {
+      "edit": "编辑课程",
+      "delete": "删除课程",
+      "viewDetails": "查看详情"
+    },
+    "details": {
+      "title": "课程详情",
+      "vocabulary": "词汇",
+      "grammar": "语法"
+    },
+    "duration": {
+      "minutes": "{{minutes}}分钟",
+      "hoursMinutes": "{{hours}}小时{{minutes}}分钟"
+    },
+    "errors": {
+      "signInRequired": "请登录以查看课程",
+      "loadFailed": "加载课程失败",
+      "deleteFailed": "删除课程失败"
+    }
+  },
+  
+  "history": {
+    "title": "历史记录",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}}分钟前",
+    "minutesAgo_plural": "{{count}}分钟前",
+    "hoursAgo": "{{count}}小时前",
+    "hoursAgo_plural": "{{count}}小时前",
+    "daysAgo": "{{count}}天前",
+    "daysAgo_plural": "{{count}}天前",
+    "noPromptsYet": "还没有提示词",
+    "promptHistoryInfo": "您的提示词历史将显示在这里",
+    "copiedToClipboard": "提示词已复制到剪贴板",
+    "clickToCopy": "点击提示词以复制"
+  },
+  
+  "studentsPage": {
+    "title": "学生",
+    "searchPlaceholder": "搜索学生",
+    "loading": "正在加载学生...",
+    "addStudent": "添加学生",
+    "learning": "学习",
+    "native": "母语",
+    "lessonCount": "{{count}}节课",
+    "progress": "进度",
+    "goals": "目标",
+    "more": "更多",
+    "added": "添加于",
+    "noStudentsFound": "未找到学生",
+    "addSuccess": "学生添加成功！",
+    "updateSuccess": "学生更新成功！",
+    "deleteSuccess": "学生删除成功",
+    "deleteConfirmation": "您确定要删除此学生吗？此操作无法撤销。",
+    "empty": {
+      "title": "没有学生",
+      "description": "开始管理您的学生，并将他们的档案用作课程创建的背景",
+      "addButton": "添加学生",
+      "tryAdjusting": "尝试调整您的搜索"
+    },
+    "actions": {
+      "edit": "编辑学生",
+      "delete": "删除学生",
+      "createLesson": "创建课程"
+    },
+    "modal": {
+      "addTitle": "添加新学生",
+      "editTitle": "编辑学生",
+      "name": "姓名",
+      "targetLanguage": "目标语言",
+      "nativeLanguage": "母语",
+      "selectLanguage": "选择语言",
+      "level": "级别",
+      "learningGoals": "学习目标",
+      "goalPlaceholder": "例如：会话流利度",
+      "add": "添加",
+      "interests": "兴趣爱好",
+      "interestsPlaceholder": "例如：音乐、烹饪、旅行...",
+      "cancel": "取消",
+      "saving": "保存中...",
+      "addStudent": "添加学生",
+      "updateStudent": "更新学生"
+    },
+    "errors": {
+      "signInRequired": "请登录以查看学生",
+      "loadFailed": "加载学生失败",
+      "addFailed": "添加学生失败",
+      "updateFailed": "更新学生失败",
+      "deleteFailed": "删除学生失败"
+    }
+  }
 }

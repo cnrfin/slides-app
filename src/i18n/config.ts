@@ -24,6 +24,11 @@ import deAuth from './locales/de/auth.json';
 import deSlides from './locales/de/slides.json';
 import deDashboard from './locales/de/dashboard.json';
 
+import itCommon from './locales/it/common.json';
+import itAuth from './locales/it/auth.json';
+import itSlides from './locales/it/slides.json';
+import itDashboard from './locales/it/dashboard.json';
+
 import jaCommon from './locales/ja/common.json';
 import jaAuth from './locales/ja/auth.json';
 import jaSlides from './locales/ja/slides.json';
@@ -35,12 +40,13 @@ import zhSlides from './locales/zh/slides.json';
 import zhDashboard from './locales/zh/dashboard.json';
 
 export const SUPPORTED_LANGUAGES = [
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Español' },
+  { code: 'fr', name: 'Français' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'ja', name: '日本語' },
+  { code: 'zh', name: '中文' },
 ] as const;
 
 export type LanguageCode = typeof SUPPORTED_LANGUAGES[number]['code'];
@@ -69,6 +75,12 @@ const resources = {
     auth: deAuth,
     slides: deSlides,
     dashboard: deDashboard,
+  },
+  it: {
+    common: itCommon,
+    auth: itAuth,
+    slides: itSlides,
+    dashboard: itDashboard,
   },
   ja: {
     common: jaCommon,

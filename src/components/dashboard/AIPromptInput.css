@@ -1,5 +1,17 @@
 /* AIPromptInput.css */
 
+/* Light mode variables (default) */
+:root {
+  --prompt-bg: #f6f5f4b3;
+  --prompt-border: rgba(126, 117, 114, 0.2);
+}
+
+/* Dark mode variables */
+.dark {
+  --prompt-bg: #2a2928;
+  --prompt-border: transparent;
+}
+
 .shine-button .shine-effect {
   position: absolute;
   top: 0;
@@ -23,6 +35,16 @@
   100% {
     left: 150%;
   }
+}
+
+/* Ensure textarea text color in dark mode */
+.dark textarea {
+  color: #dddcd9 !important; /* dark-text color */
+}
+
+/* Ensure placeholder has different color */
+.dark textarea::placeholder {
+  color: #62615f !important; /* dark-border color */
 }
 
 /* Hide scrollbar styles */

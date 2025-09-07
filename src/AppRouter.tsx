@@ -2,7 +2,9 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import useAuthStore from '@/stores/authStore'
+import useLanguageStore from '@/stores/languageStore'
 import { GoogleAuthProvider } from '@/providers/GoogleAuthProvider'
+import ThemeProvider from '@/providers/ThemeProvider'
 import AuthGuard from '@/components/auth/AuthGuard'
 import LoginPage from '@/components/auth/LoginPage'
 import DashboardLayout from '@/components/dashboard/DashboardLayout'
@@ -119,6 +121,7 @@ const router = createBrowserRouter([
 
 export default function AppRouter() {
   const { initialize, isInitialized } = useAuthStore()
+  const { currentLanguage } = useLanguageStore()
   
   useEffect(() => {
     // Only initialize once
@@ -128,9 +131,44 @@ export default function AppRouter() {
     }
   }, [initialize, isInitialized])
   
+  // Ensure language attributes are applied on initial mount
+  useEffect(() => {
+    const applyLanguageAttributes = () => {
+      const lang = currentLanguage || 'en'
+      
+      // Update HTML lang attribute
+      document.documentElement.lang = lang
+      
+      // Apply language-specific styles
+      document.documentElement.setAttribute('data-lang', lang)
+      
+      // Handle RTL languages (if adding Arabic or Hebrew in future)
+      if (lang === 'ar' || lang === 'he') {
+        document.documentElement.dir = 'rtl'
+      } else {
+        document.documentElement.dir = 'ltr'
+      }
+      
+      // Apply CJK-specific font class for better rendering
+      if (lang === 'ja' || lang === 'zh' || lang === 'ko') {
+        document.documentElement.classList.add('cjk-lang')
+      } else {
+        document.documentElement.classList.remove('cjk-lang')
+      }
+    }
+    
+    // Apply immediately and after a brief delay to ensure DOM is ready
+    applyLanguageAttributes()
+    const timer = setTimeout(applyLanguageAttributes, 100)
+    
+    return () => clearTimeout(timer)
+  }, [currentLanguage])
+  
   return (
-    <GoogleAuthProvider>
-      <RouterProvider router={router} />
-    </GoogleAuthProvider>
+    <ThemeProvider>
+      <GoogleAuthProvider>
+        <RouterProvider router={router} />
+      </GoogleAuthProvider>
+    </ThemeProvider>
   )
 }

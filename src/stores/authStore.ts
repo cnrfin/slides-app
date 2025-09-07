@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { onAuthStateChange, getInitialSession, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut } from '@/lib/auth'
 import { getCurrentMonthUsage, getUserStudentProfiles } from '@/lib/database'
+import { supabase } from '@/lib/supabase'
 
 interface AuthUser {
   id: string
@@ -257,11 +258,50 @@ const useAuthStore = create<AuthStore>()(
     },
     
     refreshUserData: async () => {
-      await Promise.all([
-        get().loadStudentProfiles(),
-        get().loadUsageData()
-      ])
+    const user = get().user
+    if (!user) return
+    
+    try {
+        // Refresh profile from database
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      
+      if (!error && profile) {
+        console.log('Refreshed profile data:', profile)
+        console.log('Refreshed avatar URL:', profile.avatar_url)
+        
+        // Update the user object with fresh data
+        const updatedUser: AuthUser = {
+          id: profile.id,
+          email: profile.email,
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url,
+          subscription_tier: profile.subscription_tier,
+          subscription_status: profile.subscription_status,
+          teaching_languages: profile.teaching_languages || [],
+          native_language: profile.native_language,
+          currency: profile.currency,
+          hourly_rate: profile.hourly_rate,
+          avg_lesson_prep_time_minutes: profile.avg_lesson_prep_time_minutes,
+        }
+        
+        set(state => {
+          state.user = updatedUser
+        })
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error)
     }
+    
+    // Also refresh other data
+    await Promise.all([
+      get().loadStudentProfiles(),
+      get().loadUsageData()
+    ])
+  }
   }))
 )
 

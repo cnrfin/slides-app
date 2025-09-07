@@ -1,7 +1,8 @@
 // src/components/dashboard/DashboardLayout.tsx
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import useAuthStore from '@/stores/authStore'
+import useUIStore from '@/stores/uiStore'
 import { 
   Home, 
   BookOpen, 
@@ -17,8 +18,8 @@ import {
 
 export default function DashboardLayout() {
   const { user, signOut } = useAuthStore()
+  const { isSidebarCollapsed, toggleSidebar } = useUIStore()
   const navigate = useNavigate()
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
@@ -53,7 +54,7 @@ export default function DashboardLayout() {
             <h1 className="text-h4 text-gray-800">Figma Slides</h1>
           )}
           <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onClick={toggleSidebar}
             className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
           >
             {isSidebarCollapsed ? (

@@ -103,6 +103,10 @@ export async function initializeUserProfile(user: any) {
       return newProfile
     }
     
+    // Debug: Log the profile data we're getting from Supabase
+    console.log('Profile data from Supabase:', data)
+    console.log('Avatar URL from profile:', data?.avatar_url)
+    
     return data
   } catch (error) {
     console.error('Error initializing user profile:', error)

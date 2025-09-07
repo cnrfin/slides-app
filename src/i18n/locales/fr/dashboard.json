@@ -1,6 +1,8 @@
 {
+  "create": "Créer",
   "home": "Accueil",
   "lessons": "Leçons",
+  "allLessons": "Toutes les leçons",
   "courses": "Cours",
   "students": "Étudiants",
   "analytics": "Analytique",
@@ -105,5 +107,199 @@
   "weeklyActive": "Actif Hebdomadaire",
   "monthlyActive": "Actif Mensuel",
   "growth": "Croissance",
-  "performance": "Performance"
+  "performance": "Performance",
+  
+  "dashboardHome": {
+    "greetings": {
+      "goodMorning": "Bonjour {{name}}",
+      "goodAfternoon": "Bon après-midi {{name}}",
+      "goodEvening": "Bonsoir {{name}}"
+    },
+    "emptyCourses": {
+      "title": "Aucun cours",
+      "description": "Organisez vos leçons en cours pour créer des parcours d'apprentissage structurés pour vos étudiants",
+      "createButton": "Créer un cours"
+    },
+    "subtitle": "Que souhaitez-vous créer aujourd'hui?",
+    "createWithAI": "Créer avec l'IA",
+    "loadingStudents": "Chargement des étudiants...",
+    "student": "étudiant",
+    "students": "étudiants",
+    "loaded": "chargés",
+    
+    "suggestions": {
+      "conversationPractice": "Pratique de conversation",
+      "readingVocabulary": "Lecture et vocabulaire",
+      "grammarExercises": "Exercices de grammaire"
+    },
+    
+    "quickActions": {
+      "blankCanvas": {
+        "title": "Toile vierge",
+        "description": "Commencer à partir de zéro"
+      },
+      "myLessons": {
+        "title": "Mes leçons",
+        "description": "Continuer le travail"
+      },
+      "templates": {
+        "title": "Modèles",
+        "description": "Utiliser un modèle"
+      }
+    },
+    
+    "lessonPrompt": "Quel type de leçon allons-nous créer?",
+    
+    "lessonTypes": {
+      "conversation": "Conversation",
+      "reading": "Lecture",
+      "listening": "Écoute",
+      "toeic": "TOEIC",
+      "pronunciation": "Prononciation"
+    }
+  },
+  
+  "aiPrompt": {
+    "placeholder": "Décrivez la leçon que vous souhaitez créer...",
+    "generatingLesson": "Génération de la leçon...",
+    "addSlides": "Ajouter des diapositives",
+    "addStudentContext": "Ajouter le contexte d'étudiant",
+    "addLessonContext": "Ajouter le contexte de leçon",
+    "uploadArticle": "Télécharger un article (.txt, .html, .pdf)",
+    "searchStudents": "Rechercher des étudiants",
+    "searchLessons": "Rechercher des leçons",
+    "loadingStudents": "Chargement des étudiants...",
+    "loadingLessons": "Chargement des leçons...",
+    "learning": "Apprend",
+    "noStudentsYet": "Aucun étudiant ajouté pour le moment",
+    "noStudentsFound": "Aucun étudiant trouvé",
+    "noLessonsYet": "Aucune leçon créée pour le moment",
+    "noLessonsFound": "Aucune leçon trouvée",
+    "addNewStudent": "Ajouter un nouvel étudiant",
+    "createNewLesson": "Créer une nouvelle leçon",
+    "slide": "diapositive",
+    "slides": "diapositives",
+    "genius": "Génie",
+    "geniusModeEnabled": "Mode Génie activé",
+    "enableGeniusMode": "Activer le mode Génie",
+    "processingFile": "Traitement du fichier...",
+    "dropToAdd": "Déposer pour ajouter au prompt",
+    "supportedFormats": "Prend en charge les fichiers .txt, .html et .pdf",
+    "fileUploadedSuccess": "Fichier \"{{fileName}}\" téléchargé avec succès",
+    "fileProcessError": "Échec du traitement du fichier",
+    "selectSlideError": "Veuillez sélectionner au moins un modèle de diapositive",
+    "generationSuccess": "{{count}} diapositives générées avec succès!",
+    "generationError": "Échec de la génération du contenu"
+  },
+  
+  "lessonsPage": {
+    "title": "Leçons",
+    "newLesson": "Nouvelle leçon",
+    "searchPlaceholder": "Rechercher des leçons",
+    "loading": "Chargement des leçons...",
+    "untitled": "Leçon sans titre",
+    "updated": "Mise à jour",
+    "slideCount": "{{count}} diapositives",
+    "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer cette leçon ? Cette action ne peut pas être annulée.",
+    "deleteSuccess": "Leçon supprimée avec succès",
+    "empty": {
+      "title": "Aucune leçon",
+      "description": "Commencez à créer des diapositives engageantes pour les étudiants en quelques secondes avec nos outils de toile et d'IA",
+      "createButton": "Créer une leçon"
+    },
+    "emptyCourses": {
+      "title": "Aucun cours",
+      "description": "Organisez vos leçons en cours pour créer des parcours d'apprentissage structurés pour vos étudiants",
+      "createButton": "Créer un cours"
+    },
+    "actions": {
+      "edit": "Éditer la leçon",
+      "delete": "Supprimer la leçon",
+      "viewDetails": "Voir les détails"
+    },
+    "details": {
+      "title": "Détails de la leçon",
+      "vocabulary": "Vocabulaire",
+      "grammar": "Grammaire"
+    },
+    "duration": {
+      "minutes": "{{minutes}}min",
+      "hoursMinutes": "{{hours}}h {{minutes}}min"
+    },
+    "errors": {
+      "signInRequired": "Veuillez vous connecter pour voir les leçons",
+      "loadFailed": "Échec du chargement des leçons",
+      "deleteFailed": "Échec de la suppression de la leçon"
+    }
+  },
+  
+  "history": {
+    "title": "Historique",
+    "justNow": "À l'instant",
+    "minutesAgo": "Il y a {{count}} minute",
+    "minutesAgo_plural": "Il y a {{count}} minutes",
+    "hoursAgo": "Il y a {{count}} heure",
+    "hoursAgo_plural": "Il y a {{count}} heures",
+    "daysAgo": "Il y a {{count}} jour",
+    "daysAgo_plural": "Il y a {{count}} jours",
+    "noPromptsYet": "Aucune invite pour le moment",
+    "promptHistoryInfo": "Votre historique d'invites apparaîtra ici",
+    "copiedToClipboard": "Invite copiée dans le presse-papiers",
+    "clickToCopy": "Cliquez sur une invite pour la copier"
+  },
+  
+  "studentsPage": {
+    "title": "Étudiants",
+    "searchPlaceholder": "Rechercher des étudiants",
+    "loading": "Chargement des étudiants...",
+    "addStudent": "Ajouter un étudiant",
+    "learning": "Apprend",
+    "native": "Natif",
+    "lessonCount": "{{count}} leçons",
+    "progress": "progrès",
+    "goals": "Objectifs",
+    "more": "plus",
+    "added": "Ajouté",
+    "noStudentsFound": "Aucun étudiant trouvé",
+    "addSuccess": "Étudiant ajouté avec succès!",
+    "updateSuccess": "Étudiant mis à jour avec succès!",
+    "deleteSuccess": "Étudiant supprimé avec succès",
+    "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer cet étudiant? Cette action ne peut pas être annulée.",
+    "empty": {
+      "title": "Aucun étudiant",
+      "description": "Commencez à gérer vos étudiants et utilisez leurs profils comme contexte pour créer des leçons",
+      "addButton": "Ajouter un étudiant",
+      "tryAdjusting": "Essayez d'ajuster votre recherche"
+    },
+    "actions": {
+      "edit": "Éditer l'étudiant",
+      "delete": "Supprimer l'étudiant",
+      "createLesson": "Créer une leçon"
+    },
+    "modal": {
+      "addTitle": "Ajouter un nouvel étudiant",
+      "editTitle": "Éditer l'étudiant",
+      "name": "Nom",
+      "targetLanguage": "Langue cible",
+      "nativeLanguage": "Langue maternelle",
+      "selectLanguage": "Sélectionner une langue",
+      "level": "Niveau",
+      "learningGoals": "Objectifs d'apprentissage",
+      "goalPlaceholder": "p.ex., Maîtrise conversationnelle",
+      "add": "Ajouter",
+      "interests": "Intérêts et loisirs",
+      "interestsPlaceholder": "p.ex., Musique, cuisine, voyages...",
+      "cancel": "Annuler",
+      "saving": "Enregistrement...",
+      "addStudent": "Ajouter l'étudiant",
+      "updateStudent": "Mettre à jour l'étudiant"
+    },
+    "errors": {
+      "signInRequired": "Veuillez vous connecter pour voir les étudiants",
+      "loadFailed": "Échec du chargement des étudiants",
+      "addFailed": "Échec de l'ajout de l'étudiant",
+      "updateFailed": "Échec de la mise à jour de l'étudiant",
+      "deleteFailed": "Échec de la suppression de l'étudiant"
+    }
+  }
 }

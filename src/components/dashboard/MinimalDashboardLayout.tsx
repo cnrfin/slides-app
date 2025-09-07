@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import Sidebar from './Sidebar'
 import HistorySidebar from './HistorySidebar'
 import ToastContainer from '@/components/ui/Toast'
+import useUIStore from '@/stores/uiStore'
 
 export default function MinimalDashboardLayout() {
   const location = useLocation()
-  const [sidebarWidth, setSidebarWidth] = useState(300)
+  const { isSidebarCollapsed } = useUIStore()
+  const [sidebarWidth, setSidebarWidth] = useState(() => isSidebarCollapsed ? 60 : 300)
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024)
   
   // Only show history button on the dashboard home page
@@ -31,9 +33,14 @@ export default function MinimalDashboardLayout() {
       window.removeEventListener('resize', handleResize)
     }
   }, [])
+  
+  // Update sidebar width when the store changes (e.g., from another tab)
+  useEffect(() => {
+    setSidebarWidth(isSidebarCollapsed ? 60 : 300)
+  }, [isSidebarCollapsed])
 
   return (
-    <div className="h-screen flex overflow-hidden" style={{ backgroundColor: '#f6f5f4b3' }}>
+    <div className="h-screen flex overflow-hidden bg-app-secondary-bg dark:bg-dark-bg">
       {/* Dashboard Content - Full height */}
       <Sidebar />
       
@@ -49,7 +56,7 @@ export default function MinimalDashboardLayout() {
       >
         {/* Content Wrapper */}
         <div 
-          className="p-0.5 bg-white rounded-lg overflow-hidden h-full"
+          className="p-0.5 bg-white dark:bg-dark-bg rounded-lg overflow-hidden h-full page-bg"
           style={{ border: '1px solid rgba(126, 117, 114, 0.2)' }}
         >
           {/* Content Container */}

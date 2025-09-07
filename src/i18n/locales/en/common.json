@@ -61,5 +61,14 @@
   "dark": "Dark",
   "light": "Light",
   "auto": "Auto",
-  "system": "System"
+  "system": "System",
+  "languages": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "ja": "日本語",
+    "zh": "中文"
+  }
 }

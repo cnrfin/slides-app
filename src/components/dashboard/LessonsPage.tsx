@@ -1,24 +1,20 @@
 // src/components/dashboard/LessonsPage.tsx
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { 
   Search, 
-  Plus, 
   FileText, 
   Calendar, 
-  Sparkles, 
-  Loader2, 
   Trash2, 
   Play,
-  Filter,
   MoreVertical,
   Clock,
   BookOpen,
   ChevronRight,
   Edit2,
-  FolderOpen
+  Plus,
 } from 'lucide-react'
-import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { getCurrentUser, deleteLesson } from '@/lib/database'
 import { toast } from '@/utils/toast'
@@ -45,11 +41,25 @@ interface Lesson {
   duration?: number // in minutes
 }
 
+// Custom No Lessons Icon Component
+const NoLessonsIcon = () => (
+  <div className="flex flex-col items-center gap-2">
+    <div className="grid grid-cols-2 gap-2">
+      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
+      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
+      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
+      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
+    </div>
+  </div>
+)
+
 export default function LessonsPage() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation('dashboard')
   const [searchQuery, setSearchQuery] = useState('')
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('all-lessons')
   const [filterLanguage, setFilterLanguage] = useState<string>('all')
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null)
 
@@ -62,7 +72,7 @@ export default function LessonsPage() {
       setLoading(true)
       const user = await getCurrentUser()
       if (!user) {
-        toast.error('Please sign in to view lessons')
+        toast.error(t('lessonsPage.errors.signInRequired'))
         navigate('/auth/signin')
         return
       }
@@ -148,7 +158,7 @@ export default function LessonsPage() {
       setLessons(lessonsWithCount)
     } catch (error: any) {
       console.error('Error loading lessons:', error)
-      toast.error('Failed to load lessons')
+      toast.error(t('lessonsPage.errors.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -158,31 +168,29 @@ export default function LessonsPage() {
     navigate('/canvas')
   }
 
-  const handleCreateWithAI = () => {
-    navigate('/dashboard')
-  }
-
   const handleOpenLesson = (lessonId: string) => {
     navigate('/canvas', { state: { lessonId } })
   }
 
   const handleDeleteLesson = async (lessonId: string) => {
-    if (!confirm('Are you sure you want to delete this lesson? This action cannot be undone.')) {
+    if (!confirm(t('lessonsPage.deleteConfirmation'))) {
       return
     }
 
     try {
       await deleteLesson(lessonId)
       setLessons(lessons.filter(l => l.id !== lessonId))
-      toast.success('Lesson deleted successfully')
+      toast.success(t('lessonsPage.deleteSuccess'))
     } catch (error: any) {
       console.error('Error deleting lesson:', error)
-      toast.error('Failed to delete lesson')
+      toast.error(t('lessonsPage.errors.deleteFailed'))
     }
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const date = new Date(dateString)
+    const locale = i18n.language || 'en'
+    return date.toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -193,9 +201,9 @@ export default function LessonsPage() {
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
     if (hours > 0) {
-      return `${hours}h ${mins > 0 ? mins + 'min' : ''}`
+      return t('lessonsPage.duration.hoursMinutes', { hours, minutes: mins })
     }
-    return `${mins}min`
+    return t('lessonsPage.duration.minutes', { minutes: mins })
   }
 
   // Get unique languages from lessons for filter
@@ -214,257 +222,284 @@ export default function LessonsPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-app-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading lessons...</p>
+          <div className="w-8 h-8 border-2 border-app-green-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">{t('lessonsPage.loading')}</p>
         </div>
       </div>
     )
   }
 
+  // Check if language is Asian (simplified check)
+  const isAsianLanguage = () => {
+    const lang = i18n.language || 'en'
+    return ['zh', 'ja', 'ko'].some(code => lang.toLowerCase().startsWith(code))
+  }
+
+  const getFontFamily = () => {
+    return isAsianLanguage() ? 'Noto Sans, sans-serif' : 'Inter, sans-serif'
+  }
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Page Header */}
+    <div className="p-2 sm:p-8 max-w-7xl mx-auto">
+      {/* Page Header with New Lesson Button */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-h1 text-gray-900">Lessons</h1>
-            <p className="text-body text-gray-600 mt-1">Create and manage your lesson materials</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCreateWithAI}
-              className="flex items-center gap-2 px-4 py-2 bg-app-purple-600 text-white rounded-lg hover:bg-app-purple-700 transition-colors"
-            >
-              <Sparkles className="w-5 h-5" />
-              Create with AI
-            </button>
-            <button
-              onClick={handleCreateNew}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              New Lesson
-            </button>
-          </div>
+          <h1 className="text-4xl font-normal text-app-black-900 dark:text-dark-heading">{t('lessonsPage.title')}</h1>
+          <button
+            onClick={handleCreateNew}
+            className="flex items-center gap-2 px-6 py-2.5 bg-app-black dark:bg-dark-accent text-white font-medium rounded-lg hover:scale-105 hover:bg-app-black dark:hover:bg-dark-accent/80 transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="hidden sm:inline">{t('lessonsPage.newLesson')}</span>
+          </button>
         </div>
+        
+        {/* Tabs and Search Bar - Same Row on Desktop, Stacked on Mobile */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-6">
+          {/* Tabs */}
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => setActiveTab('all-lessons')}
+              className={`px-4 py-2 text-base font-medium rounded-lg transition-all ${
+                activeTab === 'all-lessons'
+                  ? 'text-app-black dark:text-dark-heading'
+                  : 'text-app-gray-500 dark:text-gray-400 hover:bg-app-light-gray-100 dark:hover:bg-white/10'
+              }`}
+            >
+              {t('allLessons')}
+            </button>
+            <button
+              onClick={() => setActiveTab('courses')}
+              className={`px-4 py-2 text-base font-medium rounded-lg transition-all ${
+                activeTab === 'courses'
+                  ? 'text-app-black dark:text-dark-heading'
+                  : 'text-app-gray-500 dark:text-gray-400 hover:bg-app-light-gray-100 dark:hover:bg-white/10'
+              }`}
+            >
+              {t('courses')}
+            </button>
+          </div>
 
-        {/* Search and Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          {/* Search Bar */}
+          <div className="relative w-full sm:flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search lessons..."
+              placeholder={t('lessonsPage.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500"
+              className="w-full pl-10 pr-4 py-2.5 border border-app-border dark:border-dark-border rounded-lg bg-white dark:bg-dark-card focus:bg-white dark:focus:bg-dark-card focus:outline-none focus:ring-2 focus:ring-app-secondary-bg dark:focus:ring-dark-accent focus:border-app-secondary-bg dark:focus:border-dark-accent transition-all dark:text-dark-text dark:placeholder-gray-500"
             />
           </div>
-          {availableLanguages.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Filter className="text-gray-400 w-5 h-5" />
-              <select
-                value={filterLanguage}
-                onChange={(e) => setFilterLanguage(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500"
-              >
-                <option value="all">All Languages</option>
-                {availableLanguages.map(lang => (
-                  <option key={lang} value={lang}>{lang}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Lessons Grid */}
-      {filteredLessons.length === 0 ? (
-        <div className="text-center py-12">
-          <FolderOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-h5 text-gray-900 mb-2">No lessons found</h3>
-          <p className="text-body text-gray-600 mb-6">
-            {searchQuery || filterLanguage !== 'all' 
-              ? 'Try adjusting your search or filters'
-              : 'Get started by creating your first lesson'}
-          </p>
-          {!searchQuery && filterLanguage === 'all' && (
-            <div className="flex items-center justify-center gap-3">
+      {/* Content Area */}
+      {activeTab === 'all-lessons' ? (
+        <>
+          {/* Lessons Grid or Empty State */}
+          {filteredLessons.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <NoLessonsIcon />
+              <h3 
+                className="text-2xl font-medium text-gray-700 dark:text-gray-300 mt-6 mb-3"
+                style={{ fontFamily: getFontFamily() }}
+              >
+                {t('lessonsPage.empty.title')}
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-8">
+                {t('lessonsPage.empty.description')}
+              </p>
               <button
                 onClick={handleCreateNew}
-                className="inline-flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-6 py-3 bg-app-black dark:bg-dark-accent text-white font-medium hover:scale-105 rounded-lg hover:bg-app-black dark:hover:bg-dark-accent/80 transition-colors"
               >
-                <Plus className="w-5 h-5" />
-                Start from Scratch
+                {t('lessonsPage.empty.createButton')}
               </button>
-              <button
-                onClick={handleCreateWithAI}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-app-purple-600 text-white rounded-lg hover:bg-app-purple-700 transition-colors"
-              >
-                <Sparkles className="w-5 h-5" />
-                Create with AI
-              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredLessons.map((lesson) => (
+                <div
+                  key={lesson.id}
+                  className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl hover:shadow-lg dark:hover:shadow-dark transition-shadow cursor-pointer"
+                  onClick={() => handleOpenLesson(lesson.id)}
+                >
+                  {/* Lesson Thumbnail */}
+                  <div className="aspect-video relative bg-gradient-to-br from-app-purple-100 to-blue-100 rounded-t-xl overflow-hidden">
+                    {lesson.firstSlide ? (
+                      <MiniSlidePreview 
+                        slide={lesson.firstSlide} 
+                        width={400} 
+                        height={225}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : lesson.thumbnail ? (
+                      <img 
+                        src={lesson.thumbnail} 
+                        alt={lesson.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <FileText className="w-12 h-12 text-gray-400 dark:text-gray-600" />
+                      </div>
+                    )}
+                    
+                    {/* Play button overlay */}
+                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 hover:opacity-100">
+                      <div className="bg-white rounded-full p-3 shadow-lg">
+                        <Play className="w-6 h-6 text-app-purple-600" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6">
+                    {/* Lesson Header */}
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="text-h5 text-gray-900 dark:text-dark-heading line-clamp-1">
+                        {lesson.title || t('lessonsPage.untitled')}
+                      </h3>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg"
+                      >
+                        <MoreVertical className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                      </button>
+                    </div>
+
+                    {/* Description */}
+                    {lesson.description && (
+                      <p className="text-body-small text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                        {lesson.description}
+                      </p>
+                    )}
+
+                    {/* Lesson Stats */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="flex items-center gap-2 text-body-small text-gray-600 dark:text-gray-400">
+                        <BookOpen className="w-4 h-4" />
+                        <span>{t('lessonsPage.slideCount', { count: lesson.slide_count })}</span>
+                      </div>
+                      {lesson.duration && (
+                        <div className="flex items-center gap-2 text-body-small text-gray-600 dark:text-gray-400">
+                          <Clock className="w-4 h-4" />
+                          <span>{formatDuration(lesson.duration)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Language Badge */}
+                    {lesson.target_language && (
+                      <div className="mb-4">
+                        <span className="inline-flex px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-caption font-medium">
+                          {lesson.target_language}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Lesson Actions */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
+                      <div className="text-caption text-gray-500 dark:text-gray-400">
+                        <Calendar className="w-3 h-3 inline mr-1" />
+                        {t('lessonsPage.updated')} {formatDate(lesson.updated_at)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenLesson(lesson.id)
+                          }}
+                          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                          title={t('lessonsPage.actions.edit')}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteLesson(lesson.id)
+                          }}
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title={t('lessonsPage.actions.delete')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setExpandedLessonId(expandedLessonId === lesson.id ? null : lesson.id)
+                          }}
+                          className="p-2 text-app-purple-600 dark:text-app-purple-400 hover:bg-app-purple-50 dark:hover:bg-app-purple-900/20 rounded-lg transition-colors"
+                          title={t('lessonsPage.actions.viewDetails')}
+                        >
+                          <ChevronRight className={`w-4 h-4 transition-transform ${expandedLessonId === lesson.id ? 'rotate-90' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded Details */}
+                    {expandedLessonId === lesson.id && (
+                      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <h4 className="text-body-small font-medium text-gray-700 dark:text-gray-300 mb-2">{t('lessonsPage.details.title')}</h4>
+                        <div className="space-y-2 text-body-small">
+                          {lesson.vocabulary && lesson.vocabulary.length > 0 && (
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">{t('lessonsPage.details.vocabulary')}:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {lesson.vocabulary.map((word, idx) => (
+                                  <span key={idx} className="inline-flex px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-caption">
+                                    {word}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {lesson.grammarPoints && lesson.grammarPoints.length > 0 && (
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400">{t('lessonsPage.details.grammar')}:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {lesson.grammarPoints.map((point, idx) => (
+                                  <span key={idx} className="inline-flex px-2 py-1 bg-app-purple-100 dark:bg-app-purple-900/30 text-app-purple-700 dark:text-app-purple-300 rounded text-caption">
+                                    {point}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-        </div>
+        </>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredLessons.map((lesson) => (
-            <div
-              key={lesson.id}
-              className="bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => handleOpenLesson(lesson.id)}
-            >
-              {/* Lesson Thumbnail */}
-              <div className="aspect-video relative bg-gradient-to-br from-app-purple-100 to-blue-100 rounded-t-xl overflow-hidden">
-                {lesson.firstSlide ? (
-                  <MiniSlidePreview 
-                    slide={lesson.firstSlide} 
-                    width={400} 
-                    height={225}
-                    className="w-full h-full object-cover"
-                  />
-                ) : lesson.thumbnail ? (
-                  <img 
-                    src={lesson.thumbnail} 
-                    alt={lesson.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <FileText className="w-12 h-12 text-gray-400" />
-                  </div>
-                )}
-                
-                {/* Play button overlay */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 hover:opacity-100">
-                  <div className="bg-white rounded-full p-3 shadow-lg">
-                    <Play className="w-6 h-6 text-app-purple-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6">
-                {/* Lesson Header */}
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-h5 text-gray-900 line-clamp-1">
-                    {lesson.title || 'Untitled Lesson'}
-                  </h3>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                    }}
-                    className="p-1 hover:bg-gray-100 rounded-lg"
-                  >
-                    <MoreVertical className="w-5 h-5 text-gray-400" />
-                  </button>
-                </div>
-
-                {/* Description */}
-                {lesson.description && (
-                  <p className="text-body-small text-gray-600 mb-4 line-clamp-2">
-                    {lesson.description}
-                  </p>
-                )}
-
-                {/* Lesson Stats */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="flex items-center gap-2 text-body-small text-gray-600">
-                    <BookOpen className="w-4 h-4" />
-                    <span>{lesson.slide_count} slides</span>
-                  </div>
-                  {lesson.duration && (
-                    <div className="flex items-center gap-2 text-body-small text-gray-600">
-                      <Clock className="w-4 h-4" />
-                      <span>{formatDuration(lesson.duration)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Language Badge */}
-                {lesson.target_language && (
-                  <div className="mb-4">
-                    <span className="inline-flex px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-caption font-medium">
-                      {lesson.target_language}
-                    </span>
-                  </div>
-                )}
-
-                {/* Lesson Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <div className="text-caption text-gray-500">
-                    <Calendar className="w-3 h-3 inline mr-1" />
-                    Updated {formatDate(lesson.updated_at)}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleOpenLesson(lesson.id)
-                      }}
-                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="Edit lesson"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteLesson(lesson.id)
-                      }}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete lesson"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setExpandedLessonId(expandedLessonId === lesson.id ? null : lesson.id)
-                      }}
-                      className="p-2 text-app-purple-600 hover:bg-app-purple-50 rounded-lg transition-colors"
-                      title="View details"
-                    >
-                      <ChevronRight className={`w-4 h-4 transition-transform ${expandedLessonId === lesson.id ? 'rotate-90' : ''}`} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded Details */}
-                {expandedLessonId === lesson.id && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-body-small font-medium text-gray-700 mb-2">Lesson Details</h4>
-                    <div className="space-y-2 text-body-small">
-                      {lesson.vocabulary && lesson.vocabulary.length > 0 && (
-                        <div>
-                          <span className="text-gray-500">Vocabulary:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {lesson.vocabulary.map((word, idx) => (
-                              <span key={idx} className="inline-flex px-2 py-1 bg-gray-100 text-gray-700 rounded text-caption">
-                                {word}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {lesson.grammarPoints && lesson.grammarPoints.length > 0 && (
-                        <div>
-                          <span className="text-gray-500">Grammar:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {lesson.grammarPoints.map((point, idx) => (
-                              <span key={idx} className="inline-flex px-2 py-1 bg-app-purple-100 text-app-purple-700 rounded text-caption">
-                                {point}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+        // Courses Tab Content
+        <div className="flex flex-col items-center justify-center py-16">
+          <NoLessonsIcon />
+          <h3 
+            className="text-2xl font-medium text-gray-700 dark:text-gray-300 mt-6 mb-3"
+            style={{ fontFamily: getFontFamily() }}
+          >
+            {t('lessonsPage.emptyCourses.title')}
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-8">
+            {t('lessonsPage.emptyCourses.description')}
+          </p>
+          <button
+            onClick={() => {
+              // Navigate to course creation or show course creation modal
+              toast.info('Course creation coming soon!')
+            }}
+            className="px-6 py-3 bg-app-black dark:bg-dark-accent text-white font-medium hover:scale-105 rounded-lg hover:bg-app-black dark:hover:bg-dark-accent/80 transition-colors"
+          >
+            {t('lessonsPage.emptyCourses.createButton')}
+          </button>
         </div>
       )}
     </div>

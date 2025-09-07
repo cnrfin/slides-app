@@ -61,5 +61,14 @@
   "dark": "Oscuro",
   "light": "Claro",
   "auto": "Automático",
-  "system": "Sistema"
+  "system": "Sistema",
+  "languages": {
+    "en": "Inglés",
+    "es": "Español",
+    "fr": "Francés",
+    "de": "Alemán",
+    "it": "Italiano",
+    "ja": "日本語",
+    "zh": "中文"
+  }
 }

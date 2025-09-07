@@ -1,6 +1,8 @@
 {
+  "create": "Erstellen",
   "home": "Startseite",
   "lessons": "Lektionen",
+  "allLessons": "Alle Lektionen",
   "courses": "Kurse",
   "students": "Schüler",
   "analytics": "Analytik",
@@ -105,5 +107,194 @@
   "weeklyActive": "Wöchentlich Aktiv",
   "monthlyActive": "Monatlich Aktiv",
   "growth": "Wachstum",
-  "performance": "Leistung"
+  "performance": "Leistung",
+  
+  "dashboardHome": {
+    "greetings": {
+      "goodMorning": "Guten Morgen {{name}}",
+      "goodAfternoon": "Guten Tag {{name}}",
+      "goodEvening": "Guten Abend {{name}}"
+    },
+    "subtitle": "Was möchten Sie heute erstellen?",
+    "createWithAI": "Mit KI erstellen",
+    "loadingStudents": "Schüler werden geladen...",
+    "student": "Schüler",
+    "students": "Schüler",
+    "loaded": "geladen",
+    
+    "suggestions": {
+      "conversationPractice": "Konversationsübung",
+      "readingVocabulary": "Lesen & Wortschatz",
+      "grammarExercises": "Grammatikübungen"
+    },
+    
+    "quickActions": {
+      "blankCanvas": {
+        "title": "Leere Leinwand",
+        "description": "Von Grund auf neu beginnen"
+      },
+      "myLessons": {
+        "title": "Meine Lektionen",
+        "description": "Weiter arbeiten"
+      },
+      "templates": {
+        "title": "Vorlagen",
+        "description": "Eine Vorlage verwenden"
+      }
+    },
+    
+    "lessonPrompt": "Welche Art von Lektion möchten wir erstellen?",
+    
+    "lessonTypes": {
+      "conversation": "Konversation",
+      "reading": "Lesen",
+      "listening": "Hören",
+      "toeic": "TOEIC",
+      "pronunciation": "Aussprache"
+    }
+  },
+  
+  "aiPrompt": {
+    "placeholder": "Beschreiben Sie die Lektion, die Sie erstellen möchten...",
+    "generatingLesson": "Lektion wird generiert...",
+    "addSlides": "Folien hinzufügen",
+    "addStudentContext": "Schülerkontext hinzufügen",
+    "addLessonContext": "Lektionskontext hinzufügen",
+    "uploadArticle": "Artikel hochladen (.txt, .html, .pdf)",
+    "searchStudents": "Schüler suchen",
+    "searchLessons": "Lektionen suchen",
+    "loadingStudents": "Schüler werden geladen...",
+    "loadingLessons": "Lektionen werden geladen...",
+    "learning": "Lernt",
+    "noStudentsYet": "Noch keine Schüler hinzugefügt",
+    "noStudentsFound": "Keine Schüler gefunden",
+    "noLessonsYet": "Noch keine Lektionen erstellt",
+    "noLessonsFound": "Keine Lektionen gefunden",
+    "addNewStudent": "Neuen Schüler hinzufügen",
+    "createNewLesson": "Neue Lektion erstellen",
+    "slide": "Folie",
+    "slides": "Folien",
+    "genius": "Genius",
+    "geniusModeEnabled": "Genius-Modus aktiviert",
+    "enableGeniusMode": "Genius-Modus aktivieren",
+    "processingFile": "Datei wird verarbeitet...",
+    "dropToAdd": "Ablegen zum Hinzufügen",
+    "supportedFormats": "Unterstützt .txt, .html und .pdf Dateien",
+    "fileUploadedSuccess": "Datei \"{{fileName}}\" erfolgreich hochgeladen",
+    "fileProcessError": "Datei konnte nicht verarbeitet werden",
+    "selectSlideError": "Bitte wählen Sie mindestens eine Folienvorlage",
+    "generationSuccess": "{{count}} Folien erfolgreich generiert!",
+    "generationError": "Inhalt konnte nicht generiert werden"
+  },
+  
+  "lessonsPage": {
+    "title": "Lektionen",
+    "newLesson": "Neue Lektion",
+    "searchPlaceholder": "Lektionen suchen",
+    "loading": "Lektionen werden geladen...",
+    "untitled": "Unbenannte Lektion",
+    "updated": "Aktualisiert",
+    "slideCount": "{{count}} Folien",
+    "deleteConfirmation": "Möchten Sie diese Lektion wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "deleteSuccess": "Lektion erfolgreich gelöscht",
+    "empty": {
+      "title": "Keine Lektionen",
+      "description": "Beginnen Sie in Sekunden mit dem Erstellen ansprechender Folien für Schüler mit unseren Canvas- und KI-Tools",
+      "createButton": "Lektion erstellen"
+    },
+    "emptyCourses": {
+      "title": "Keine Kurse",
+      "description": "Organisieren Sie Ihre Lektionen in Kurse, um strukturierte Lernpfade für Ihre Schüler zu erstellen",
+      "createButton": "Kurs erstellen"
+    },
+    "actions": {
+      "edit": "Lektion bearbeiten",
+      "delete": "Lektion löschen",
+      "viewDetails": "Details anzeigen"
+    },
+    "details": {
+      "title": "Lektionsdetails",
+      "vocabulary": "Vokabular",
+      "grammar": "Grammatik"
+    },
+    "duration": {
+      "minutes": "{{minutes}}min",
+      "hoursMinutes": "{{hours}}h {{minutes}}min"
+    },
+    "errors": {
+      "signInRequired": "Bitte melden Sie sich an, um Lektionen anzuzeigen",
+      "loadFailed": "Lektionen konnten nicht geladen werden",
+      "deleteFailed": "Lektion konnte nicht gelöscht werden"
+    }
+  },
+  
+  "history": {
+    "title": "Verlauf",
+    "justNow": "Gerade eben",
+    "minutesAgo": "Vor {{count}} Minute",
+    "minutesAgo_plural": "Vor {{count}} Minuten",
+    "hoursAgo": "Vor {{count}} Stunde",
+    "hoursAgo_plural": "Vor {{count}} Stunden",
+    "daysAgo": "Vor {{count}} Tag",
+    "daysAgo_plural": "Vor {{count}} Tagen",
+    "noPromptsYet": "Noch keine Eingaben",
+    "promptHistoryInfo": "Ihr Eingabeverlauf wird hier angezeigt",
+    "copiedToClipboard": "Eingabe in Zwischenablage kopiert",
+    "clickToCopy": "Klicken Sie auf eine Eingabe, um sie zu kopieren"
+  },
+  
+  "studentsPage": {
+    "title": "Schüler",
+    "searchPlaceholder": "Schüler suchen",
+    "loading": "Schüler werden geladen...",
+    "addStudent": "Schüler hinzufügen",
+    "learning": "Lernt",
+    "native": "Muttersprache",
+    "lessonCount": "{{count}} Lektionen",
+    "progress": "Fortschritt",
+    "goals": "Ziele",
+    "more": "mehr",
+    "added": "Hinzugefügt",
+    "noStudentsFound": "Keine Schüler gefunden",
+    "addSuccess": "Schüler erfolgreich hinzugefügt!",
+    "updateSuccess": "Schüler erfolgreich aktualisiert!",
+    "deleteSuccess": "Schüler erfolgreich entfernt",
+    "deleteConfirmation": "Sind Sie sicher, dass Sie diesen Schüler entfernen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "empty": {
+      "title": "Keine Schüler",
+      "description": "Beginnen Sie mit der Verwaltung Ihrer Schüler und verwenden Sie deren Profile als Kontext für die Lektionserstellung",
+      "addButton": "Schüler hinzufügen",
+      "tryAdjusting": "Versuchen Sie, Ihre Suche anzupassen"
+    },
+    "actions": {
+      "edit": "Schüler bearbeiten",
+      "delete": "Schüler entfernen",
+      "createLesson": "Lektion erstellen"
+    },
+    "modal": {
+      "addTitle": "Neuen Schüler hinzufügen",
+      "editTitle": "Schüler bearbeiten",
+      "name": "Name",
+      "targetLanguage": "Zielsprache",
+      "nativeLanguage": "Muttersprache",
+      "selectLanguage": "Sprache auswählen",
+      "level": "Niveau",
+      "learningGoals": "Lernziele",
+      "goalPlaceholder": "z.B. Gesprächsflüssigkeit",
+      "add": "Hinzufügen",
+      "interests": "Interessen & Hobbys",
+      "interestsPlaceholder": "z.B. Musik, Kochen, Reisen...",
+      "cancel": "Abbrechen",
+      "saving": "Speichern...",
+      "addStudent": "Schüler hinzufügen",
+      "updateStudent": "Schüler aktualisieren"
+    },
+    "errors": {
+      "signInRequired": "Bitte melden Sie sich an, um Schüler anzuzeigen",
+      "loadFailed": "Fehler beim Laden der Schüler",
+      "addFailed": "Fehler beim Hinzufügen des Schülers",
+      "updateFailed": "Fehler beim Aktualisieren des Schülers",
+      "deleteFailed": "Fehler beim Entfernen des Schülers"
+    }
+  }
 }

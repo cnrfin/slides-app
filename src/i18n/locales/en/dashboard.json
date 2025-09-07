@@ -1,6 +1,8 @@
 {
+  "create": "Create",
   "home": "Home",
   "lessons": "Lessons",
+  "allLessons": "All Lessons",
   "courses": "Courses",
   "students": "Students",
   "analytics": "Analytics",
@@ -11,6 +13,8 @@
   "logOut": "Log out",
   "language": "Language",
   "selectLanguage": "Select Language",
+  "darkMode": "Dark Mode",
+  "lightMode": "Light Mode",
   "freePlan": "Free plan",
   "proPlan": "Pro plan",
   "maxPlan": "Max plan",
@@ -105,5 +109,194 @@
   "weeklyActive": "Weekly Active",
   "monthlyActive": "Monthly Active",
   "growth": "Growth",
-  "performance": "Performance"
+  "performance": "Performance",
+  
+  "dashboardHome": {
+    "greetings": {
+      "goodMorning": "Good morning {{name}}",
+      "goodAfternoon": "Good afternoon {{name}}",
+      "goodEvening": "Good evening {{name}}"
+    },
+    "subtitle": "What would you like to create today?",
+    "createWithAI": "Create with AI",
+    "loadingStudents": "Loading students...",
+    "student": "student",
+    "students": "students",
+    "loaded": "loaded",
+    
+    "suggestions": {
+      "conversationPractice": "Conversation Practice",
+      "readingVocabulary": "Reading & Vocabulary",
+      "grammarExercises": "Grammar Exercises"
+    },
+    
+    "quickActions": {
+      "blankCanvas": {
+        "title": "Blank Canvas",
+        "description": "Start from scratch"
+      },
+      "myLessons": {
+        "title": "My Lessons",
+        "description": "Continue working"
+      },
+      "templates": {
+        "title": "Templates",
+        "description": "Use a template"
+      }
+    },
+    
+    "lessonPrompt": "What kind of lesson shall we make?",
+    
+    "lessonTypes": {
+      "conversation": "Conversation",
+      "reading": "Reading",
+      "listening": "Listening",
+      "toeic": "TOEIC",
+      "pronunciation": "Pronunciation"
+    }
+  },
+  
+  "aiPrompt": {
+    "placeholder": "Describe the lesson you want to create...",
+    "generatingLesson": "Generating lesson...",
+    "addSlides": "Add slides",
+    "addStudentContext": "Add student context",
+    "addLessonContext": "Add lesson context",
+    "uploadArticle": "Upload article (.txt, .html, .pdf)",
+    "searchStudents": "Search students",
+    "searchLessons": "Search lessons",
+    "loadingStudents": "Loading students...",
+    "loadingLessons": "Loading lessons...",
+    "learning": "Learning",
+    "noStudentsYet": "No students added yet",
+    "noStudentsFound": "No students found",
+    "noLessonsYet": "No lessons created yet",
+    "noLessonsFound": "No lessons found",
+    "addNewStudent": "Add a new student",
+    "createNewLesson": "Create a new lesson",
+    "slide": "slide",
+    "slides": "slides",
+    "genius": "Genius",
+    "geniusModeEnabled": "Genius mode enabled",
+    "enableGeniusMode": "Enable Genius mode",
+    "processingFile": "Processing file...",
+    "dropToAdd": "Drop to add to prompt",
+    "supportedFormats": "Supports .txt, .html, and .pdf files",
+    "fileUploadedSuccess": "File \"{{fileName}}\" uploaded successfully",
+    "fileProcessError": "Failed to process file",
+    "selectSlideError": "Please select at least one slide template",
+    "generationSuccess": "Successfully generated {{count}} slides!",
+    "generationError": "Failed to generate content"
+  },
+  
+  "lessonsPage": {
+    "title": "Lessons",
+    "newLesson": "New lesson",
+    "searchPlaceholder": "Search lessons",
+    "loading": "Loading lessons...",
+    "untitled": "Untitled Lesson",
+    "updated": "Updated",
+    "slideCount": "{{count}} slides",
+    "deleteConfirmation": "Are you sure you want to delete this lesson? This action cannot be undone.",
+    "deleteSuccess": "Lesson deleted successfully",
+    "empty": {
+      "title": "No lessons",
+      "description": "Start creating engaging student-first slides in seconds with our canvas and AI tools",
+      "createButton": "Create lesson"
+    },
+    "emptyCourses": {
+      "title": "No courses",
+      "description": "Organize your lessons into courses to create structured learning paths for your students",
+      "createButton": "Create course"
+    },
+    "actions": {
+      "edit": "Edit lesson",
+      "delete": "Delete lesson",
+      "viewDetails": "View details"
+    },
+    "details": {
+      "title": "Lesson Details",
+      "vocabulary": "Vocabulary",
+      "grammar": "Grammar"
+    },
+    "duration": {
+      "minutes": "{{minutes}}min",
+      "hoursMinutes": "{{hours}}h {{minutes}}min"
+    },
+    "errors": {
+      "signInRequired": "Please sign in to view lessons",
+      "loadFailed": "Failed to load lessons",
+      "deleteFailed": "Failed to delete lesson"
+    }
+  },
+  
+  "history": {
+    "title": "History",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} minute ago",
+    "minutesAgo_plural": "{{count}} minutes ago",
+    "hoursAgo": "{{count}} hour ago",
+    "hoursAgo_plural": "{{count}} hours ago",
+    "daysAgo": "{{count}} day ago",
+    "daysAgo_plural": "{{count}} days ago",
+    "noPromptsYet": "No prompts yet",
+    "promptHistoryInfo": "Your prompt history will appear here",
+    "copiedToClipboard": "Prompt copied to clipboard",
+    "clickToCopy": "Click a prompt to copy to clipboard"
+  },
+  
+  "studentsPage": {
+    "title": "Students",
+    "searchPlaceholder": "Search students",
+    "loading": "Loading students...",
+    "addStudent": "Add Student",
+    "learning": "Learning",
+    "native": "Native",
+    "lessonCount": "{{count}} lessons",
+    "progress": "progress",
+    "goals": "Goals",
+    "more": "more",
+    "added": "Added",
+    "noStudentsFound": "No students found",
+    "addSuccess": "Student added successfully!",
+    "updateSuccess": "Student updated successfully!",
+    "deleteSuccess": "Student removed successfully",
+    "deleteConfirmation": "Are you sure you want to remove this student? This action cannot be undone.",
+    "empty": {
+      "title": "No students",
+      "description": "Start managing your students and use their profiles as context for lesson creation",
+      "addButton": "Add student",
+      "tryAdjusting": "Try adjusting your search"
+    },
+    "actions": {
+      "edit": "Edit student",
+      "delete": "Remove student",
+      "createLesson": "Create lesson"
+    },
+    "modal": {
+      "addTitle": "Add New Student",
+      "editTitle": "Edit Student",
+      "name": "Name",
+      "targetLanguage": "Target Language",
+      "nativeLanguage": "Native Language",
+      "selectLanguage": "Select language",
+      "level": "Level",
+      "learningGoals": "Learning Goals",
+      "goalPlaceholder": "e.g., Conversational fluency",
+      "add": "Add",
+      "interests": "Interests & Hobbies",
+      "interestsPlaceholder": "e.g., Music, cooking, travel...",
+      "cancel": "Cancel",
+      "saving": "Saving...",
+      "addStudent": "Add Student",
+      "updateStudent": "Update Student"
+    },
+    "errors": {
+      "signInRequired": "Please sign in to view students",
+      "loadFailed": "Failed to load students",
+      "addFailed": "Failed to add student",
+      "updateFailed": "Failed to update student",
+      "deleteFailed": "Failed to remove student"
+    }
+  }
 }

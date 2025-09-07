@@ -18,6 +18,20 @@ export default function LanguageSelector({ className = '', showLabel = true }: L
   const currentLanguageDisplay = SUPPORTED_LANGUAGES.find(
     lang => lang.code === currentLanguage
   );
+  
+  // Map language codes to flag emojis
+  const getFlagEmoji = (code: string) => {
+    const flags: Record<string, string> = {
+      'en': '🇺🇸',
+      'es': '🇪🇸',
+      'fr': '🇫🇷',
+      'de': '🇩🇪',
+      'it': '🇮🇹',
+      'ja': '🇯🇵',
+      'zh': '🇨🇳'
+    };
+    return flags[code] || '';
+  };
 
   return (
     <>
@@ -28,10 +42,10 @@ export default function LanguageSelector({ className = '', showLabel = true }: L
         aria-label="Change language"
       >
         <Globe className="w-4 h-4" />
-        {showLabel && (
+        {showLabel && currentLanguageDisplay && (
           <>
-            <span>{currentLanguageDisplay?.flag}</span>
-            <span className="font-medium">{currentLanguageDisplay?.name}</span>
+            <span>{getFlagEmoji(currentLanguageDisplay.code)}</span>
+            <span className="font-medium">{t(`languages.${currentLanguageDisplay.code}` as const)}</span>
           </>
         )}
       </button>

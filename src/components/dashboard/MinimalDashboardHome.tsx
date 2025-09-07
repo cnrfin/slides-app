@@ -1,12 +1,15 @@
 // src/components/dashboard/MinimalDashboardHome.tsx
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import useAuthStore from '@/stores/authStore'
 import AIPromptInput from './AIPromptInput'
 import './AIPromptInput.css' // Import for shine animation styles
 import { savePromptToHistory } from '@/lib/prompt-history'
 import { getUserStudentProfiles, getCurrentUser, loadUserLessons } from '@/lib/database'
 import { MessageCircle, Headphones, BookOpen, BookType, CaseUpper, Star } from 'lucide-react'
+import { TranslationDebug } from '@/components/TranslationDebug'
+import StyledGreeting from '@/components/ui/StyledGreeting'
 
 interface StudentProfile {
   id: string
@@ -31,11 +34,20 @@ interface Lesson {
 export default function MinimalDashboardHome() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t, i18n } = useTranslation('dashboard')
   const { user } = useAuthStore()
   const [students, setStudents] = useState<StudentProfile[]>([])
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loadingStudents, setLoadingStudents] = useState(true)
   const [loadingLessons, setLoadingLessons] = useState(true)
+  
+  // Debug: Log translation status
+  useEffect(() => {
+    console.log('MinimalDashboardHome - i18n ready:', i18n.isInitialized)
+    console.log('MinimalDashboardHome - current language:', i18n.language)
+    console.log('MinimalDashboardHome - test translation:', t('upgradePlan'))
+    console.log('MinimalDashboardHome - greeting test:', t('dashboardHome.greetings.goodMorning', { name: 'Test' }))
+  }, [i18n.language])
   
   // Get state from navigation (when coming from Students or Lessons page)
   const navigationState = location.state as {
@@ -127,9 +139,9 @@ export default function MinimalDashboardHome() {
     const hour = now.getHours()
     const name = user?.display_name?.split(' ')[0] || 'Connor'
     
-    if (hour < 12) return `Good morning, ${name}`
-    if (hour < 17) return `Good afternoon, ${name}`
-    return `Good evening, ${name}`
+    if (hour < 12) return t('dashboardHome.greetings.goodMorning', { name })
+    if (hour < 17) return t('dashboardHome.greetings.goodAfternoon', { name })
+    return t('dashboardHome.greetings.goodEvening', { name })
   }
 
   const handlePromptSubmit = async (promptData: any) => {
@@ -154,24 +166,24 @@ export default function MinimalDashboardHome() {
   // Generate lesson type suggestions with Lucide icons
   const lessonTypes = [
     { 
-      icon: <MessageCircle size={16} strokeWidth={1.5} className="text-gray-600" />, 
-      text: 'Conversation' 
+      icon: <MessageCircle size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      text: t('dashboardHome.lessonTypes.conversation') 
     },
     { 
-      icon: <BookOpen size={16} strokeWidth={1.5} className="text-gray-600" />, 
-      text: 'Reading' 
+      icon: <BookOpen size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      text: t('dashboardHome.lessonTypes.reading') 
     },
     { 
-      icon: <Headphones size={16} strokeWidth={1.5} className="text-gray-600" />, 
-      text: 'Listening' 
+      icon: <Headphones size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      text: t('dashboardHome.lessonTypes.listening') 
     },
     { 
-      icon: <BookType size={16} strokeWidth={1.5} className="text-gray-600" />, 
-      text: 'TOEIC' 
+      icon: <BookType size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      text: t('dashboardHome.lessonTypes.toeic') 
     },
     { 
-      icon: <CaseUpper size={16} strokeWidth={1.5} className="text-gray-600" />, 
-      text: 'Pronunciation' 
+      icon: <CaseUpper size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      text: t('dashboardHome.lessonTypes.pronunciation') 
     },
   ]
 
@@ -195,16 +207,17 @@ export default function MinimalDashboardHome() {
 
   return (
     <div className="min-h-full flex flex-col px-8">
+      <TranslationDebug />
       {/* Upgrade Button - Only show for free users */}
       {isFreePlan && (
         <div className="flex justify-center pt-8">
           <button
             onClick={handleUpgradeClick}
-            className="relative px-4 py-2 bg-app-green-100 hover:bg-app-green-700 text-green-700 hover:text-white rounded-full text-body font-normal transition-all hover:scale-105 overflow-hidden shine-button animate-fade-in"
+            className="relative px-4 py-2 bg-app-green-100 dark:bg-app-green-700/20 hover:bg-app-green-700 dark:hover:bg-app-green-700 text-green-700 dark:text-app-green-300 hover:text-white dark:hover:text-white rounded-full text-body font-normal transition-all hover:scale-105 overflow-hidden shine-button animate-fade-in"
           >
             <span className="relative z-10 flex items-center gap-2">
               <Star size={18} strokeWidth={0} fill="#f0ba2c" className="text-app-yellow" />
-              <span>Upgrade plan</span>
+              <span>{t('upgradePlan')}</span>
             </span>
             <div className="shine-effect" />
           </button>
@@ -215,11 +228,9 @@ export default function MinimalDashboardHome() {
       <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-4xl flex flex-col items-center">
           {/* Centered Greeting */}
-          <div className="text-center mb-10 animate-fade-in-delay-1 w-full">
-            <h1 className="text-h1 text-gray-800 mb-2">
-              {getGreeting()}
-            </h1>
-            <p className="text-body text-gray-500">What kind of lesson shall we make?</p>
+          <div className="text-center mb-10 w-full">
+            <StyledGreeting greeting={getGreeting()} />
+            <p className="text-body text-app-gray dark:text-app-light-gray animate-subtitle">{t('dashboardHome.lessonPrompt')}</p>
           </div>
 
           {/* AI Prompt Input - Always expanded */}

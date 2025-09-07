@@ -3,14 +3,16 @@ import { useState, useRef, useEffect } from 'react'
 import ReactDOM from 'react-dom'
 import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen, ChevronRight, Loader2, FileText, File, CornerDownLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import './AIPromptInput.css'
 import { generateLesson } from '@/services/lessonGeneration'
 import { useTemplates } from '@/hooks/useTemplates'
 import { toast } from '@/utils/toast'
 import { clearLoadingToasts } from '@/components/ui/Toast'
 import type { SlideTemplate } from '@/types/template.types'
-import { parseFile, formatFileSize, type FileUpload } from '@/utils/fileUtils'
+import { parseFile, getFileType, type FileUpload } from '@/utils/fileUtils'
 import { EnhancedSlideSelector, type SelectedSlideInstance } from '@/components/ui/SlideSelector'
+import useUIStore from '@/stores/uiStore'
 
 interface Suggestion {
   icon: string | React.ReactNode
@@ -74,6 +76,8 @@ export default function AIPromptInput({
   initialLesson = null
 }: AIPromptInputProps) {
   const navigate = useNavigate()
+  const { t } = useTranslation('dashboard')
+  const { theme } = useUIStore()
   const [prompt, setPrompt] = useState('')
   const [isExpanded, setIsExpanded] = useState(isInitiallyExpanded)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -159,6 +163,24 @@ export default function AIPromptInput({
     lesson.topics?.some((topic: string) => topic.toLowerCase().includes(lessonSearchQuery.toLowerCase()))
   )
 
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      // Reset height to auto to get the correct scrollHeight
+      textareaRef.current.style.height = 'auto';
+      // Set height to scrollHeight to fit content, with a max height
+      const newHeight = Math.min(textareaRef.current.scrollHeight, 380); // Max height of 400px
+      textareaRef.current.style.height = `${newHeight}px`;
+      
+      // If we've hit max height, allow scrolling
+      if (textareaRef.current.scrollHeight > 400) {
+        textareaRef.current.style.overflowY = 'auto';
+      } else {
+        textareaRef.current.style.overflowY = 'hidden';
+      }
+    }
+  }, [prompt]); // Re-run when prompt changes
+
   // Auto-focus when expanded
   useEffect(() => {
     if (isExpanded && textareaRef.current) {
@@ -231,11 +253,11 @@ export default function AIPromptInput({
       setUploadedFile(fileUpload)
       setShowFileContainer(true)
       // Show success toast for file upload
-      toast.success(`File "${file.name}" uploaded successfully`)
+      toast.success(t('aiPrompt.fileUploadedSuccess', { fileName: file.name }))
     } catch (error) {
       console.error('Error processing file:', error)
       // Show error toast for file upload failure
-      toast.error(error instanceof Error ? error.message : 'Failed to process file')
+      toast.error(error instanceof Error ? error.message : t('aiPrompt.fileProcessError'))
     } finally {
       setIsProcessingFile(false)
     }
@@ -302,7 +324,7 @@ export default function AIPromptInput({
     setIsGenerating(true)
     
     // Show loading toast
-    const loadingToastId = toast.loading('Generating lesson...')
+    const loadingToastId = toast.loading(t('aiPrompt.generatingLesson'))
     
     try {
       // Get the actual template objects for selected slides
@@ -315,7 +337,7 @@ export default function AIPromptInput({
       })
       
       if (selectedTemplateObjects.length === 0) {
-        throw new Error('Please select at least one slide template')
+        throw new Error(t('aiPrompt.selectSlideError'))
       }
       
       // Generate lesson using shared service
@@ -330,7 +352,7 @@ export default function AIPromptInput({
       
       // Clear loading toasts and show success BEFORE navigation
       clearLoadingToasts()
-      toast.success(`Successfully generated ${selectedTemplateObjects.length} slides!`)
+      toast.success(t('aiPrompt.generationSuccess', { count: selectedTemplateObjects.length }))
       
       // Small delay to ensure toast is visible
       await new Promise(resolve => setTimeout(resolve, 100))
@@ -355,7 +377,7 @@ export default function AIPromptInput({
       removeFile()
     } catch (error) {
       console.error('Error generating content:', error)
-      const errorMsg = error instanceof Error ? error.message : 'Failed to generate content'
+      const errorMsg = error instanceof Error ? error.message : t('aiPrompt.generationError')
       // Clear loading toasts and show error
       clearLoadingToasts()
       toast.error(errorMsg)
@@ -461,7 +483,7 @@ export default function AIPromptInput({
 
     return ReactDOM.createPortal(
       <div 
-        className="main-popup fixed bg-white rounded-lg shadow-lg border border-gray-200 animate-popup-in"
+        className="main-popup fixed bg-white dark:bg-dark-graybg backdrop-blur-md rounded-lg shadow-popup border border-gray-200 dark:border-dark-border/20 animate-popup-in"
         style={{ 
           bottom: `${popupPosition.bottom}px`,
           left: `${popupPosition.left}px`,
@@ -472,44 +494,44 @@ export default function AIPromptInput({
       >
         {popupView === 'main' && (
           <>
-            <div className="p-3">
+            <div className="p-1">
               <button
                 onClick={handleOpenEnhancedSelector}
-                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
+                className="w-full font-normal flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <Layers size={18} className="text-gray-600" strokeWidth={1.5} />
-                  <span className="text-sm text-gray-700">Add slides</span>
+                  <Layers size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
+                  <span className="text-sm text-gray-700 dark:text-gray-200">{t('aiPrompt.addSlides')}</span>
                 </div>
-                <ChevronRight size={16} className="text-gray-400" strokeWidth={1.5} />
+                <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
               </button>
               <button
                 onClick={() => setPopupView('student')}
-                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
+                className="w-full font-normal flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <User size={18} className="text-gray-600" strokeWidth={1.5} />
-                  <span className="text-sm text-gray-700">Use a student</span>
+                  <User size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
+                  <span className="text-sm text-gray-700 dark:text-gray-200">{t('aiPrompt.addStudentContext')}</span>
                 </div>
-                <ChevronRight size={16} className="text-gray-400" strokeWidth={1.5} />
+                <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
               </button>
               <button
                 onClick={() => setPopupView('lesson')}
-                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
+                className="w-full font-normal flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <BookOpen size={18} className="text-gray-600" strokeWidth={1.5} />
-                  <span className="text-sm text-gray-700">Use a lesson</span>
+                  <BookOpen size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
+                  <span className="text-sm text-gray-700 dark:text-gray-200">{t('aiPrompt.addLessonContext')}</span>
                 </div>
-                <ChevronRight size={16} className="text-gray-400" strokeWidth={1.5} />
+                <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 rounded-md transition-colors"
+                className="w-full flex font-normal items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <FileText size={18} className="text-gray-600" strokeWidth={1.5} />
-                  <span className="text-sm text-gray-700">Upload article (.txt, .html, .pdf)</span>
+                  <FileText size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
+                  <span className="text-sm text-gray-700 dark:text-gray-200">{t('aiPrompt.uploadArticle')}</span>
                 </div>
               </button>
             </div>
@@ -518,22 +540,22 @@ export default function AIPromptInput({
 
         {popupView === 'student' && (
           <>
-            <div className="flex items-center gap-2 p-3 border-b border-gray-100">
+            <div className="flex items-center gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
               <button
                 onClick={() => {
                   setPopupView('main')
                   setStudentSearchQuery('')
                 }}
-                className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded transition-colors flex-shrink-0"
               >
-                <ArrowLeft size={18} className="text-gray-600" strokeWidth={1.5} />
+                <ArrowLeft size={18} className="text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
               </button>
               <input
                 type="text"
                 value={studentSearchQuery}
                 onChange={(e) => setStudentSearchQuery(e.target.value)}
-                placeholder="Search students"
-                className="w-full px-3 py-1.5 text-sm outline-none bg-transparent"
+                placeholder={t('aiPrompt.searchStudents')}
+                className="w-full px-3 py-1.5 text-sm outline-none bg-transparent dark:text-dark-text dark:placeholder-gray-500"
               />
             </div>
 
@@ -541,37 +563,37 @@ export default function AIPromptInput({
               {loadingStudents ? (
                 <div className="px-4 py-6 text-center">
                   <div className="w-6 h-6 border-2 border-gray-300 border-t-app-purple-600 rounded-full animate-spin mx-auto" />
-                  <p className="text-sm text-gray-500 mt-2">Loading students...</p>
+                  <p className="text-sm text-gray-500 mt-2">{t('aiPrompt.loadingStudents')}</p>
                 </div>
               ) : filteredProfiles.length > 0 ? (
                 filteredProfiles.map((profile) => (
                   <button
                     key={profile.id}
                     onClick={() => selectProfile(profile)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-50 last:border-b-0 transition-colors"
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-white/5 border-b border-gray-50 dark:border-gray-700 last:border-b-0 transition-colors"
                   >
-                    <div className="text-sm font-medium text-gray-700">{profile.name}</div>
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{profile.name}</div>
                     {profile.target_language && (
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        Learning {profile.target_language}
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {t('aiPrompt.learning')} {profile.target_language}
                       </div>
                     )}
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                  {students.length === 0 ? 'No students added yet' : 'No students found'}
+                <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+                  {students.length === 0 ? t('aiPrompt.noStudentsYet') : t('aiPrompt.noStudentsFound')}
                 </div>
               )}
             </div>
 
-            <div className="p-3 border-t border-gray-100">
+            <div className="p-3 border-t border-gray-100 dark:border-gray-700">
               <button
                 onClick={handleAddNewStudent}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-gray-50 rounded-md transition-colors text-sm"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors text-sm"
               >
-                <Plus size={16} className="text-gray-600" />
-                <span className="text-gray-700">Add a new student</span>
+                <Plus size={16} className="text-gray-600 dark:text-gray-400" />
+                <span className="text-gray-700 dark:text-gray-200">{t('aiPrompt.addNewStudent')}</span>
               </button>
             </div>
           </>
@@ -579,22 +601,22 @@ export default function AIPromptInput({
 
         {popupView === 'lesson' && (
           <>
-            <div className="flex items-center gap-2 p-3 border-b border-gray-100">
+            <div className="flex items-center gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
               <button
                 onClick={() => {
                   setPopupView('main')
                   setLessonSearchQuery('')
                 }}
-                className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded transition-colors flex-shrink-0"
               >
-                <ArrowLeft size={18} className="text-gray-600" strokeWidth={1.5} />
+                <ArrowLeft size={18} className="text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
               </button>
               <input
                 type="text"
                 value={lessonSearchQuery}
                 onChange={(e) => setLessonSearchQuery(e.target.value)}
-                placeholder="Search lessons"
-                className="w-full px-3 py-1.5 text-sm outline-none bg-transparent"
+                placeholder={t('aiPrompt.searchLessons')}
+                className="w-full px-3 py-1.5 text-sm outline-none bg-transparent dark:text-dark-text dark:placeholder-gray-500"
               />
             </div>
 
@@ -602,37 +624,37 @@ export default function AIPromptInput({
               {loadingLessons ? (
                 <div className="px-4 py-6 text-center">
                   <div className="w-6 h-6 border-2 border-gray-300 border-t-app-purple-600 rounded-full animate-spin mx-auto" />
-                  <p className="text-sm text-gray-500 mt-2">Loading lessons...</p>
+                  <p className="text-sm text-gray-500 mt-2">{t('aiPrompt.loadingLessons')}</p>
                 </div>
               ) : filteredLessons.length > 0 ? (
                 filteredLessons.map((lesson) => (
                   <button
                     key={lesson.id}
                     onClick={() => selectLesson(lesson)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-50 last:border-b-0 transition-colors"
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-white/5 border-b border-gray-50 dark:border-gray-700 last:border-b-0 transition-colors"
                   >
-                    <div className="text-sm font-medium text-gray-700">{lesson.title}</div>
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{lesson.title}</div>
                     {lesson.description && (
-                      <div className="text-xs text-gray-500 mt-0.5 truncate">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                         {lesson.description}
                       </div>
                     )}
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                  {lessons.length === 0 ? 'No lessons created yet' : 'No lessons found'}
+                <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+                  {lessons.length === 0 ? t('aiPrompt.noLessonsYet') : t('aiPrompt.noLessonsFound')}
                 </div>
               )}
             </div>
 
-            <div className="p-3 border-t border-gray-100">
+            <div className="p-3 border-t border-gray-100 dark:border-gray-700">
               <button
                 onClick={handleAddNewLesson}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-gray-50 rounded-md transition-colors text-sm"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors text-sm"
               >
-                <Plus size={16} className="text-gray-600" />
-                <span className="text-gray-700">Create a new lesson</span>
+                <Plus size={16} className="text-gray-600 dark:text-gray-400" />
+                <span className="text-gray-700 dark:text-gray-200">{t('aiPrompt.createNewLesson')}</span>
               </button>
             </div>
           </>
@@ -649,8 +671,8 @@ export default function AIPromptInput({
       {/* Enhanced Slide Selector Modal */}
       {showEnhancedSelector && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowEnhancedSelector(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-4xl lg:max-w-6xl h-[90vh] sm:h-[85vh] overflow-hidden">
+          <div className="absolute inset-0 bg-black bg-opacity-50 dark:bg-opacity-70" onClick={() => setShowEnhancedSelector(false)} />
+          <div className="relative bg-white dark:bg-dark-card rounded-xl shadow-xl dark:shadow-dark w-full max-w-4xl lg:max-w-6xl h-[90vh] sm:h-[85vh] overflow-hidden">
             <EnhancedSlideSelector
               availableTemplates={availableTemplates}
               onSelectionChange={setSelectedSlides}
@@ -679,11 +701,11 @@ export default function AIPromptInput({
           {/* New wrapper container with specified styling */}
           <div 
             className={`w-full animate-fade-in transition-all relative flex flex-col ${
-              isDragging ? 'ring-2 ring-blue-400 bg-blue-50' : ''
+              isDragging ? 'ring-2 ring-blue-400 bg-blue-50 dark:bg-blue-900/20' : ''
             }`}
             style={{
               padding: '.375rem',
-              backgroundColor: '#f6f5f4b3',
+              backgroundColor: 'var(--prompt-bg, #f6f5f4b3)',
               borderRadius: '.75rem'
             }}
             onDragEnter={handleDragEnter}
@@ -693,25 +715,24 @@ export default function AIPromptInput({
           >
             {/* Drag overlay */}
             {isDragging && (
-              <div className="absolute inset-0 bg-blue-50 bg-opacity-90 rounded-lg z-10 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 bg-blue-50 dark:bg-blue-900/20 bg-opacity-90 dark:bg-opacity-100 rounded-lg z-10 flex items-center justify-center pointer-events-none">
                 <div className="text-center">
-                  <File className="w-12 h-12 text-blue-500 mx-auto mb-2" />
-                  <p className="text-blue-700 font-medium">Drop to add to prompt</p>
-                  <p className="text-blue-600 text-sm mt-1">Supports .txt, .html, and .pdf files</p>
+                  <File className="w-12 h-12 text-blue-500 dark:text-blue-400 mx-auto mb-2" />
+                  <p className="text-blue-700 dark:text-blue-300 font-medium">{t('aiPrompt.dropToAdd')}</p>
+                  <p className="text-blue-600 dark:text-blue-400 text-sm mt-1">{t('aiPrompt.supportedFormats')}</p>
                 </div>
               </div>
             )}
             
             {/* Input container with footer buttons */}
-            <div className="bg-white rounded-lg" style={{ border: '1px solid rgba(126, 117, 114, 0.2)' }}>
+            <div className="bg-white dark:bg-dark-card rounded-lg focus-within:ring-0 focus-within:outline-none" style={{ border: '1px solid var(--prompt-border, rgba(126, 117, 114, 0.2))' }}>
               <textarea
                 ref={textareaRef}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isGenerating ? "Generating lesson..." : "Describe the lesson you want to create..."}
-                className="w-full resize-none focus:outline-none bg-transparent text-gray-700 placeholder-gray-400 disabled:cursor-not-allowed disabled:opacity-75 rounded-t-lg"
-                rows={5}
+                placeholder={isGenerating ? t('aiPrompt.generatingLesson') : t('aiPrompt.placeholder')}
+                className="w-full resize-none overflow-hidden focus:outline-none focus:ring-0 bg-transparent text-app-black dark:text-dark-text placeholder-app-light-gray dark:placeholder-dark-border disabled:cursor-not-allowed disabled:opacity-75 rounded-t-lg"
                 disabled={isGenerating}
                 style={{ 
                   minHeight: '120px',
@@ -739,13 +760,13 @@ export default function AIPromptInput({
                       ref={plusButtonRef}
                       onClick={togglePopup}
                       disabled={isGenerating}
-                      className="w-8 h-8 flex-shrink-0 flex items-center justify-center border border-gray-300 transition-all duration-200 hover:bg-gray-100 active:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-8 h-8 flex-shrink-0 flex items-center justify-center border border-app-border dark:border-dark-border/50 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-white/10 active:bg-gray-100 dark:active:bg-white/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed dark:bg-dark-card"
                       style={{
-                        backgroundColor: showPopup ? '#f3f4f6' : 'white'
+                        backgroundColor: showPopup ? (theme === 'dark' ? 'rgba(255,255,255,0.1)' : '#f3f4f6') : undefined
                       }}
                       title="Add content"
                     >
-                      <Plus size={16} className="text-gray-600" strokeWidth={1.5} />
+                      <Plus size={16} className="text-app-gray dark:text-dark-text" strokeWidth={1.5} />
                     </button>
 
                     {/* Genius Mode Toggle Button */}
@@ -766,59 +787,59 @@ export default function AIPromptInput({
                       }}
                       className={`px-3 h-8 flex-shrink-0 flex items-center justify-center transition-all duration-200 rounded-lg border ${
                         isGeniusMode 
-                          ? 'border-app-purple-700 text-app-purple-700 bg-app-purple-50' 
-                          : 'border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
+                          ? 'border-app-purple-700 dark:border-dark-accent text-app-purple-700 dark:text-dark-accent bg-app-purple-50 dark:bg-dark-accent/20' 
+                          : 'border-app-border dark:border-dark-border/50 text-app-gray dark:text-dark-text bg-white dark:bg-dark-card hover:bg-gray-50 dark:hover:bg-white/10'
                       }`}
-                      title={isGeniusMode ? 'Genius mode enabled' : 'Enable Genius mode'}
+                      title={isGeniusMode ? t('aiPrompt.geniusModeEnabled') : t('aiPrompt.enableGeniusMode')}
                     >
                       <Brain size={16} strokeWidth={1.5} className="mr-1.5" />
-                      <span className="text-sm font-medium">Genius</span>
+                      <span className="text-sm font-medium">{t('aiPrompt.genius')}</span>
                     </button>
 
                     {/* Selected Slides Indicator */}
                     {selectedSlides.length > 0 && (
-                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
-                        <Layers size={14} className="text-gray-600" />
-                        <span className="text-gray-700 whitespace-nowrap">
-                          {selectedSlides.length} slide{selectedSlides.length !== 1 ? 's' : ''}
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-white/5 border border-app-border dark:border-dark-border/50 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-white/10 dark:hover:border-dark-card/0">
+                        <Layers size={14} className="text-app-gray dark:text-dark-text" />
+                        <span className="text-app-gray dark:text-dark-text whitespace-nowrap">
+                          {selectedSlides.length} {selectedSlides.length !== 1 ? t('aiPrompt.slides') : t('aiPrompt.slide')}
                         </span>
                         <button
                           onClick={clearSelectedSlides}
-                          className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors ml-1"
                         >
-                          <X size={12} />
+                          <X size={24} className=" p-1 text-app-gray dark:hover:text-dark-text dark:text-app-light-gray" strokeWidth={2}/>
                         </button>
                       </div>
                     )}
 
                     {/* Selected Profile Indicator */}
                     {selectedProfile && (
-                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
-                        <User size={14} className="text-gray-600" />
-                        <span className="text-gray-700 whitespace-nowrap">
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-white/5 border border-app-border dark:border-dark-border/50 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-white/10 dark:hover:border-dark-card/0">
+                        <User size={14} className="text-app-gray dark:text-dark-text" />
+                        <span className="text-app-gray dark:text-dark-text whitespace-nowrap">
                           {selectedProfile.name}
                         </span>
                         <button
                           onClick={clearSelectedProfile}
-                          className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors ml-1"
                         >
-                          <X size={12} />
+                          <X size={24} className=" p-1 text-app-gray dark:hover:text-dark-text dark:text-app-light-gray" strokeWidth={2}/>
                         </button>
                       </div>
                     )}
 
                     {/* Selected Lesson Indicator */}
                     {selectedLesson && (
-                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
-                        <BookOpen size={14} className="text-gray-600" />
-                        <span className="text-gray-700 whitespace-nowrap">
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-white/5 border border-app-border dark:border-dark-border/50 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-white/10 dark:hover:border-dark-card/0">
+                        <BookOpen size={14} className="text-app-gray dark:text-dark-text" />
+                        <span className="text-app-gray dark:text-dark-text whitespace-nowrap">
                           {selectedLesson.title}
                         </span>
                         <button
                           onClick={clearSelectedLesson}
-                          className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors ml-1"
                         >
-                          <X size={12} />
+                          <X size={24} className=" p-1 text-app-gray dark:hover:text-dark-text dark:text-app-light-gray" strokeWidth={2}/>
                         </button>
                       </div>
                     )}
@@ -827,7 +848,9 @@ export default function AIPromptInput({
                   {/* Fade gradient overlay - only show when there's more content to scroll */}
                   {showFadeGradient && (
                     <div className="absolute right-0 top-0 bottom-0 w-12 pointer-events-none" style={{
-                      background: 'linear-gradient(to right, transparent, white)'
+                      background: theme === 'dark'
+                        ? 'linear-gradient(to right, transparent, #242323)' 
+                        : 'linear-gradient(to right, transparent, white)'
                     }} />
                   )}
                 </div>
@@ -836,7 +859,7 @@ export default function AIPromptInput({
                 <button
                   onClick={handleSubmit}
                   disabled={!prompt.trim() || selectedSlides.length === 0 || isGenerating || isProcessingFile}
-                  className="w-10 h-10 flex items-center justify-center bg-app-green text-white rounded-lg hover:bg-app-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="w-10 h-10 flex items-center justify-center bg-app-green dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-700 dark:hover:bg-dark-accent/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   tabIndex={-1}
                   title="Generate"
                 >
@@ -852,41 +875,41 @@ export default function AIPromptInput({
             
             {/* Files Container - Below the input, inside wrapper */}
             {(showFileContainer || isProcessingFile) && (
-              <div className="my-1 flex flex-wrap gap-2">
+              <div className="mt-2 mb-1 flex flex-wrap gap-2">
 
                 {/* File Upload Container - Square with preview */}
                 {showFileContainer && uploadedFile && (
-                  <div className="group relative p-3 bg-app-blue-50 rounded-lg border border-app-blue-200 animate-slide-up" style={{ width: '200px' }}>
+                  <div className="group relative p-3 bg-app-blue-50 dark:bg-dark-graybg rounded-lg border border-app-blue-200 dark:border-dark-graybg animate-slide-up" style={{ width: '200px' }}>
                     <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="text-xs font-medium text-app-blue-700 truncate" style={{ maxWidth: '150px' }}>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-app-blue-700 dark:text-dark-text truncate" style={{ maxWidth: '150px' }}>
                           {uploadedFile.name}
                         </p>
-                        <p className="text-xs text-app-blue-500 mt-0.5">
-                          {formatFileSize(uploadedFile.size)}
-                        </p>
+                        {uploadedFile.content && (
+                          <p className="text-xs text-app-blue-500 dark:text-app-light-gray line-clamp-2 mt-0.5">
+                            {uploadedFile.content}
+                          </p>
+                        )}
                       </div>
                       <button
                         onClick={removeFile}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-app-blue-100 rounded transition-none"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-app-blue-100 dark:hover:bg-white/10 rounded transition-none ml-2"
                         disabled={isGenerating}
                       >
-                        <X size={14} className="text-app-blue-500" />
+                        <X size={16} className="text-app-blue-500 dark:text-dark-text" />
                       </button>
                     </div>
-                    {uploadedFile.content && (
-                      <p className="text-xs text-app-blue-500 line-clamp-2">
-                        {uploadedFile.content}
-                      </p>
-                    )}
+                    <p className="text-xs text-app-blue-500 bg-app-blue-100 dark:text-app-light-gray dark:bg-white/10 px-1 py-0.5 rounded w-fit">
+                      {uploadedFile.type.toUpperCase()}
+                    </p>
                   </div>
                 )}
 
                 {/* Processing File Indicator */}
                 {isProcessingFile && (
-                  <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
-                    <span className="text-gray-700">Processing file...</span>
+                  <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/50 rounded-lg text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-600 dark:text-gray-400" />
+                    <span className="text-gray-700 dark:text-gray-300">{t('aiPrompt.processingFile')}</span>
                   </div>
                 )}
               </div>
@@ -901,10 +924,10 @@ export default function AIPromptInput({
                   <button
                     key={index}
                     onClick={() => handleSuggestionClick(suggestion.text)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all text-xs"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-dark-card rounded-full border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm dark:hover:shadow-dark transition-all text-xs"
                   >
                     <span>{suggestion.icon}</span>
-                    <span className="text-gray-600">{suggestion.text}</span>
+                    <span className="text-gray-600 dark:text-gray-300">{suggestion.text}</span>
                   </button>
                 ))}
               </div>
