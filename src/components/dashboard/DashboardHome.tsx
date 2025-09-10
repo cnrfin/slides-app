@@ -7,6 +7,8 @@ import AIPromptInput from './AIPromptInput'
 import { getUserStudentProfiles, getCurrentUser } from '@/lib/database'
 import { useLessons } from '@/hooks/useLessons'
 import ToastContainer from '@/components/ui/Toast'
+import StyledGreeting from '@/components/ui/StyledGreeting'
+import useAuthStore from '@/stores/authStore'
 
 export default function DashboardHome() {
   const navigate = useNavigate()
@@ -67,7 +69,8 @@ export default function DashboardHome() {
 
   const getGreeting = () => {
     const hour = new Date().getHours()
-    const name = 'Connor' // You can get this from auth store
+    const { user } = useAuthStore()
+    const name = user?.display_name?.split(' ')[0] || 'User'
     
     if (hour < 12) return t('dashboardHome.greetings.goodMorning', { name })
     if (hour < 17) return t('dashboardHome.greetings.goodAfternoon', { name })
@@ -80,7 +83,7 @@ export default function DashboardHome() {
       <div className="min-h-full flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-8 py-6">
-        <h1 className="text-h2 text-gray-900">{getGreeting()}</h1>
+        <StyledGreeting greeting={getGreeting()} className="text-h2" />
         <p className="text-body mt-1 text-gray-600">{t('dashboardHome.subtitle')}</p>
       </div>
 

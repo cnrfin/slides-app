@@ -1,12 +1,12 @@
 // src/components/dashboard/StudentsPage.tsx
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Search, 
   UserPlus, 
   BookOpen, 
-  Target, 
   Globe2, 
   User, 
   Edit2, 
@@ -15,7 +15,11 @@ import {
   Sparkles, 
   MoreVertical,
   Calendar,
-  Users
+  ChevronRight,
+  ChevronLeft,
+  Languages,
+  Target,
+  Library
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getCurrentUser } from '@/lib/database'
@@ -38,37 +42,59 @@ interface StudentProfile {
   progress?: number
 }
 
+interface StudentLesson {
+  id: string
+  name: string
+  date: string
+  vocabulary: string[]
+}
+
 interface SupportedLanguage {
   name: string
   native_name: string
 }
 
 const LEVEL_LABELS = {
-  'beginner_a1': 'Beginner (A1)',
-  'high_beginner_a2': 'High Beginner (A2)',
-  'intermediate_b1': 'Intermediate (B1)',
-  'high_intermediate_b2': 'High Intermediate (B2)',
-  'advanced_c1': 'Advanced (C1)'
+  'beginner_a1': 'A1',
+  'high_beginner_a2': 'A2',
+  'intermediate_b1': 'B1',
+  'high_intermediate_b2': 'B2',
+  'advanced_c1': 'C1'
 }
 
 const LEVEL_COLORS = {
-  'beginner_a1': 'bg-green-100 text-green-700',
-  'high_beginner_a2': 'bg-blue-100 text-blue-700',
-  'intermediate_b1': 'bg-yellow-100 text-yellow-700',
-  'high_intermediate_b2': 'bg-orange-100 text-orange-700',
-  'advanced_c1': 'bg-purple-100 text-purple-700'
+  'beginner_a1': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  'high_beginner_a2': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  'intermediate_b1': 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
+  'high_intermediate_b2': 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+  'advanced_c1': 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800'
 }
 
-// Custom No Students Icon Component - Similar to Lessons page but without icons
+const ITEMS_PER_PAGE = 10
+
+// Mock data for lessons - in production this would come from the database
+const mockLessons: Record<string, StudentLesson[]> = {}
+
+// Custom No Students Icon Component with animation
 const NoStudentsIcon = () => (
-  <div className="flex flex-col items-center gap-2">
+  <motion.div 
+    className="flex flex-col items-center gap-2"
+    initial={{ scale: 0.9, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    transition={{ duration: 0.3 }}
+  >
     <div className="grid grid-cols-2 gap-2">
-      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
-      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
-      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
-      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
+      {[0, 1, 2, 3].map((index) => (
+        <motion.div
+          key={index}
+          className="w-12 h-12 border-2 border-dashed border-app-border dark:border-dark-border/20 rounded-lg"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: index * 0.1, duration: 0.3 }}
+        />
+      ))}
     </div>
-  </div>
+  </motion.div>
 )
 
 export default function StudentsPage() {
@@ -81,11 +107,77 @@ export default function StudentsPage() {
   const [languages, setLanguages] = useState<SupportedLanguage[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [currentPage, setCurrentPage] = useState(1)
+  const [studentLessons, setStudentLessons] = useState<Record<string, StudentLesson[]>>(mockLessons)
 
   useEffect(() => {
     loadStudents()
     loadLanguages()
   }, [])
+
+  // Close dropdown when clicking outside, pressing Escape, scrolling, or resizing window
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setActiveDropdown(null)
+      setDropdownPosition(null)
+    }
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveDropdown(null)
+        setDropdownPosition(null)
+      }
+    }
+    
+    const handleResize = () => {
+      setActiveDropdown(null)
+      setDropdownPosition(null)
+    }
+    
+    const handleScroll = () => {
+      setActiveDropdown(null)
+      setDropdownPosition(null)
+    }
+    
+    document.addEventListener('click', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('scroll', handleScroll, true)
+    
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('scroll', handleScroll, true)
+    }
+  }, [])
+
+  const handleDropdownClick = (e: React.MouseEvent, studentId: string) => {
+    e.stopPropagation()
+    if (activeDropdown === studentId) {
+      setActiveDropdown(null)
+      setDropdownPosition(null)
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect()
+      setActiveDropdown(studentId)
+      // Position dropdown to the right of the button, or to the left if too close to right edge
+      const dropdownWidth = 192 // w-48 = 12rem = 192px
+      let leftPosition = rect.right + window.scrollX + 5
+      
+      // If dropdown would go off right edge, position it to the left of the button
+      if (leftPosition + dropdownWidth > window.innerWidth) {
+        leftPosition = rect.left + window.scrollX - dropdownWidth - 5
+      }
+      
+      setDropdownPosition({
+        top: rect.top + window.scrollY,
+        left: leftPosition
+      })
+    }
+  }
 
   const loadStudents = async () => {
     try {
@@ -106,14 +198,31 @@ export default function StudentsPage() {
 
       if (error) throw error
       
-      // Add mock lesson count and progress for demo
-      const studentsWithStats = (data || []).map(student => ({
-        ...student,
-        lesson_count: Math.floor(Math.random() * 20) + 5,
-        progress: Math.floor(Math.random() * 100)
-      }))
+      // Add mock lesson count and generate mock lessons for demo
+      const studentsWithStats = (data || []).map(student => {
+        const lessonCount = Math.floor(Math.random() * 20) + 5
+        
+        // Generate mock lessons for this student
+        const lessons: StudentLesson[] = Array.from({ length: Math.min(lessonCount, 5) }, (_, i) => ({
+          id: `lesson-${student.id}-${i}`,
+          name: `Lesson ${i + 1}: ${['Grammar Basics', 'Conversation Practice', 'Vocabulary Building', 'Reading Comprehension', 'Writing Skills'][i % 5]}`,
+          date: new Date(Date.now() - (i * 7 * 24 * 60 * 60 * 1000)).toISOString(),
+          vocabulary: Array.from({ length: Math.floor(Math.random() * 8) + 3 }, (_, j) => 
+            ['apple', 'house', 'car', 'book', 'computer', 'phone', 'table', 'chair', 'window', 'door', 'tree', 'water'][Math.floor(Math.random() * 12)]
+          )
+        }))
+        
+        mockLessons[student.id] = lessons
+        
+        return {
+          ...student,
+          lesson_count: lessonCount,
+          progress: Math.floor(Math.random() * 100)
+        }
+      })
       
       setStudents(studentsWithStats)
+      setStudentLessons(mockLessons)
     } catch (error: any) {
       console.error('Error loading students:', error)
       toast.error(t('studentsPage.errors.loadFailed'))
@@ -217,6 +326,16 @@ export default function StudentsPage() {
     }
   }
 
+  const toggleRowExpansion = (studentId: string) => {
+    const newExpanded = new Set(expandedRows)
+    if (newExpanded.has(studentId)) {
+      newExpanded.delete(studentId)
+    } else {
+      newExpanded.add(studentId)
+    }
+    setExpandedRows(newExpanded)
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const locale = i18n.language || 'en'
@@ -230,242 +349,686 @@ export default function StudentsPage() {
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          student.target_language?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         student.interests?.toLowerCase().includes(searchQuery.toLowerCase())
+                         student.interests?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         student.goals.some(g => g.toLowerCase().includes(searchQuery.toLowerCase()))
     return matchesSearch
   })
 
-  // Check if language is Asian (simplified check)
-  const isAsianLanguage = () => {
-    const lang = i18n.language || 'en'
-    return ['zh', 'ja', 'ko'].some(code => lang.toLowerCase().startsWith(code))
-  }
+  // Pagination
+  const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const paginatedStudents = filteredStudents.slice(startIndex, endIndex)
 
-  const getFontFamily = () => {
-    return isAsianLanguage() ? 'Noto Sans, sans-serif' : 'Inter, sans-serif'
-  }
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-app-green-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">{t('studentsPage.loading')}</p>
-        </div>
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="w-8 h-8 border-2 border-app-green-700 dark:border-dark-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-app-gray dark:text-app-light-gray">{t('studentsPage.loading')}</p>
+        </motion.div>
       </div>
     )
   }
 
   return (
-    <div className="p-2 sm:p-8 max-w-7xl mx-auto">
+    <motion.div 
+      className="p-2 sm:p-8 max-w-7xl mx-auto"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
       {/* Page Header with Add Button */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-4xl font-normal text-app-black-900 dark:text-dark-heading">{t('studentsPage.title')}</h1>
-          <button
+          <h1 className="text-4xl font-normal text-app-black dark:text-dark-text">{t('studentsPage.title')}</h1>
+          <motion.button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-6 py-2.5 bg-app-black dark:bg-dark-accent text-white font-medium rounded-lg hover:scale-105 hover:bg-app-black dark:hover:bg-dark-accent/80 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <UserPlus className="w-5 h-5" />
-            <span className="hidden sm:inline">{t('studentsPage.addStudent')}</span>
-          </button>
+            <UserPlus size={18} strokeWidth={1.5} />
+            <span className="hidden sm:inline text-sm font-medium">{t('studentsPage.addStudent')}</span>
+          </motion.button>
         </div>
         
         {/* Search Bar - Full Width */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-app-gray dark:text-app-light-gray w-5 h-5" strokeWidth={1.5} />
           <input
             type="text"
             placeholder={t('studentsPage.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-app-border dark:border-dark-border rounded-lg bg-white dark:bg-dark-card focus:bg-white dark:focus:bg-dark-card focus:outline-none focus:ring-2 focus:ring-app-secondary-bg dark:focus:ring-dark-accent focus:border-app-secondary-bg dark:focus:border-dark-accent transition-all dark:text-dark-text dark:placeholder-gray-500"
+            className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg outline-none focus:ring-2 focus:ring-app-green-700/20 dark:focus:ring-dark-accent/20 focus:border-app-green-700 dark:focus:border-dark-accent transition-all dark:text-dark-text dark:placeholder-dark-border"
           />
         </div>
       </div>
 
-      {/* Students Grid or Empty State */}
-      {filteredStudents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16">
-          <NoStudentsIcon />
-          <h3 
-            className="text-2xl font-medium text-gray-700 dark:text-gray-300 mt-6 mb-3"
-            style={{ fontFamily: getFontFamily() }}
+      {/* Students Table or Empty State */}
+      <AnimatePresence mode="wait">
+        {filteredStudents.length === 0 ? (
+          <motion.div 
+            key="empty"
+            className="flex flex-col items-center justify-center py-16"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
           >
-            {searchQuery 
-              ? t('studentsPage.noStudentsFound')
-              : t('studentsPage.empty.title')}
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-8">
-            {searchQuery 
-              ? t('studentsPage.empty.tryAdjusting')
-              : t('studentsPage.empty.description')}
-          </p>
-          {!searchQuery && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-6 py-3 bg-app-black dark:bg-dark-accent text-white font-medium hover:scale-105 rounded-lg hover:bg-app-black dark:hover:bg-dark-accent/80 transition-colors"
-            >
-              {t('studentsPage.empty.addButton')}
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStudents.map((student) => (
-            <div
-              key={student.id}
-              className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl hover:shadow-lg dark:hover:shadow-dark transition-shadow"
-            >
-              {/* Student Header */}
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="w-12 h-12 bg-gradient-to-br from-app-purple-500 to-blue-600 rounded-full flex-shrink-0 flex items-center justify-center text-white font-medium text-sm">
-                      {student.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-h5 text-gray-900 dark:text-dark-heading line-clamp-1">
-                        {student.name}
-                      </h3>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full mt-1 ${LEVEL_COLORS[student.level]}`}>
-                        {LEVEL_LABELS[student.level]}
-                      </span>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                    }}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg"
+            <NoStudentsIcon />
+            <h3 className="text-2xl font-medium text-app-black dark:text-dark-text mt-6 mb-3">
+              {searchQuery 
+                ? t('studentsPage.noStudentsFound')
+                : t('studentsPage.empty.title')}
+            </h3>
+            <p className="text-app-gray dark:text-app-light-gray text-center max-w-md mb-8">
+              {searchQuery 
+                ? t('studentsPage.empty.tryAdjusting')
+                : t('studentsPage.empty.description')}
+            </p>
+            {!searchQuery && (
+              <motion.button
+                onClick={() => setShowAddModal(true)}
+                className="px-6 py-3 bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {t('studentsPage.empty.addButton')}
+              </motion.button>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="table"
+            className="bg-white dark:bg-dark-card rounded-lg border border-app-border dark:border-dark-border/20 overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* Table - Desktop */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-app-secondary-bg-solid dark:bg-white/5 border-b border-app-border dark:border-dark-border/20">
+                  <tr>
+                    <th className="w-10 px-4 py-3"></th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-app-gray dark:text-app-light-gray">
+                      {t('studentsPage.table.name')}
+                    </th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-app-gray dark:text-app-light-gray">
+                      {t('studentsPage.table.level')}
+                    </th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-app-gray dark:text-app-light-gray">
+                      {t('studentsPage.table.learning')}
+                    </th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-app-gray dark:text-app-light-gray">
+                      {t('studentsPage.table.goals')}
+                    </th>
+                    <th className="text-center px-4 py-3 text-sm font-medium text-app-gray dark:text-app-light-gray w-20">
+                      {t('studentsPage.table.tools')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedStudents.map((student, index) => (
+                    <React.Fragment key={student.id}>
+                      <motion.tr
+                        className={`hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-colors ${
+                          index < paginatedStudents.length - 1 ? 'border-b border-app-border dark:border-dark-border/20' : ''
+                        }`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05, duration: 0.3 }}
+                      >
+                        <td className="px-4 py-4">
+                          <button
+                            onClick={() => toggleRowExpansion(student.id)}
+                            className="p-1 hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded transition-all"
+                          >
+                            <ChevronRight 
+                              size={16} 
+                              className={`text-app-gray dark:text-app-light-gray transition-transform ${
+                                expandedRows.has(student.id) ? 'rotate-90' : ''
+                              }`} 
+                              strokeWidth={1.5} 
+                            />
+                          </button>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-app-green-600 to-app-green-700 dark:from-dark-accent dark:to-dark-accent/80 rounded-full flex-shrink-0 flex items-center justify-center text-white font-medium text-xs shadow-sm">
+                              {student.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-app-black dark:text-dark-text">
+                              {student.name}
+                              </p>
+                              {student.native_language && (
+                              <p className="text-xs text-app-gray dark:text-app-light-gray mt-0.5">
+                              {student.native_language}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${LEVEL_COLORS[student.level]}`}>
+                            {LEVEL_LABELS[student.level]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            
+                            <span className="text-sm text-app-black dark:text-dark-text">{student.target_language}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          {student.goals.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {student.goals.slice(0, 2).map((goal, idx) => (
+                                <span key={idx} className="inline-flex px-2 py-0.5 bg-app-secondary-bg-solid dark:bg-white/5 text-app-gray dark:text-app-light-gray rounded text-xs">
+                                  {goal}
+                                </span>
+                              ))}
+                              {student.goals.length > 2 && (
+                                <span className="text-xs text-app-gray dark:text-app-light-gray">
+                                  +{student.goals.length - 2} {t('studentsPage.more')}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-app-gray dark:text-app-light-gray italic">{t('studentsPage.table.noGoalsSet')}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <button 
+                            onClick={(e) => handleDropdownClick(e, student.id)}
+                            className={`p-1.5 rounded-lg transition-all mx-auto ${
+                              activeDropdown === student.id 
+                                ? 'bg-app-secondary-bg-solid dark:bg-white/10' 
+                                : 'hover:bg-app-secondary-bg-solid dark:hover:bg-white/10'
+                            }`}
+                          >
+                            <MoreVertical size={16} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
+                          </button>
+                        </td>
+                      </motion.tr>
+                      
+                      {/* Expanded Row - Lessons */}
+                      <AnimatePresence>
+                        {expandedRows.has(student.id) && (
+                          <>
+                            {studentLessons[student.id] && studentLessons[student.id].length > 0 ? (
+                              studentLessons[student.id].map((lesson, lessonIndex) => (
+                                <motion.tr
+                                  key={lesson.id}
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  transition={{ duration: 0.2, delay: lessonIndex * 0.02 }}
+                                  className={`bg-white dark:bg-dark-card ${
+                                    lessonIndex < studentLessons[student.id].length - 1 || index < paginatedStudents.length - 1
+                                      ? 'border-b border-app-border dark:border-dark-border/20' 
+                                      : ''
+                                  }`}
+                                >
+                                  <td className="px-4 py-2" colSpan={2}>
+                                    <button
+                                      onClick={() => navigate(`/canvas/${lesson.id}`)}
+                                      className="text-sm text-app-black dark:text-dark-text hover:text-app-green-700 dark:hover:text-dark-accent transition-colors text-left"
+                                    >
+                                      {lesson.name}
+                                    </button>
+                                  </td>
+                                  <td className="px-4 py-2" colSpan={4}>
+                                    <div className="flex flex-wrap gap-1">
+                                      {lesson.vocabulary.map((word, idx) => (
+                                        <span key={idx} className="inline-flex px-2 py-0.5 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded-full text-xs">
+                                          {word}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </td>
+                                </motion.tr>
+                              ))
+                            ) : (
+                              <motion.tr
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="bg-white dark:bg-dark-card border-b border-app-border dark:border-dark-border/20"
+                              >
+                                <td colSpan={6} className="px-4 py-6">
+                                  <div className="text-center">
+                                    <BookOpen size={20} className="mx-auto text-app-gray dark:text-app-light-gray mb-2" strokeWidth={1.5} />
+                                    <p className="text-sm text-app-gray dark:text-app-light-gray">
+                                      {t('studentsPage.table.noLessonsYet')}
+                                    </p>
+                                    <button
+                                      onClick={() => navigate('/dashboard', {
+                                        state: {
+                                          expandPrompt: true,
+                                          selectedStudent: {
+                                            id: student.id,
+                                            name: student.name,
+                                            target_language: student.target_language,
+                                            native_language: student.native_language,
+                                            level: student.level,
+                                            goals: student.goals,
+                                            interests: student.interests
+                                          }
+                                        }
+                                      })}
+                                      className="mt-2 px-3 py-1.5 text-xs bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all"
+                                    >
+                                      {t('studentsPage.table.createFirstLesson')}
+                                    </button>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            )}
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards - Two Column Layout */}
+            <div className="sm:hidden">
+              {paginatedStudents.map((student, index) => (
+                <React.Fragment key={student.id}>
+                  <motion.div
+                    className={`overflow-hidden ${
+                      index < paginatedStudents.length - 1 ? 'border-b border-app-border dark:border-dark-border/20' : ''
+                    }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
                   >
-                    <MoreVertical className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    {/* Main Card Content */}
+                    <div className="p-4">
+                      {/* Two Column Layout */}
+                      <div className="space-y-3">
+                        {/* Name Row */}
+                        <div className="flex justify-between items-start">
+                          <span className="text-xs uppercase tracking-wide text-app-gray dark:text-app-light-gray font-medium">
+                            {t('studentsPage.table.name')}
+                          </span>
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-app-black dark:text-dark-text">
+                              {student.name}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Level Row */}
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs uppercase tracking-wide text-app-gray dark:text-app-light-gray font-medium">
+                            {t('studentsPage.table.level')}
+                          </span>
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full border ${LEVEL_COLORS[student.level]}`}>
+                            {LEVEL_LABELS[student.level]}
+                          </span>
+                        </div>
+
+                        {/* Learning Row */}
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs uppercase tracking-wide text-app-gray dark:text-app-light-gray font-medium">
+                            {t('studentsPage.table.learning')}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            
+                            <span className="text-sm text-app-black dark:text-dark-text">
+                              {student.target_language}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Native Language Row (if exists) */}
+                        {student.native_language && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs uppercase tracking-wide text-app-gray dark:text-app-light-gray font-medium">
+                              {t('studentsPage.native')}
+                            </span>
+                            <span className="text-sm text-app-black dark:text-dark-text">
+                              {student.native_language}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Goals Row */}
+                        <div className="flex justify-between items-start">
+                          <span className="text-xs uppercase tracking-wide text-app-gray dark:text-app-light-gray font-medium">
+                            {t('studentsPage.table.goals')}
+                          </span>
+                          <div className="text-right">
+                            {student.goals.length > 0 ? (
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                {student.goals.map((goal, idx) => (
+                                  <span key={idx} className="inline-flex px-2 py-0.5 bg-app-secondary-bg-solid dark:bg-white/5 text-app-gray dark:text-app-light-gray rounded text-xs">
+                                    {goal}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-app-gray dark:text-app-light-gray italic">
+                                {t('studentsPage.table.noGoalsSet')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Lessons Count Row */}
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs uppercase tracking-wide text-app-gray dark:text-app-light-gray font-medium">
+                            {t('studentsPage.lessons')}
+                          </span>
+                          <span className="text-sm text-app-black dark:text-dark-text">
+                            {student.lesson_count || 0}
+                          </span>
+                        </div>
+
+                        {/* Added Date Row */}
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs uppercase tracking-wide text-app-gray dark:text-app-light-gray font-medium">
+                            {t('studentsPage.added')}
+                          </span>
+                          <span className="text-sm text-app-black dark:text-dark-text">
+                            {formatDate(student.created_at)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-app-border/10 dark:border-dark-border/10">
+                        <button
+                          onClick={() => toggleRowExpansion(student.id)}
+                          className="flex items-center gap-2 text-xs text-app-green-700 dark:text-dark-accent hover:text-app-green-800 dark:hover:text-dark-accent/80 transition-colors"
+                        >
+                          <ChevronRight 
+                            size={14} 
+                            className={`transition-transform ${expandedRows.has(student.id) ? 'rotate-90' : ''}`} 
+                            strokeWidth={1.5} 
+                          />
+                          {t('studentsPage.table.recentLessons')}
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => navigate('/dashboard', {
+                              state: {
+                                expandPrompt: true,
+                                selectedStudent: {
+                                  id: student.id,
+                                  name: student.name,
+                                  target_language: student.target_language,
+                                  native_language: student.native_language,
+                                  level: student.level,
+                                  goals: student.goals,
+                                  interests: student.interests
+                                }
+                              }
+                            })}
+                            className="p-1.5 text-app-green-700 dark:text-dark-accent hover:bg-app-green-50 dark:hover:bg-dark-accent/10 rounded-lg transition-all"
+                            title={t('studentsPage.actions.createLesson')}
+                          >
+                            <Sparkles size={16} strokeWidth={1.5} />
+                          </button>
+                          <button
+                            onClick={() => setEditingStudent(student)}
+                            className="p-1.5 text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-lg transition-all"
+                            title={t('studentsPage.actions.edit')}
+                          >
+                            <Edit2 size={16} strokeWidth={1.5} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStudent(student.id)}
+                            className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                            title={t('studentsPage.actions.delete')}
+                          >
+                            <Trash2 size={16} strokeWidth={1.5} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expanded Lessons Section */}
+                    <AnimatePresence>
+                      {expandedRows.has(student.id) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="bg-white dark:bg-dark-card border-t border-app-border dark:border-dark-border/20"
+                        >
+                          {studentLessons[student.id] && studentLessons[student.id].length > 0 ? (
+                            <div>
+                              {studentLessons[student.id].map((lesson, lessonIndex) => (
+                                <div 
+                                  key={lesson.id} 
+                                  className="flex justify-between items-center px-4 py-2 border-b border-app-border/10 dark:border-dark-border/10 last:border-b-0"
+                                >
+                                  <button
+                                    onClick={() => navigate(`/canvas/${lesson.id}`)}
+                                    className="text-sm text-app-black dark:text-dark-text hover:text-app-green-700 dark:hover:text-dark-accent transition-colors text-left flex-1"
+                                  >
+                                    {lesson.name}
+                                  </button>
+                                  <div className="flex flex-wrap gap-1 justify-end max-w-[50%]">
+                                    {lesson.vocabulary.slice(0, 2).map((word, idx) => (
+                                      <span key={idx} className="inline-flex px-2 py-0.5 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded-full text-xs">
+                                        {word}
+                                      </span>
+                                    ))}
+                                    {lesson.vocabulary.length > 2 && (
+                                      <span className="text-xs text-app-gray dark:text-app-light-gray">+{lesson.vocabulary.length - 2}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 px-4">
+                              <BookOpen size={20} className="mx-auto text-app-gray dark:text-app-light-gray mb-2" strokeWidth={1.5} />
+                              <p className="text-xs text-app-gray dark:text-app-light-gray">
+                                {t('studentsPage.table.noLessonsYet')}
+                              </p>
+                              <button
+                                onClick={() => navigate('/dashboard', {
+                                  state: {
+                                    expandPrompt: true,
+                                    selectedStudent: {
+                                      id: student.id,
+                                      name: student.name,
+                                      target_language: student.target_language,
+                                      native_language: student.native_language,
+                                      level: student.level,
+                                      goals: student.goals,
+                                      interests: student.interests
+                                    }
+                                  }
+                                })}
+                                className="mt-2 px-3 py-1 text-xs bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all"
+                              >
+                                {t('studentsPage.table.createFirstLesson')}
+                              </button>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-app-border dark:border-dark-border/20">
+                <p className="text-sm text-app-gray dark:text-app-light-gray">
+                  {t('studentsPage.table.showing', { 
+                    start: startIndex + 1, 
+                    end: Math.min(endIndex, filteredStudents.length), 
+                    total: filteredStudents.length 
+                  })}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1.5 hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft size={16} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 text-sm rounded-lg transition-all ${
+                          page === currentPage
+                            ? 'bg-app-green-700 dark:bg-dark-accent text-white'
+                            : 'text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1.5 hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight size={16} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
                   </button>
                 </div>
-
-                {/* Language Info */}
-                <div className="mb-4 space-y-2">
-                  <div className="flex items-center gap-2 text-body-small text-gray-600 dark:text-gray-400">
-                    <Globe2 className="w-4 h-4" />
-                    <span>{t('studentsPage.learning')} {student.target_language}</span>
-                  </div>
-                  {student.native_language && (
-                    <div className="flex items-center gap-2 text-body-small text-gray-600 dark:text-gray-400">
-                      <User className="w-4 h-4" />
-                      <span>{t('studentsPage.native')} {student.native_language}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Student Stats */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="flex items-center gap-2 text-body-small text-gray-600 dark:text-gray-400">
-                    <BookOpen className="w-4 h-4" />
-                    <span>{t('studentsPage.lessonCount', { count: student.lesson_count || 0 })}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-body-small text-gray-600 dark:text-gray-400">
-                    <Target className="w-4 h-4" />
-                    <span>{student.progress || 0}% {t('studentsPage.progress')}</span>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                {student.progress !== undefined && (
-                  <div className="mb-4">
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div 
-                        className="bg-app-purple-600 dark:bg-dark-accent h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${student.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Goals Section */}
-                {student.goals.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-caption text-gray-500 dark:text-gray-400 mb-2">{t('studentsPage.goals')}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {student.goals.slice(0, 2).map((goal, idx) => (
-                        <span key={idx} className="inline-flex px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-caption">
-                          {goal}
-                        </span>
-                      ))}
-                      {student.goals.length > 2 && (
-                        <span className="inline-flex px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded text-caption">
-                          +{student.goals.length - 2} {t('studentsPage.more')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Student Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <div className="text-caption text-gray-500 dark:text-gray-400">
-                    <Calendar className="w-3 h-3 inline mr-1" />
-                    {t('studentsPage.added')} {formatDate(student.created_at)}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setEditingStudent(student)}
-                      className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-                      title={t('studentsPage.actions.edit')}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteStudent(student.id)}
-                      className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      title={t('studentsPage.actions.delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => navigate('/dashboard', {
-                        state: {
-                          expandPrompt: true,
-                          selectedStudent: {
-                            id: student.id,
-                            name: student.name,
-                            target_language: student.target_language,
-                            native_language: student.native_language,
-                            level: student.level,
-                            goals: student.goals,
-                            interests: student.interests
-                          }
-                        }
-                      })}
-                      className="p-2 text-app-purple-600 dark:text-app-purple-400 hover:bg-app-purple-50 dark:hover:bg-app-purple-900/20 rounded-lg transition-colors"
-                      title={t('studentsPage.actions.createLesson')}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Dropdown Menu - Outside table */}
+      <AnimatePresence>
+        {activeDropdown && dropdownPosition && (
+          <>
+            {/* Invisible backdrop to catch clicks */}
+            <div 
+              className="fixed inset-0 z-[9998]" 
+              onClick={() => {
+                setActiveDropdown(null)
+                setDropdownPosition(null)
+              }}
+            />
+          <motion.div
+            className="fixed w-48 bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg shadow-xl z-[9999]"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`
+            }}
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            transition={{ duration: 0.15 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                const student = filteredStudents.find(s => s.id === activeDropdown)
+                if (student) {
+                  navigate('/dashboard', {
+                    state: {
+                      expandPrompt: true,
+                      selectedStudent: {
+                        id: student.id,
+                        name: student.name,
+                        target_language: student.target_language,
+                        native_language: student.native_language,
+                        level: student.level,
+                        goals: student.goals,
+                        interests: student.interests
+                      }
+                    }
+                  })
+                }
+                setActiveDropdown(null)
+                setDropdownPosition(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-colors flex items-center gap-2 rounded-t-lg"
+            >
+              <Sparkles size={14} strokeWidth={1.5} />
+              {t('studentsPage.actions.createLesson')}
+            </button>
+            <button
+              onClick={() => {
+                const student = filteredStudents.find(s => s.id === activeDropdown)
+                if (student) {
+                  setEditingStudent(student)
+                }
+                setActiveDropdown(null)
+                setDropdownPosition(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+            >
+              <Edit2 size={14} strokeWidth={1.5} />
+              {t('studentsPage.actions.edit')}
+            </button>
+            <button
+              onClick={() => {
+                handleDeleteStudent(activeDropdown)
+                setActiveDropdown(null)
+                setDropdownPosition(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex items-center gap-2 rounded-b-lg"
+            >
+              <Trash2 size={14} strokeWidth={1.5} />
+              {t('studentsPage.actions.delete')}
+            </button>
+          </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Add/Edit Modal */}
-      {(showAddModal || editingStudent) && (
-        <StudentModal 
-          onClose={() => {
-            setShowAddModal(false)
-            setEditingStudent(null)
-          }}
-          onSave={editingStudent 
-            ? (data) => handleUpdateStudent(editingStudent.id, data)
-            : handleAddStudent
-          }
-          languages={languages}
-          saving={saving}
-          title={editingStudent ? t('studentsPage.modal.editTitle') : t('studentsPage.modal.addTitle')}
-          initialData={editingStudent || undefined}
-        />
-      )}
-    </div>
+      <AnimatePresence mode="wait">
+        {(showAddModal || editingStudent) && (
+          <StudentModal 
+            onClose={() => {
+              setShowAddModal(false)
+              setEditingStudent(null)
+            }}
+            onSave={editingStudent 
+              ? (data) => handleUpdateStudent(editingStudent.id, data)
+              : handleAddStudent
+            }
+            languages={languages}
+            saving={saving}
+            title={editingStudent ? t('studentsPage.modal.editTitle') : t('studentsPage.modal.addTitle')}
+            initialData={editingStudent || undefined}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
@@ -515,20 +1078,34 @@ function StudentModal({ onClose, onSave, languages, saving, title, initialData }
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-dark-card rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-semibold mb-4 dark:text-dark-heading">{title}</h2>
+    <motion.div 
+      className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onClick={onClose}
+    >
+      <motion.div 
+        className="bg-white dark:bg-dark-card rounded-lg p-6 w-full max-w-md border border-app-border dark:border-dark-border/20 shadow-xl"
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-xl font-medium mb-4 text-app-black dark:text-dark-text">{title}</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-app-gray dark:text-app-light-gray mb-1">
               {t('studentsPage.modal.name')} *
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500 dark:focus:ring-dark-accent dark:bg-dark-bg dark:text-dark-text"
+              className="w-full px-3 py-2 text-sm bg-transparent border border-app-border dark:border-dark-border/20 rounded-lg outline-none focus:ring-2 focus:ring-app-green-700/20 dark:focus:ring-dark-accent/20 focus:border-app-green-700 dark:focus:border-dark-accent transition-all dark:text-dark-text"
               required
               disabled={saving}
             />
@@ -536,13 +1113,13 @@ function StudentModal({ onClose, onSave, languages, saving, title, initialData }
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-app-gray dark:text-app-light-gray mb-1">
                 {t('studentsPage.modal.targetLanguage')} *
               </label>
               <select
                 value={formData.target_language}
                 onChange={(e) => setFormData({ ...formData, target_language: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500 dark:focus:ring-dark-accent dark:bg-dark-bg dark:text-dark-text"
+                className="w-full px-3 py-2 text-sm bg-transparent border border-app-border dark:border-dark-border/20 rounded-lg outline-none focus:ring-2 focus:ring-app-green-700/20 dark:focus:ring-dark-accent/20 focus:border-app-green-700 dark:focus:border-dark-accent transition-all dark:text-dark-text"
                 required
                 disabled={saving}
               >
@@ -556,13 +1133,13 @@ function StudentModal({ onClose, onSave, languages, saving, title, initialData }
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-app-gray dark:text-app-light-gray mb-1">
                 {t('studentsPage.modal.nativeLanguage')}
               </label>
               <select
                 value={formData.native_language}
                 onChange={(e) => setFormData({ ...formData, native_language: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500 dark:focus:ring-dark-accent dark:bg-dark-bg dark:text-dark-text"
+                className="w-full px-3 py-2 text-sm bg-transparent border border-app-border dark:border-dark-border/20 rounded-lg outline-none focus:ring-2 focus:ring-app-green-700/20 dark:focus:ring-dark-accent/20 focus:border-app-green-700 dark:focus:border-dark-accent transition-all dark:text-dark-text"
                 disabled={saving}
               >
                 <option value="">{t('studentsPage.modal.selectLanguage')}</option>
@@ -576,13 +1153,13 @@ function StudentModal({ onClose, onSave, languages, saving, title, initialData }
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-app-gray dark:text-app-light-gray mb-1">
               {t('studentsPage.modal.level')} *
             </label>
             <select
               value={formData.level}
               onChange={(e) => setFormData({ ...formData, level: e.target.value as StudentProfile['level'] })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500 dark:focus:ring-dark-accent dark:bg-dark-bg dark:text-dark-text"
+              className="w-full px-3 py-2 text-sm bg-transparent border border-app-border dark:border-dark-border/20 rounded-lg outline-none focus:ring-2 focus:ring-app-green-700/20 dark:focus:ring-dark-accent/20 focus:border-app-green-700 dark:focus:border-dark-accent transition-all dark:text-dark-text"
               required
               disabled={saving}
             >
@@ -593,7 +1170,7 @@ function StudentModal({ onClose, onSave, languages, saving, title, initialData }
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-app-gray dark:text-app-light-gray mb-1">
               {t('studentsPage.modal.learningGoals')}
             </label>
             <div className="flex gap-2">
@@ -603,69 +1180,82 @@ function StudentModal({ onClose, onSave, languages, saving, title, initialData }
                 onChange={(e) => setCurrentGoal(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addGoal())}
                 placeholder={t('studentsPage.modal.goalPlaceholder')}
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500 dark:focus:ring-dark-accent dark:bg-dark-bg dark:text-dark-text dark:placeholder-gray-500"
+                className="flex-1 px-3 py-2 text-sm bg-transparent border border-app-border dark:border-dark-border/20 rounded-lg outline-none focus:ring-2 focus:ring-app-green-700/20 dark:focus:ring-dark-accent/20 focus:border-app-green-700 dark:focus:border-dark-accent transition-all dark:text-dark-text dark:placeholder-dark-border"
                 disabled={saving}
               />
-              <button
+              <motion.button
                 type="button"
                 onClick={addGoal}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="px-4 py-2 bg-app-secondary-bg-solid dark:bg-white/5 text-app-gray dark:text-app-light-gray rounded-lg hover:bg-app-secondary-bg-solid/80 dark:hover:bg-white/10 transition-all text-sm"
                 disabled={saving}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
                 {t('studentsPage.modal.add')}
-              </button>
+              </motion.button>
             </div>
             {formData.goals.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {formData.goals.map((goal, idx) => (
-                  <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-app-purple-100 dark:bg-app-purple-900/30 text-app-purple-800 dark:text-app-purple-300 rounded-full text-sm">
+                  <motion.span 
+                    key={idx} 
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded-full text-xs"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  >
                     {goal}
                     <button
                       type="button"
                       onClick={() => removeGoal(goal)}
-                      className="hover:bg-app-purple-200 dark:hover:bg-app-purple-800/50 rounded-full p-0.5"
+                      className="hover:bg-app-green-200 dark:hover:bg-dark-accent/30 rounded-full p-0.5"
                       disabled={saving}
                     >
-                      <X className="w-3 h-3" />
+                      <X size={12} strokeWidth={2} />
                     </button>
-                  </span>
+                  </motion.span>
                 ))}
               </div>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-app-gray dark:text-app-light-gray mb-1">
               {t('studentsPage.modal.interests')}
             </label>
             <textarea
               value={formData.interests}
               onChange={(e) => setFormData({ ...formData, interests: e.target.value })}
               placeholder={t('studentsPage.modal.interestsPlaceholder')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-app-purple-500 dark:focus:ring-dark-accent dark:bg-dark-bg dark:text-dark-text dark:placeholder-gray-500 min-h-[80px]"
+              className="w-full px-3 py-2 text-sm bg-transparent border border-app-border dark:border-dark-border/20 rounded-lg outline-none focus:ring-2 focus:ring-app-green-700/20 dark:focus:ring-dark-accent/20 focus:border-app-green-700 dark:focus:border-dark-accent transition-all dark:text-dark-text dark:placeholder-dark-border min-h-[80px] resize-none"
               disabled={saving}
             />
           </div>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <button
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-app-border/10 dark:border-dark-border/10">
+            <motion.button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 text-sm text-app-gray dark:text-app-light-gray border border-app-border dark:border-dark-border/20 rounded-lg hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all"
               disabled={saving}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               {t('studentsPage.modal.cancel')}
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="submit"
-              className="px-4 py-2 bg-app-purple-600 dark:bg-dark-accent text-white rounded-lg hover:bg-app-purple-700 dark:hover:bg-dark-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={saving || !formData.name || !formData.target_language}
+              whileHover={{ scale: saving ? 1 : 1.02 }}
+              whileTap={{ scale: saving ? 1 : 0.98 }}
             >
               {saving ? t('studentsPage.modal.saving') : (initialData ? t('studentsPage.modal.updateStudent') : t('studentsPage.modal.addStudent'))}
-            </button>
+            </motion.button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

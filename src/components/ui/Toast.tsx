@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom'
-import { X, CheckCircle, AlertCircle, Info, Loader2 } from 'lucide-react'
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle, Loader2 } from 'lucide-react'
+import useUIStore from '@/stores/uiStore'
 
-export type ToastType = 'success' | 'error' | 'info' | 'loading'
+export type ToastType = 'success' | 'error' | 'info' | 'warning' | 'loading'
 
 export interface ToastProps {
   id: string
@@ -18,6 +19,7 @@ interface ToastState extends ToastProps {
 
 const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 3000, onClose }) => {
   const [isVisible, setIsVisible] = useState(false)
+  const { theme } = useUIStore()
 
   useEffect(() => {
     // Trigger animation on mount
@@ -47,75 +49,96 @@ const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 3000, onClo
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-500" />
+        return <CheckCircle className="w-5 h-5 text-app-green dark:text-dark-accent" strokeWidth={1.5} />
       case 'error':
-        return <AlertCircle className="w-5 h-5 text-red-500" />
+        return <AlertCircle className="w-5 h-5 text-app-red dark:text-app-red-400" strokeWidth={1.5} />
       case 'info':
-        return <Info className="w-5 h-5 text-blue-500" />
+        return <Info className="w-5 h-5 text-app-blue dark:text-app-blue-400" strokeWidth={1.5} />
+      case 'warning':
+        return <AlertTriangle className="w-5 h-5 text-app-yellow-600 dark:text-app-yellow-500" strokeWidth={1.5} />
       case 'loading':
-        return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+        return <Loader2 className="w-5 h-5 text-app-purple dark:text-app-purple-400 animate-spin" strokeWidth={1.5} />
     }
   }
 
-  const getBackgroundColor = () => {
+  const getStyles = () => {
+    const baseClasses = "flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-sm"
+    
     switch (type) {
       case 'success':
-        return 'bg-green-50 border-green-200'
+        return `${baseClasses} bg-white dark:bg-dark-card border-app-green-200 dark:border-dark-accent/30`
       case 'error':
-        return 'bg-red-50 border-red-200'
+        return `${baseClasses} bg-white dark:bg-dark-card border-app-red-200 dark:border-app-red-900/30`
       case 'info':
-        return 'bg-blue-50 border-blue-200'
+        return `${baseClasses} bg-white dark:bg-dark-card border-app-blue-200 dark:border-app-blue-900/30`
+      case 'warning':
+        return `${baseClasses} bg-white dark:bg-dark-card border-app-yellow-200 dark:border-app-yellow-900/30`
       case 'loading':
-        return 'bg-blue-50 border-blue-200'
+        return `${baseClasses} bg-white dark:bg-dark-card border-app-purple-200 dark:border-app-purple-900/30`
     }
   }
 
   const getTextColor = () => {
     switch (type) {
       case 'success':
-        return 'text-green-800'
+        return 'text-app-black dark:text-dark-text'
       case 'error':
-        return 'text-red-800'
+        return 'text-app-black dark:text-dark-text'
       case 'info':
-        return 'text-blue-800'
+        return 'text-app-black dark:text-dark-text'
+      case 'warning':
+        return 'text-app-black dark:text-dark-text'
       case 'loading':
-        return 'text-blue-800'
+        return 'text-app-black dark:text-dark-text'
     }
   }
 
   const getCloseButtonColor = () => {
+    return 'text-app-gray dark:text-app-light-gray hover:text-app-black dark:hover:text-dark-text'
+  }
+
+  const getAccentBar = () => {
     switch (type) {
       case 'success':
-        return 'text-green-700 hover:text-green-900'
+        return 'bg-app-green dark:bg-dark-accent'
       case 'error':
-        return 'text-red-700 hover:text-red-900'
+        return 'bg-app-red dark:bg-app-red-400'
       case 'info':
-        return 'text-blue-700 hover:text-blue-900'
+        return 'bg-app-blue dark:bg-app-blue-400'
+      case 'warning':
+        return 'bg-app-yellow-600 dark:bg-app-yellow-500'
       case 'loading':
-        return 'text-blue-700 hover:text-blue-900'
+        return 'bg-app-purple dark:bg-app-purple-400'
     }
   }
 
   return (
     <div
       className={`
-        flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border
-        ${getBackgroundColor()}
-        transition-all duration-200 ease-out
+        ${getStyles()}
+        transition-all duration-200 ease-out relative overflow-hidden
         ${isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-2'}
       `}
-      style={{ minWidth: '300px', maxWidth: '500px' }}
+      style={{ minWidth: '320px', maxWidth: '500px' }}
     >
-      {getIcon()}
-      <span className={`flex-1 text-sm font-medium ${getTextColor()}`}>
-        {message}
-      </span>
+      {/* Accent bar on the left */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${getAccentBar()}`} />
+      
+      {/* Content */}
+      <div className="ml-2 flex items-center gap-3 flex-1">
+        {getIcon()}
+        <span className={`flex-1 text-sm font-medium ${getTextColor()}`}>
+          {message}
+        </span>
+      </div>
+      
+      {/* Close button */}
       {type !== 'loading' && (
         <button
           onClick={handleClose}
-          className="p-1 hover:bg-white/50 rounded transition-colors"
+          className={`p-1.5 hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 rounded-md transition-colors ${getCloseButtonColor()}`}
         >
-          <X className={`w-4 h-4 ${getCloseButtonColor()}`} />
+          <X className="w-4 h-4" strokeWidth={1.5} />
         </button>
       )}
     </div>

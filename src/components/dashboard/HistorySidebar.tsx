@@ -1,9 +1,10 @@
 // src/components/dashboard/HistorySidebar.tsx
 import { useState, useEffect } from 'react'
-import { History, X } from 'lucide-react'
+import { History, X, Copy, Clock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import useAuthStore from '@/stores/authStore'
 import { getPromptHistory, type PromptHistoryItem } from '@/lib/prompt-history'
+import { toast } from '@/utils/toast'
 
 export default function HistorySidebar() {
   const { t } = useTranslation('dashboard')
@@ -30,6 +31,7 @@ export default function HistorySidebar() {
       }
     } catch (error) {
       console.error('Error fetching prompt history:', error)
+      toast.error(t('history.fetchError'))
     } finally {
       setIsLoading(false)
     }
@@ -58,19 +60,8 @@ export default function HistorySidebar() {
   }
 
   const handlePromptClick = (prompt: string) => {
-    // You can add functionality here to use the selected prompt
-    // For example, navigate to canvas with this prompt or copy to clipboard
     navigator.clipboard.writeText(prompt)
-    
-    // Show a brief notification (you might want to add a toast component)
-    const notification = document.createElement('div')
-    notification.className = 'fixed bottom-4 right-4 bg-gray-800 dark:bg-dark-card text-white dark:text-dark-text px-4 py-2 rounded-lg shadow-lg z-50 animate-in'
-    notification.textContent = t('history.copiedToClipboard')
-    document.body.appendChild(notification)
-    
-    setTimeout(() => {
-      notification.remove()
-    }, 2000)
+    toast.success(t('history.copiedToClipboard'))
   }
 
   // Close sidebar when clicking escape
@@ -87,82 +78,110 @@ export default function HistorySidebar() {
 
   return (
     <>
-      {/* History Button */}
+      {/* History Button - Updated styling */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed top-5 right-4 z-30 flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors group"
+        className="fixed top-4 right-4 z-30 flex items-center gap-2 px-3 py-2 bg-transparent rounded-lg hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all group"
         aria-label="View prompt history"
       >
-        <History className="w-5 h-5" strokeWidth={1.5} />
-        <span className="text-sm font-medium">{t('history.title')}</span>
+        <History className="w-5 h-5 text-app-black dark:text-dark-text transition-colors" strokeWidth={1.5} />
+        <span className="text-sm font-medium text-app-black dark:text-dark-text group-hover:text-app-black dark:group-hover:text-dark-text transition-colors">
+          {t('history.title')}
+        </span>
       </button>
 
       {/* Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 backdrop-blur-sm bg-black/50 z-40 animate-in"
+          className="fixed inset-0 backdrop-blur-sm bg-black/50 dark:bg-black/70 z-40 animate-fade-in"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      {/* History Sidebar */}
+      {/* History Sidebar - Updated styling */}
       <aside
-        className={`fixed right-0 top-0 h-screen w-64 bg-white dark:bg-dark-card shadow-xl z-50 transform transition-transform duration-300 ${
+        className={`fixed right-0 top-0 h-screen w-80 bg-white dark:bg-dark-card shadow-xl z-50 transform transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-heading">{t('history.title')}</h2>
+        {/* Header - Updated styling */}
+        <div className="flex items-center justify-between p-4 border-b border-app-border dark:border-dark-border/20">
+          <h2 className="text-lg font-semibold text-app-black dark:text-dark-heading" style={{ fontFamily: 'Inter, sans-serif' }}>
+            {t('history.title')}
+          </h2>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-lg transition-all"
             aria-label="Close history"
           >
-            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+            <X className="w-5 h-5 text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
           </button>
         </div>
 
-        {/* Content */}
+        {/* Content - Updated styling */}
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-6 h-6 border-2 border-purple-600 dark:border-dark-accent border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center justify-center py-12">
+              <div className="w-6 h-6 border-2 border-app-purple dark:border-dark-accent border-t-transparent rounded-full animate-spin" />
             </div>
           ) : prompts.length === 0 ? (
-            <div className="text-center py-8 px-4">
-              <History className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-500 dark:text-gray-400 text-sm">{t('history.noPromptsYet')}</p>
-              <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
+            <div className="text-center py-12 px-6">
+              <div className="w-16 h-16 bg-app-secondary-bg-solid dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                <History className="w-8 h-8 text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
+              </div>
+              <p className="text-app-black dark:text-dark-text font-medium mb-1">
+                {t('history.noPromptsYet')}
+              </p>
+              <p className="text-app-gray dark:text-app-light-gray text-sm">
                 {t('history.promptHistoryInfo')}
               </p>
             </div>
           ) : (
-            <div className="py-2">
-              {prompts.map((item) => (
+            <div className="py-1">
+              {prompts.map((item, index) => (
                 <button
                   key={item.id}
                   onClick={() => handlePromptClick(item.prompt)}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-gray-700 group"
+                  className="w-full text-left px-4 py-3 hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all border-b border-app-border/10 dark:border-dark-border/10 last:border-b-0 group relative"
                 >
-                  <p className="text-sm text-gray-900 dark:text-gray-200 line-clamp-2 group-hover:text-purple-600 dark:group-hover:text-dark-accent transition-colors">
+                  {/* Copy indicator on hover */}
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Copy className="w-4 h-4 text-app-purple dark:text-dark-accent" strokeWidth={1.5} />
+                  </div>
+                  
+                  <p className="text-sm text-app-black dark:text-dark-text line-clamp-2 pr-8 group-hover:text-app-purple-600 dark:group-hover:text-dark-accent transition-colors">
                     {item.prompt}
                   </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    {formatDate(item.created_at)}
-                  </p>
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <Clock className="w-3 h-3 text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
+                    <p className="text-xs text-app-gray dark:text-app-light-gray">
+                      {formatDate(item.created_at)}
+                    </p>
+                  </div>
                 </button>
               ))}
+              
+              {/* Load more indicator if we have max results */}
+              {prompts.length >= 50 && (
+                <div className="p-4 text-center">
+                  <p className="text-xs text-app-gray dark:text-app-light-gray">
+                    {t('history.showingRecent', { count: 50 })}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer - Updated styling */}
         {prompts.length > 0 && (
-          <div className="p-3 border-t border-gray-100 dark:border-gray-700">
-            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-              {t('history.clickToCopy')}
-            </p>
+          <div className="p-4 border-t border-app-border/10 dark:border-dark-border/10 bg-app-secondary-bg-solid/50 dark:bg-white/[0.02]">
+            <div className="flex items-center justify-center gap-2">
+              <Copy className="w-3.5 h-3.5 text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
+              <p className="text-xs text-app-gray dark:text-app-light-gray">
+                {t('history.clickToCopy')}
+              </p>
+            </div>
           </div>
         )}
       </aside>

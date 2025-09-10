@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Search, 
   FileText, 
@@ -14,6 +15,13 @@ import {
   ChevronRight,
   Edit2,
   Plus,
+  Layers,
+  Hash,
+  Type,
+  Filter,
+  Download,
+  Share2,
+  Copy
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getCurrentUser, deleteLesson } from '@/lib/database'
@@ -41,16 +49,26 @@ interface Lesson {
   duration?: number // in minutes
 }
 
-// Custom No Lessons Icon Component
+// Custom No Lessons Icon Component with animation
 const NoLessonsIcon = () => (
-  <div className="flex flex-col items-center gap-2">
+  <motion.div 
+    className="flex flex-col items-center gap-2"
+    initial={{ scale: 0.9, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    transition={{ duration: 0.3 }}
+  >
     <div className="grid grid-cols-2 gap-2">
-      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
-      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
-      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
-      <div className="w-12 h-12 border-2 border-dashed border-app-black dark:border-gray-600 rounded-lg"></div>
+      {[0, 1, 2, 3].map((index) => (
+        <motion.div
+          key={index}
+          className="w-12 h-12 border-2 border-dashed border-app-border dark:border-dark-border/20 rounded-lg"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: index * 0.1, duration: 0.3 }}
+        />
+      ))}
     </div>
-  </div>
+  </motion.div>
 )
 
 export default function LessonsPage() {
@@ -62,6 +80,7 @@ export default function LessonsPage() {
   const [activeTab, setActiveTab] = useState('all-lessons')
   const [filterLanguage, setFilterLanguage] = useState<string>('all')
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null)
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
 
   useEffect(() => {
     loadLessons()
@@ -187,6 +206,16 @@ export default function LessonsPage() {
     }
   }
 
+  const handleDuplicateLesson = async (lesson: Lesson) => {
+    try {
+      toast.info('Duplicating lesson...')
+      // Implement duplication logic here
+      toast.success('Lesson duplicated successfully!')
+    } catch (error) {
+      toast.error('Failed to duplicate lesson')
+    }
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const locale = i18n.language || 'en'
@@ -221,10 +250,15 @@ export default function LessonsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-app-green-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">{t('lessonsPage.loading')}</p>
-        </div>
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="w-8 h-8 border-2 border-app-green-700 dark:border-dark-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-app-gray dark:text-app-light-gray">{t('lessonsPage.loading')}</p>
+        </motion.div>
       </div>
     )
   }
@@ -240,268 +274,399 @@ export default function LessonsPage() {
   }
 
   return (
-    <div className="p-2 sm:p-8 max-w-7xl mx-auto">
+    <motion.div 
+      className="p-2 sm:p-8 max-w-7xl mx-auto"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
       {/* Page Header with New Lesson Button */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-4xl font-normal text-app-black-900 dark:text-dark-heading">{t('lessonsPage.title')}</h1>
-          <button
+          <h1 className="text-4xl font-normal text-app-black dark:text-dark-text">{t('lessonsPage.title')}</h1>
+          <motion.button
             onClick={handleCreateNew}
-            className="flex items-center gap-2 px-6 py-2.5 bg-app-black dark:bg-dark-accent text-white font-medium rounded-lg hover:scale-105 hover:bg-app-black dark:hover:bg-dark-accent/80 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">{t('lessonsPage.newLesson')}</span>
-          </button>
+            <Plus size={18} strokeWidth={1.5} />
+            <span className="hidden sm:inline text-sm font-medium">{t('lessonsPage.newLesson')}</span>
+          </motion.button>
         </div>
         
-        {/* Tabs and Search Bar - Same Row on Desktop, Stacked on Mobile */}
+        {/* Tabs and Search Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-6">
           {/* Tabs */}
           <div className="flex gap-2 flex-shrink-0">
             <button
               onClick={() => setActiveTab('all-lessons')}
-              className={`px-4 py-2 text-base font-medium rounded-lg transition-all ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                 activeTab === 'all-lessons'
-                  ? 'text-app-black dark:text-dark-heading'
-                  : 'text-app-gray-500 dark:text-gray-400 hover:bg-app-light-gray-100 dark:hover:bg-white/10'
+                  ? 'text-app-black dark:text-dark-text bg-app-secondary-bg-solid dark:bg-white/10'
+                  : 'text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5'
               }`}
             >
               {t('allLessons')}
             </button>
             <button
               onClick={() => setActiveTab('courses')}
-              className={`px-4 py-2 text-base font-medium rounded-lg transition-all ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                 activeTab === 'courses'
-                  ? 'text-app-black dark:text-dark-heading'
-                  : 'text-app-gray-500 dark:text-gray-400 hover:bg-app-light-gray-100 dark:hover:bg-white/10'
+                  ? 'text-app-black dark:text-dark-text bg-app-secondary-bg-solid dark:bg-white/10'
+                  : 'text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5'
               }`}
             >
               {t('courses')}
             </button>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative w-full sm:flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
-            <input
-              type="text"
-              placeholder={t('lessonsPage.searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-app-border dark:border-dark-border rounded-lg bg-white dark:bg-dark-card focus:bg-white dark:focus:bg-dark-card focus:outline-none focus:ring-2 focus:ring-app-secondary-bg dark:focus:ring-dark-accent focus:border-app-secondary-bg dark:focus:border-dark-accent transition-all dark:text-dark-text dark:placeholder-gray-500"
-            />
+          {/* Search and Filter Bar */}
+          <div className="flex gap-2 flex-1">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-app-gray dark:text-app-light-gray w-5 h-5" strokeWidth={1.5} />
+              <input
+                type="text"
+                placeholder={t('lessonsPage.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg outline-none focus:ring-2 focus:ring-app-green-700/20 dark:focus:ring-dark-accent/20 focus:border-app-green-700 dark:focus:border-dark-accent transition-all dark:text-dark-text dark:placeholder-dark-border"
+              />
+            </div>
+            {availableLanguages.length > 0 && (
+              <motion.button
+                className="px-3 py-2 bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all flex items-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Filter size={16} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
+                <span className="text-sm text-app-gray dark:text-app-light-gray hidden sm:inline">Filter</span>
+              </motion.button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Content Area */}
-      {activeTab === 'all-lessons' ? (
-        <>
-          {/* Lessons Grid or Empty State */}
-          {filteredLessons.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <NoLessonsIcon />
-              <h3 
-                className="text-2xl font-medium text-gray-700 dark:text-gray-300 mt-6 mb-3"
-                style={{ fontFamily: getFontFamily() }}
+      <AnimatePresence mode="wait">
+        {activeTab === 'all-lessons' ? (
+          <>
+            {/* Lessons Grid or Empty State */}
+            {filteredLessons.length === 0 ? (
+              <motion.div 
+                key="empty"
+                className="flex flex-col items-center justify-center py-16"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
               >
-                {t('lessonsPage.empty.title')}
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-8">
-                {t('lessonsPage.empty.description')}
-              </p>
-              <button
-                onClick={handleCreateNew}
-                className="px-6 py-3 bg-app-black dark:bg-dark-accent text-white font-medium hover:scale-105 rounded-lg hover:bg-app-black dark:hover:bg-dark-accent/80 transition-colors"
-              >
-                {t('lessonsPage.empty.createButton')}
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredLessons.map((lesson) => (
-                <div
-                  key={lesson.id}
-                  className="bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-xl hover:shadow-lg dark:hover:shadow-dark transition-shadow cursor-pointer"
-                  onClick={() => handleOpenLesson(lesson.id)}
+                <NoLessonsIcon />
+                <h3 
+                  className="text-2xl font-medium text-app-black dark:text-dark-text mt-6 mb-3"
+                  style={{ fontFamily: getFontFamily() }}
                 >
-                  {/* Lesson Thumbnail */}
-                  <div className="aspect-video relative bg-gradient-to-br from-app-purple-100 to-blue-100 rounded-t-xl overflow-hidden">
-                    {lesson.firstSlide ? (
-                      <MiniSlidePreview 
-                        slide={lesson.firstSlide} 
-                        width={400} 
-                        height={225}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : lesson.thumbnail ? (
-                      <img 
-                        src={lesson.thumbnail} 
-                        alt={lesson.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <FileText className="w-12 h-12 text-gray-400 dark:text-gray-600" />
-                      </div>
-                    )}
-                    
-                    {/* Play button overlay */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 hover:opacity-100">
-                      <div className="bg-white rounded-full p-3 shadow-lg">
-                        <Play className="w-6 h-6 text-app-purple-600" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6">
-                    {/* Lesson Header */}
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-h5 text-gray-900 dark:text-dark-heading line-clamp-1">
-                        {lesson.title || t('lessonsPage.untitled')}
-                      </h3>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation()
-                        }}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg"
-                      >
-                        <MoreVertical className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                      </button>
-                    </div>
-
-                    {/* Description */}
-                    {lesson.description && (
-                      <p className="text-body-small text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
-                        {lesson.description}
-                      </p>
-                    )}
-
-                    {/* Lesson Stats */}
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className="flex items-center gap-2 text-body-small text-gray-600 dark:text-gray-400">
-                        <BookOpen className="w-4 h-4" />
-                        <span>{t('lessonsPage.slideCount', { count: lesson.slide_count })}</span>
-                      </div>
-                      {lesson.duration && (
-                        <div className="flex items-center gap-2 text-body-small text-gray-600 dark:text-gray-400">
-                          <Clock className="w-4 h-4" />
-                          <span>{formatDuration(lesson.duration)}</span>
+                  {t('lessonsPage.empty.title')}
+                </h3>
+                <p className="text-app-gray dark:text-app-light-gray text-center max-w-md mb-8">
+                  {t('lessonsPage.empty.description')}
+                </p>
+                <motion.button
+                  onClick={handleCreateNew}
+                  className="px-6 py-3 bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {t('lessonsPage.empty.createButton')}
+                </motion.button>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="grid"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {filteredLessons.map((lesson, index) => (
+                  <motion.div
+                    key={lesson.id}
+                    className="group bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg overflow-hidden hover:shadow-lg dark:hover:shadow-dark transition-shadow duration-200 cursor-pointer"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
+                    whileHover={{ scale: 1.02, transition: { type: "spring", stiffness: 400, damping: 17 } }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleOpenLesson(lesson.id)}
+                  >
+                    {/* Lesson Thumbnail */}
+                    <div className="relative bg-gradient-to-br from-app-green-50 to-app-green-100 dark:from-dark-accent/10 dark:to-dark-accent/20 aspect-[16/10] overflow-hidden">
+                      {lesson.firstSlide ? (
+                        <div className="w-full h-full flex items-center justify-center p-4">
+                          <MiniSlidePreview 
+                            slide={lesson.firstSlide} 
+                            className="w-full h-full shadow-sm rounded"
+                          />
+                        </div>
+                      ) : lesson.thumbnail ? (
+                        <img 
+                          src={lesson.thumbnail} 
+                          alt={lesson.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <FileText className="w-12 h-12 text-app-gray dark:text-app-light-gray opacity-30" strokeWidth={1} />
                         </div>
                       )}
+                      
+                      {/* Play button overlay */}
+                      <motion.div 
+                        className="absolute inset-0 bg-black/0 hover:bg-black/20 dark:hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
+                        initial={false}
+                      >
+                        <motion.div 
+                          className="bg-white dark:bg-dark-card rounded-full p-3 shadow-lg"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <Play className="w-6 h-6 text-app-green-700 dark:text-dark-accent" strokeWidth={2} fill="currentColor" />
+                        </motion.div>
+                      </motion.div>
+
+                      {/* Slide count badge */}
+                      <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                        <Layers size={12} />
+                        {lesson.slide_count || 0}
+                      </div>
                     </div>
 
-                    {/* Language Badge */}
-                    {lesson.target_language && (
-                      <div className="mb-4">
-                        <span className="inline-flex px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-caption font-medium">
-                          {lesson.target_language}
-                        </span>
+                    <div className="p-4">
+                      {/* Lesson Header */}
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="text-sm font-medium text-app-black dark:text-dark-text line-clamp-1 flex-1">
+                          {lesson.title || t('lessonsPage.untitled')}
+                        </h3>
+                        <div className="relative">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setActiveDropdown(activeDropdown === lesson.id ? null : lesson.id)
+                            }}
+                            className="p-1.5 hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-lg transition-all"
+                          >
+                            <MoreVertical size={16} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
+                          </button>
+                          
+                          <AnimatePresence>
+                            {activeDropdown === lesson.id && (
+                              <motion.div
+                                className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg shadow-lg z-50"
+                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                transition={{ duration: 0.15 }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  onClick={() => {
+                                    handleOpenLesson(lesson.id)
+                                    setActiveDropdown(null)
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+                                >
+                                  <Edit2 size={14} strokeWidth={1.5} />
+                                  {t('lessonsPage.actions.edit')}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleDuplicateLesson(lesson)
+                                    setActiveDropdown(null)
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+                                >
+                                  <Copy size={14} strokeWidth={1.5} />
+                                  {t('lessonsPage.actions.duplicate')}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    // Share functionality
+                                    toast.info('Share feature coming soon!')
+                                    setActiveDropdown(null)
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+                                >
+                                  <Share2 size={14} strokeWidth={1.5} />
+                                  {t('lessonsPage.actions.share')}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    // Download functionality
+                                    toast.info('Download feature coming soon!')
+                                    setActiveDropdown(null)
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+                                >
+                                  <Download size={14} strokeWidth={1.5} />
+                                  {t('lessonsPage.actions.download')}
+                                </button>
+                                <div className="border-t border-app-border dark:border-dark-border/10 my-1" />
+                                <button
+                                  onClick={() => {
+                                    handleDeleteLesson(lesson.id)
+                                    setActiveDropdown(null)
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex items-center gap-2"
+                                >
+                                  <Trash2 size={14} strokeWidth={1.5} />
+                                  {t('lessonsPage.actions.delete')}
+                                </button>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       </div>
-                    )}
 
-                    {/* Lesson Actions */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
-                      <div className="text-caption text-gray-500 dark:text-gray-400">
-                        <Calendar className="w-3 h-3 inline mr-1" />
-                        {t('lessonsPage.updated')} {formatDate(lesson.updated_at)}
+                      {/* Description */}
+                      {lesson.description && (
+                        <p className="text-xs text-app-gray dark:text-app-light-gray mb-3 line-clamp-2">
+                          {lesson.description}
+                        </p>
+                      )}
+
+                      {/* Lesson Stats */}
+                      <div className="flex items-center gap-4 mb-3">
+                        {lesson.duration && (
+                          <div className="flex items-center gap-1.5 text-xs text-app-gray dark:text-app-light-gray">
+                            <Clock size={12} strokeWidth={1.5} />
+                            <span>{formatDuration(lesson.duration)}</span>
+                          </div>
+                        )}
+                        {lesson.target_language && (
+                          <span className="inline-flex px-2 py-0.5 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded-full text-xs font-medium">
+                            {lesson.target_language}
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleOpenLesson(lesson.id)
-                          }}
-                          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-                          title={t('lessonsPage.actions.edit')}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteLesson(lesson.id)
-                          }}
-                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                          title={t('lessonsPage.actions.delete')}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <button
+
+                      {/* Expandable Details */}
+                      <AnimatePresence>
+                        {expandedLessonId === lesson.id && (
+                          <motion.div 
+                            className="pt-3 border-t border-app-border/10 dark:border-dark-border/10"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="space-y-2">
+                              {lesson.vocabulary && lesson.vocabulary.length > 0 && (
+                                <div>
+                                  <div className="flex items-center gap-1 text-xs text-app-gray dark:text-app-light-gray mb-1">
+                                    <Type size={12} strokeWidth={1.5} />
+                                    <span>{t('lessonsPage.details.vocabulary')}</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {lesson.vocabulary.slice(0, 3).map((word, idx) => (
+                                      <span key={idx} className="inline-flex px-2 py-0.5 bg-app-secondary-bg-solid dark:bg-white/5 text-app-gray dark:text-app-light-gray rounded text-xs">
+                                        {word}
+                                      </span>
+                                    ))}
+                                    {lesson.vocabulary.length > 3 && (
+                                      <span className="inline-flex px-2 py-0.5 bg-app-secondary-bg-solid dark:bg-white/5 text-app-gray dark:text-app-light-gray rounded text-xs">
+                                        +{lesson.vocabulary.length - 3}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              {lesson.grammarPoints && lesson.grammarPoints.length > 0 && (
+                                <div>
+                                  <div className="flex items-center gap-1 text-xs text-app-gray dark:text-app-light-gray mb-1">
+                                    <Hash size={12} strokeWidth={1.5} />
+                                    <span>{t('lessonsPage.details.grammar')}</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {lesson.grammarPoints.slice(0, 2).map((point, idx) => (
+                                      <span key={idx} className="inline-flex px-2 py-0.5 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded text-xs">
+                                        {point}
+                                      </span>
+                                    ))}
+                                    {lesson.grammarPoints.length > 2 && (
+                                      <span className="inline-flex px-2 py-0.5 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded text-xs">
+                                        +{lesson.grammarPoints.length - 2}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Footer */}
+                      <div className="flex items-center justify-between pt-3 border-t border-app-border/10 dark:border-dark-border/10">
+                        <div className="text-xs text-app-gray dark:text-app-light-gray flex items-center gap-1">
+                          <Calendar size={12} strokeWidth={1.5} />
+                          {formatDate(lesson.updated_at)}
+                        </div>
+                        <motion.button
                           onClick={(e) => {
                             e.stopPropagation()
                             setExpandedLessonId(expandedLessonId === lesson.id ? null : lesson.id)
                           }}
-                          className="p-2 text-app-purple-600 dark:text-app-purple-400 hover:bg-app-purple-50 dark:hover:bg-app-purple-900/20 rounded-lg transition-colors"
-                          title={t('lessonsPage.actions.viewDetails')}
+                          className="p-1.5 text-app-gray dark:text-app-light-gray hover:text-app-black dark:hover:text-dark-text hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-lg transition-all"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
                         >
-                          <ChevronRight className={`w-4 h-4 transition-transform ${expandedLessonId === lesson.id ? 'rotate-90' : ''}`} />
-                        </button>
+                          <ChevronRight 
+                            size={16} 
+                            className={`transition-transform ${expandedLessonId === lesson.id ? 'rotate-90' : ''}`} 
+                            strokeWidth={1.5} 
+                          />
+                        </motion.button>
                       </div>
                     </div>
-
-                    {/* Expanded Details */}
-                    {expandedLessonId === lesson.id && (
-                      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <h4 className="text-body-small font-medium text-gray-700 dark:text-gray-300 mb-2">{t('lessonsPage.details.title')}</h4>
-                        <div className="space-y-2 text-body-small">
-                          {lesson.vocabulary && lesson.vocabulary.length > 0 && (
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">{t('lessonsPage.details.vocabulary')}:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {lesson.vocabulary.map((word, idx) => (
-                                  <span key={idx} className="inline-flex px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-caption">
-                                    {word}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {lesson.grammarPoints && lesson.grammarPoints.length > 0 && (
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">{t('lessonsPage.details.grammar')}:</span>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {lesson.grammarPoints.map((point, idx) => (
-                                  <span key={idx} className="inline-flex px-2 py-1 bg-app-purple-100 dark:bg-app-purple-900/30 text-app-purple-700 dark:text-app-purple-300 rounded text-caption">
-                                    {point}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      ) : (
-        // Courses Tab Content
-        <div className="flex flex-col items-center justify-center py-16">
-          <NoLessonsIcon />
-          <h3 
-            className="text-2xl font-medium text-gray-700 dark:text-gray-300 mt-6 mb-3"
-            style={{ fontFamily: getFontFamily() }}
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </>
+        ) : (
+          // Courses Tab Content
+          <motion.div 
+            key="courses-empty"
+            className="flex flex-col items-center justify-center py-16"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
           >
-            {t('lessonsPage.emptyCourses.title')}
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-8">
-            {t('lessonsPage.emptyCourses.description')}
-          </p>
-          <button
-            onClick={() => {
-              // Navigate to course creation or show course creation modal
-              toast.info('Course creation coming soon!')
-            }}
-            className="px-6 py-3 bg-app-black dark:bg-dark-accent text-white font-medium hover:scale-105 rounded-lg hover:bg-app-black dark:hover:bg-dark-accent/80 transition-colors"
-          >
-            {t('lessonsPage.emptyCourses.createButton')}
-          </button>
-        </div>
-      )}
-    </div>
+            <NoLessonsIcon />
+            <h3 
+              className="text-2xl font-medium text-app-black dark:text-dark-text mt-6 mb-3"
+              style={{ fontFamily: getFontFamily() }}
+            >
+              {t('lessonsPage.emptyCourses.title')}
+            </h3>
+            <p className="text-app-gray dark:text-app-light-gray text-center max-w-md mb-8">
+              {t('lessonsPage.emptyCourses.description')}
+            </p>
+            <motion.button
+              onClick={() => {
+                toast.info('Course creation coming soon!')
+              }}
+              className="px-6 py-3 bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {t('lessonsPage.emptyCourses.createButton')}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }

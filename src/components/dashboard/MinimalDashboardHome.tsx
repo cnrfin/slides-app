@@ -166,23 +166,23 @@ export default function MinimalDashboardHome() {
   // Generate lesson type suggestions with Lucide icons
   const lessonTypes = [
     { 
-      icon: <MessageCircle size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      icon: <MessageCircle size={16} strokeWidth={1.5} />, 
       text: t('dashboardHome.lessonTypes.conversation') 
     },
     { 
-      icon: <BookOpen size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      icon: <BookOpen size={16} strokeWidth={1.5} />, 
       text: t('dashboardHome.lessonTypes.reading') 
     },
     { 
-      icon: <Headphones size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      icon: <Headphones size={16} strokeWidth={1.5} />, 
       text: t('dashboardHome.lessonTypes.listening') 
     },
     { 
-      icon: <BookType size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      icon: <BookType size={16} strokeWidth={1.5} />, 
       text: t('dashboardHome.lessonTypes.toeic') 
     },
     { 
-      icon: <CaseUpper size={16} strokeWidth={1.5} className="text-gray-600 dark:text-gray-400" />, 
+      icon: <CaseUpper size={16} strokeWidth={1.5} />, 
       text: t('dashboardHome.lessonTypes.pronunciation') 
     },
   ]

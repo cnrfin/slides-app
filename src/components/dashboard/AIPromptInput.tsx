@@ -1,7 +1,7 @@
 // src/components/dashboard/AIPromptInput.tsx
 import { useState, useRef, useEffect } from 'react'
 import ReactDOM from 'react-dom'
-import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen, ChevronRight, Loader2, FileText, File, CornerDownLeft } from 'lucide-react'
+import { Plus, X, ArrowUp, ArrowLeft, Brain, Layers, User, BookOpen, ChevronRight, Loader2, FileText, File, CornerDownLeft, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import './AIPromptInput.css'
@@ -483,7 +483,7 @@ export default function AIPromptInput({
 
     return ReactDOM.createPortal(
       <div 
-        className="main-popup fixed bg-white dark:bg-dark-graybg backdrop-blur-md rounded-lg shadow-popup border border-gray-200 dark:border-dark-border/20 animate-popup-in"
+        className="main-popup fixed bg-white/10 dark:bg-dark-graybg backdrop-blur-md rounded-lg shadow-popup border border-app-border dark:border-dark-border/20 animate-popup-in"
         style={{ 
           bottom: `${popupPosition.bottom}px`,
           left: `${popupPosition.left}px`,
@@ -497,41 +497,41 @@ export default function AIPromptInput({
             <div className="p-1">
               <button
                 onClick={handleOpenEnhancedSelector}
-                className="w-full font-normal flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors"
+                className="w-full font-normal flex items-center justify-between px-3 py-2.5 text-left hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-md transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <Layers size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
-                  <span className="text-sm text-gray-700 dark:text-gray-200">{t('aiPrompt.addSlides')}</span>
+                  <Layers size={18} className="text-app-black dark:text-app-light-gray" strokeWidth={1.5} />
+                  <span className="text-sm text-app-black dark:text-gray-200">{t('aiPrompt.addSlides')}</span>
                 </div>
-                <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
+                <ChevronRight size={16} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
               </button>
               <button
                 onClick={() => setPopupView('student')}
-                className="w-full font-normal flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors"
+                className="w-full font-normal flex items-center justify-between px-3 py-2.5 text-left hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-md transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <User size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
-                  <span className="text-sm text-gray-700 dark:text-gray-200">{t('aiPrompt.addStudentContext')}</span>
+                  <User size={18} className="text-app-black dark:text-app-light-gray" strokeWidth={1.5} />
+                  <span className="text-sm text-app-black dark:text-gray-200">{t('aiPrompt.addStudentContext')}</span>
                 </div>
-                <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
+                <ChevronRight size={16} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
               </button>
               <button
                 onClick={() => setPopupView('lesson')}
-                className="w-full font-normal flex items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors"
+                className="w-full font-normal flex items-center justify-between px-3 py-2.5 text-left hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-md transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <BookOpen size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
-                  <span className="text-sm text-gray-700 dark:text-gray-200">{t('aiPrompt.addLessonContext')}</span>
+                  <BookOpen size={18} className="text-app-black dark:text-app-light-gray" strokeWidth={1.5} />
+                  <span className="text-sm text-app-black dark:text-gray-200">{t('aiPrompt.addLessonContext')}</span>
                 </div>
-                <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
+                <ChevronRight size={16} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex font-normal items-center justify-between px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors"
+                className="w-full flex font-normal items-center justify-between px-3 py-2.5 text-left hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-md transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <FileText size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
-                  <span className="text-sm text-gray-700 dark:text-gray-200">{t('aiPrompt.uploadArticle')}</span>
+                  <FileText size={18} className="text-app-black dark:text-app-light-gray" strokeWidth={1.5} />
+                  <span className="text-sm text-app-black dark:text-gray-200">{t('aiPrompt.uploadArticle')}</span>
                 </div>
               </button>
             </div>
@@ -540,29 +540,33 @@ export default function AIPromptInput({
 
         {popupView === 'student' && (
           <>
-            <div className="flex items-center gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-2 p-3 border-b border-app-border/10 dark:border-dark-border/20">
               <button
                 onClick={() => {
                   setPopupView('main')
                   setStudentSearchQuery('')
                 }}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded transition-colors flex-shrink-0"
+                className="p-1 hover:bg-app-pill-bg dark:hover:bg-white/10 rounded transition-colors flex-shrink-0"
               >
-                <ArrowLeft size={18} className="text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+                <ArrowLeft size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
               </button>
-              <input
-                type="text"
-                value={studentSearchQuery}
-                onChange={(e) => setStudentSearchQuery(e.target.value)}
-                placeholder={t('aiPrompt.searchStudents')}
-                className="w-full px-3 py-1.5 text-sm outline-none bg-transparent dark:text-dark-text dark:placeholder-gray-500"
-              />
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-border pointer-events-none" strokeWidth={2} />
+                <input
+                  type="text"
+                  value={studentSearchQuery}
+                  onChange={(e) => setStudentSearchQuery(e.target.value)}
+                  placeholder={t('aiPrompt.searchStudents')}
+                  className="w-full pl-8 pr-3 py-1.5 text-sm outline-none bg-transparent dark:text-dark-text dark:placeholder-dark-border rounded"
+                  autoFocus
+                />
+              </div>
             </div>
 
             <div className="max-h-48 overflow-y-auto">
               {loadingStudents ? (
                 <div className="px-4 py-6 text-center">
-                  <div className="w-6 h-6 border-2 border-gray-300 border-t-app-purple-600 rounded-full animate-spin mx-auto" />
+                  <div className="w-6 h-6 border-2 border-app-border border-t-app-purple-600 rounded-full animate-spin mx-auto" />
                   <p className="text-sm text-gray-500 mt-2">{t('aiPrompt.loadingStudents')}</p>
                 </div>
               ) : filteredProfiles.length > 0 ? (
@@ -570,30 +574,30 @@ export default function AIPromptInput({
                   <button
                     key={profile.id}
                     onClick={() => selectProfile(profile)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-white/5 border-b border-gray-50 dark:border-gray-700 last:border-b-0 transition-colors"
+                    className="w-full px-4 py-3 text-left bg-white hover:bg-app-secondary-bg-solid dark:bg-dark-card dark:hover:bg-app-gray-800 border-b border-app-border dark:border-gray-700 last:border-b-0 transition-colors"
                   >
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{profile.name}</div>
+                    <div className="text-sm font-medium text-app-black dark:text-dark-text">{profile.name}</div>
                     {profile.target_language && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      <div className="text-xs text-app-gray dark:text-app-light-gray mt-0.5">
                         {t('aiPrompt.learning')} {profile.target_language}
                       </div>
                     )}
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+                <div className="px-4 py-6 text-center bg-white text-gray-500 dark:bg-dark-card dark:text-app-light-gray text-sm">
                   {students.length === 0 ? t('aiPrompt.noStudentsYet') : t('aiPrompt.noStudentsFound')}
                 </div>
               )}
             </div>
 
-            <div className="p-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="p-3 border-t bg-white border-app-border/10 dark:bg-dark-card dark:border-dark-border/10 rounded-b-lg">
               <button
                 onClick={handleAddNewStudent}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors text-sm"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-app-secondary-bg-solid  dark:hover:bg-white/10 rounded-md transition-colors text-sm"
               >
-                <Plus size={16} className="text-gray-600 dark:text-gray-400" />
-                <span className="text-gray-700 dark:text-gray-200">{t('aiPrompt.addNewStudent')}</span>
+                <Plus size={16} className="text-app-gray dark:text-dark-text" />
+                <span className="text-app-gray dark:text-dark-text">{t('aiPrompt.addNewStudent')}</span>
               </button>
             </div>
           </>
@@ -601,29 +605,33 @@ export default function AIPromptInput({
 
         {popupView === 'lesson' && (
           <>
-            <div className="flex items-center gap-2 p-3 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-2 p-3 border-b border-app-border/10 dark:border-dark-border/20">
               <button
                 onClick={() => {
                   setPopupView('main')
                   setLessonSearchQuery('')
                 }}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded transition-colors flex-shrink-0"
+                className="p-1 hover:bg-app-pill-bg dark:hover:bg-white/10 rounded transition-colors flex-shrink-0"
               >
-                <ArrowLeft size={18} className="text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+                <ArrowLeft size={18} className="text-gray-600 dark:text-app-light-gray" strokeWidth={1.5} />
               </button>
-              <input
-                type="text"
-                value={lessonSearchQuery}
-                onChange={(e) => setLessonSearchQuery(e.target.value)}
-                placeholder={t('aiPrompt.searchLessons')}
-                className="w-full px-3 py-1.5 text-sm outline-none bg-transparent dark:text-dark-text dark:placeholder-gray-500"
-              />
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-border pointer-events-none" strokeWidth={2} />
+                <input
+                  type="text"
+                  value={lessonSearchQuery}
+                  onChange={(e) => setLessonSearchQuery(e.target.value)}
+                  placeholder={t('aiPrompt.searchLessons')}
+                  className="w-full pl-8 pr-3 py-1.5 text-sm outline-none bg-transparent dark:text-dark-text dark:placeholder-dark-border rounded"
+                  autoFocus
+                />
+              </div>
             </div>
 
             <div className="max-h-64 overflow-y-auto">
               {loadingLessons ? (
                 <div className="px-4 py-6 text-center">
-                  <div className="w-6 h-6 border-2 border-gray-300 border-t-app-purple-600 rounded-full animate-spin mx-auto" />
+                  <div className="w-6 h-6 border-2 border-app-border border-t-app-purple-600 rounded-full animate-spin mx-auto" />
                   <p className="text-sm text-gray-500 mt-2">{t('aiPrompt.loadingLessons')}</p>
                 </div>
               ) : filteredLessons.length > 0 ? (
@@ -631,30 +639,30 @@ export default function AIPromptInput({
                   <button
                     key={lesson.id}
                     onClick={() => selectLesson(lesson)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-white/5 border-b border-gray-50 dark:border-gray-700 last:border-b-0 transition-colors"
+                    className="w-full px-4 py-3 text-left bg-white hover:bg-app-secondary-bg-solid dark:bg-dark-card dark:hover:bg-app-gray-800 border-b border-app-border dark:border-gray-700 last:border-b-0 transition-colors"
                   >
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{lesson.title}</div>
+                    <div className="text-sm font-medium text-app-black dark:text-dark-text">{lesson.title}</div>
                     {lesson.description && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                      <div className="text-xs text-app-gray dark:text-app-light-gray mt-0.5 truncate">
                         {lesson.description}
                       </div>
                     )}
                   </button>
                 ))
               ) : (
-                <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
+                <div className="px-4 py-6 text-center bg-white text-gray-500 dark:bg-dark-card dark:text-app-light-gray text-sm">
                   {lessons.length === 0 ? t('aiPrompt.noLessonsYet') : t('aiPrompt.noLessonsFound')}
                 </div>
               )}
             </div>
 
-            <div className="p-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="p-3 border-t bg-white border-app-border/10 dark:bg-dark-card dark:border-dark-border/10 rounded-b-lg">
               <button
                 onClick={handleAddNewLesson}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-white/10 rounded-md transition-colors text-sm"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-left hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-md transition-colors text-sm"
               >
-                <Plus size={16} className="text-gray-600 dark:text-gray-400" />
-                <span className="text-gray-700 dark:text-gray-200">{t('aiPrompt.createNewLesson')}</span>
+                <Plus size={16} className="text-app-gray dark:text-dark-text" />
+                <span className="text-app-gray dark:text-dark-text">{t('aiPrompt.createNewLesson')}</span>
               </button>
             </div>
           </>
@@ -760,9 +768,9 @@ export default function AIPromptInput({
                       ref={plusButtonRef}
                       onClick={togglePopup}
                       disabled={isGenerating}
-                      className="w-8 h-8 flex-shrink-0 flex items-center justify-center border border-app-border dark:border-dark-border/50 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-white/10 active:bg-gray-100 dark:active:bg-white/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed dark:bg-dark-card"
+                      className="w-8 h-8 flex-shrink-0 flex items-center justify-center border border-app-border dark:border-dark-border/50 transition-all duration-200 hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 active:bg-app-pill-bg dark:active:bg-white/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed dark:bg-dark-card"
                       style={{
-                        backgroundColor: showPopup ? (theme === 'dark' ? 'rgba(255,255,255,0.1)' : '#f3f4f6') : undefined
+                        backgroundColor: showPopup ? (theme === 'dark' ? 'rgba(255,255,255,0.1)' : '#f6f5f4b3') : undefined
                       }}
                       title="Add content"
                     >
@@ -788,7 +796,7 @@ export default function AIPromptInput({
                       className={`px-3 h-8 flex-shrink-0 flex items-center justify-center transition-all duration-200 rounded-lg border ${
                         isGeniusMode 
                           ? 'border-app-purple-700 dark:border-dark-accent text-app-purple-700 dark:text-dark-accent bg-app-purple-50 dark:bg-dark-accent/20' 
-                          : 'border-app-border dark:border-dark-border/50 text-app-gray dark:text-dark-text bg-white dark:bg-dark-card hover:bg-gray-50 dark:hover:bg-white/10'
+                          : 'border-app-border dark:border-dark-border/50 text-app-gray dark:text-dark-text bg-white dark:bg-dark-card hover:bg-app-secondary-bg-solid dark:hover:bg-white/10'
                       }`}
                       title={isGeniusMode ? t('aiPrompt.geniusModeEnabled') : t('aiPrompt.enableGeniusMode')}
                     >
@@ -798,7 +806,7 @@ export default function AIPromptInput({
 
                     {/* Selected Slides Indicator */}
                     {selectedSlides.length > 0 && (
-                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-white/5 border border-app-border dark:border-dark-border/50 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-white/10 dark:hover:border-dark-card/0">
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-white/5 border border-app-border dark:border-dark-border/50 rounded-lg text-sm hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 dark:hover:border-dark-card/0">
                         <Layers size={14} className="text-app-gray dark:text-dark-text" />
                         <span className="text-app-gray dark:text-dark-text whitespace-nowrap">
                           {selectedSlides.length} {selectedSlides.length !== 1 ? t('aiPrompt.slides') : t('aiPrompt.slide')}
@@ -814,7 +822,7 @@ export default function AIPromptInput({
 
                     {/* Selected Profile Indicator */}
                     {selectedProfile && (
-                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-white/5 border border-app-border dark:border-dark-border/50 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-white/10 dark:hover:border-dark-card/0">
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-white/5 border border-app-border dark:border-dark-border/50 rounded-lg text-sm hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 dark:hover:border-dark-card/0">
                         <User size={14} className="text-app-gray dark:text-dark-text" />
                         <span className="text-app-gray dark:text-dark-text whitespace-nowrap">
                           {selectedProfile.name}
@@ -830,7 +838,7 @@ export default function AIPromptInput({
 
                     {/* Selected Lesson Indicator */}
                     {selectedLesson && (
-                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-white/5 border border-app-border dark:border-dark-border/50 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-white/10 dark:hover:border-dark-card/0">
+                      <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-white/5 border border-app-border dark:border-dark-border/50 rounded-lg text-sm hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 dark:hover:border-dark-card/0">
                         <BookOpen size={14} className="text-app-gray dark:text-dark-text" />
                         <span className="text-app-gray dark:text-dark-text whitespace-nowrap">
                           {selectedLesson.title}
@@ -916,7 +924,7 @@ export default function AIPromptInput({
             )}
           </div>
           
-          {/* Suggestions - Only 3 buttons in a single row */}
+          {/* Suggestions - Styled to match popup design */}
           {suggestions.length > 0 && (
             <div className="w-full animate-fade-in mt-6">
               <div className="flex gap-2 justify-center">
@@ -924,10 +932,10 @@ export default function AIPromptInput({
                   <button
                     key={index}
                     onClick={() => handleSuggestionClick(suggestion.text)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-dark-card rounded-full border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm dark:hover:shadow-dark transition-all text-xs"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-dark-card rounded-lg border border-app-border dark:border-dark-border/20 hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all text-sm group"
                   >
-                    <span>{suggestion.icon}</span>
-                    <span className="text-gray-600 dark:text-gray-300">{suggestion.text}</span>
+                    <span className="text-app-gray dark:text-app-light-gray group-hover:text-app-black dark:group-hover:text-dark-text transition-colors">{suggestion.icon}</span>
+                    <span className="text-app-gray dark:text-app-light-gray group-hover:text-app-black dark:group-hover:text-dark-text transition-colors">{suggestion.text}</span>
                   </button>
                 ))}
               </div>

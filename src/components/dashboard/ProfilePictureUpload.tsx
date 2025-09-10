@@ -1,10 +1,8 @@
-// Profile Picture Upload Component
-// This component can be integrated into the SettingsPage.tsx
-
-import React, { useState, useRef } from 'react'
-import { Camera, Upload, X, Check, AlertCircle } from 'lucide-react'
+// src/components/dashboard/ProfilePictureUpload.tsx
+import React, { useState, useRef, useEffect } from 'react'
+import { Camera, Upload, X, Check, AlertCircle, Loader2, User } from 'lucide-react'
 import useAuthStore from '@/stores/authStore'
-import { supabase } from '@/lib/supabase' // Adjust import path as needed
+import { supabase } from '@/lib/supabase'
 
 interface ProfilePictureUploadProps {
   onUploadComplete?: (avatarUrl: string) => void
@@ -15,21 +13,40 @@ export default function ProfilePictureUpload({
   onUploadComplete, 
   className = '' 
 }: ProfilePictureUploadProps) {
-  const { user } = useAuthStore()
+  const { user, refreshUserData } = useAuthStore()
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(user?.avatar_url || null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (user?.avatar_url) {
+      setAvatarUrl(user.avatar_url)
+      setPreviewUrl(user.avatar_url)
+    }
+  }, [user?.avatar_url])
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file || !user) return
 
+    // Verify user is authenticated
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !session) {
+      setUploadError('You must be logged in to upload an avatar')
+      setTimeout(() => setUploadError(null), 5000)
+      return
+    }
+
+    console.log('Session verified, user ID:', session.user.id)
+
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
     if (!validTypes.includes(file.type)) {
       setUploadError('Please upload a valid image file (JPEG, PNG, GIF, or WebP)')
+      setTimeout(() => setUploadError(null), 5000)
       return
     }
 
@@ -37,6 +54,7 @@ export default function ProfilePictureUpload({
     const maxSize = 5 * 1024 * 1024 // 5MB
     if (file.size > maxSize) {
       setUploadError('Image size must be less than 5MB')
+      setTimeout(() => setUploadError(null), 5000)
       return
     }
 
@@ -52,50 +70,128 @@ export default function ProfilePictureUpload({
       }
       reader.readAsDataURL(file)
 
-      // Generate unique filename
+      // Generate filename - IMPORTANT: Must be in format userId/filename for RLS policy
       const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`
+      const timestamp = Date.now()
+      const fileName = `${user.id}/${timestamp}.${fileExt}`
 
-      // Upload to Supabase Storage
+      console.log('Upload attempt:', {
+        userId: user.id,
+        fileName: fileName,
+        fileSize: file.size,
+        fileType: file.type
+      })
+
+      // Don't try to create bucket - it already exists
+      // Just upload directly
+      console.log('Attempting upload to path:', fileName)
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true  // This will overwrite if file exists
         })
 
       if (uploadError) {
+        console.error('Storage upload error:', uploadError)
+        
+        // Check if it's an RLS policy error
+        if (uploadError.message?.includes('row-level security') || uploadError.message?.includes('policy')) {
+          // This might mean the folder structure is wrong or user isn't authenticated properly
+          throw new Error('Permission denied. Please ensure you are logged in and try again.')
+        }
         throw uploadError
       }
+
+      console.log('Upload successful:', uploadData)
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName)
+      
+      console.log('Public URL generated:', publicUrl)
 
-      // Update user profile with new avatar URL
-      const { error: updateError } = await supabase
+      // First, check if profile exists
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .update({ 
-          avatar_url: publicUrl,
-          updated_at: new Date().toISOString()
-        })
+        .select('id')
         .eq('id', user.id)
+        .single()
 
-      if (updateError) {
-        throw updateError
+      if (fetchError || !existingProfile) {
+        console.error('Profile not found, attempting to create:', fetchError)
+        
+        // Create profile if it doesn't exist
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email || session.user.email,
+            avatar_url: publicUrl,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (createError) {
+          console.error('Failed to create profile:', createError)
+          // Try to cleanup uploaded file
+          try {
+            await supabase.storage.from('avatars').remove([fileName])
+          } catch (cleanupError) {
+            console.error('Failed to cleanup uploaded file:', cleanupError)
+          }
+          throw new Error('Failed to create profile. Please contact support.')
+        }
+
+        console.log('Profile created with avatar:', newProfile)
+      } else {
+        // Update existing profile
+        console.log('Updating existing profile with avatar URL...')
+        const { data: updateData, error: updateError } = await supabase
+          .from('profiles')
+          .update({ 
+            avatar_url: publicUrl,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+          .select()
+          .single()
+
+        if (updateError) {
+          console.error('Profile update error:', updateError)
+          
+          // If profile update fails, try to delete the uploaded file
+          try {
+            await supabase.storage.from('avatars').remove([fileName])
+            console.log('Cleaned up uploaded file after profile update failure')
+          } catch (cleanupError) {
+            console.error('Failed to cleanup uploaded file:', cleanupError)
+          }
+          
+          // Check if it's an RLS policy error
+          if (updateError.message?.includes('row-level security') || updateError.message?.includes('policy')) {
+            throw new Error('Permission denied to update profile. Please check your permissions.')
+          }
+          throw updateError
+        }
+
+        console.log('Profile updated successfully:', updateData)
       }
 
+      setAvatarUrl(publicUrl)
       setUploadSuccess(true)
+      
+      // Refresh user data in auth store
+      await refreshUserData()
       
       // Call callback if provided
       if (onUploadComplete) {
         onUploadComplete(publicUrl)
       }
-
-      // Refresh user data in auth store
-      // You might need to implement a method to refresh user profile
-      // Or trigger a re-fetch of user data here
 
       setTimeout(() => {
         setUploadSuccess(false)
@@ -104,9 +200,14 @@ export default function ProfilePictureUpload({
     } catch (error) {
       console.error('Error uploading avatar:', error)
       setUploadError(error instanceof Error ? error.message : 'Failed to upload image')
-      setPreviewUrl(user.avatar_url || null)
+      setPreviewUrl(avatarUrl)
+      setTimeout(() => setUploadError(null), 5000)
     } finally {
       setUploading(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -117,6 +218,17 @@ export default function ProfilePictureUpload({
     setUploadError(null)
 
     try {
+      // Delete old avatar from storage if it exists
+      if (avatarUrl) {
+        // Extract the path from the URL
+        const urlParts = avatarUrl.split('/storage/v1/object/public/avatars/')
+        if (urlParts.length > 1) {
+          const path = urlParts[1]
+          console.log('Removing avatar at path:', path)
+          await supabase.storage.from('avatars').remove([path])
+        }
+      }
+
       // Update profile to remove avatar URL
       const { error } = await supabase
         .from('profiles')
@@ -129,7 +241,11 @@ export default function ProfilePictureUpload({
       if (error) throw error
 
       setPreviewUrl(null)
+      setAvatarUrl(null)
       setUploadSuccess(true)
+      
+      // Refresh user data in auth store
+      await refreshUserData()
       
       setTimeout(() => {
         setUploadSuccess(false)
@@ -138,6 +254,7 @@ export default function ProfilePictureUpload({
     } catch (error) {
       console.error('Error removing avatar:', error)
       setUploadError('Failed to remove avatar')
+      setTimeout(() => setUploadError(null), 5000)
     } finally {
       setUploading(false)
     }
@@ -153,10 +270,10 @@ export default function ProfilePictureUpload({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-6">
         {/* Avatar Preview */}
-        <div className="relative">
-          <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200">
+        <div className="relative group">
+          <div className="w-24 h-24 rounded-full overflow-hidden bg-app-secondary-bg-solid dark:bg-white/5 border-2 border-app-border dark:border-dark-border/20">
             {previewUrl ? (
               <img 
                 src={previewUrl} 
@@ -164,10 +281,14 @@ export default function ProfilePictureUpload({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-app-purple-500 to-app-purple-600 flex items-center justify-center">
-                <span className="text-white text-2xl font-medium">
-                  {getUserInitials()}
-                </span>
+              <div className="w-full h-full bg-gradient-to-br from-app-green-500 to-app-green-700 dark:from-dark-accent dark:to-dark-accent/70 flex items-center justify-center">
+                {user?.display_name ? (
+                  <span className="text-white text-2xl font-medium">
+                    {getUserInitials()}
+                  </span>
+                ) : (
+                  <User size={32} strokeWidth={1.5} className="text-white" />
+                )}
               </div>
             )}
           </div>
@@ -177,22 +298,28 @@ export default function ProfilePictureUpload({
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             className={`
-              absolute inset-0 rounded-full bg-black bg-opacity-0 hover:bg-opacity-50 
-              flex items-center justify-center transition-all group
+              absolute inset-0 rounded-full bg-black bg-opacity-0 group-hover:bg-opacity-60
+              flex items-center justify-center transition-all
               ${uploading ? 'cursor-wait' : 'cursor-pointer'}
             `}
+            aria-label="Upload avatar"
           >
-            <Camera className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            {uploading ? (
+              <Loader2 size={24} className="text-white animate-spin" />
+            ) : (
+              <Camera size={24} strokeWidth={1.5} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            )}
           </button>
 
           {/* Remove Button */}
-          {previewUrl && (
+          {previewUrl && !uploading && (
             <button
               onClick={handleRemoveAvatar}
               disabled={uploading}
-              className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 hover:bg-red-600 transition-colors"
+              className="absolute -top-1 -right-1 bg-app-red dark:bg-app-red-600 rounded-full p-1.5 hover:bg-app-red-700 dark:hover:bg-app-red-700 transition-colors shadow-lg"
+              aria-label="Remove avatar"
             >
-              <X className="w-4 h-4 text-white" />
+              <X size={14} strokeWidth={2} className="text-white" />
             </button>
           )}
         </div>
@@ -200,8 +327,8 @@ export default function ProfilePictureUpload({
         {/* Upload Controls */}
         <div className="flex-1 space-y-3">
           <div>
-            <h4 className="text-sm font-medium text-gray-900">Profile Picture</h4>
-            <p className="text-xs text-gray-500 mt-1">
+            <h4 className="text-sm font-medium text-app-black dark:text-dark-text">Profile Picture</h4>
+            <p className="text-xs text-app-gray dark:text-app-light-gray mt-1">
               Upload a photo to personalize your account
             </p>
           </div>
@@ -211,30 +338,31 @@ export default function ProfilePictureUpload({
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               className={`
-                px-4 py-2 rounded-lg border border-gray-300 
+                px-3 py-2 bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 
+                rounded-lg hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all
                 flex items-center gap-2 text-sm font-medium
-                hover:bg-gray-50 transition-colors
                 ${uploading ? 'opacity-50 cursor-wait' : ''}
+                text-app-gray dark:text-app-light-gray hover:text-app-black dark:hover:text-dark-text
               `}
             >
               {uploading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                  <Loader2 size={16} className="animate-spin" />
                   Uploading...
                 </>
               ) : (
                 <>
-                  <Upload className="w-4 h-4" />
+                  <Upload size={16} strokeWidth={1.5} />
                   Choose Photo
                 </>
               )}
             </button>
 
-            {previewUrl && (
+            {previewUrl && !uploading && (
               <button
                 onClick={handleRemoveAvatar}
                 disabled={uploading}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                className="px-3 py-2 rounded-lg text-sm font-medium text-app-red dark:text-app-red-400 hover:bg-app-red-50 dark:hover:bg-app-red-900/20 transition-all"
               >
                 Remove
               </button>
@@ -248,39 +376,31 @@ export default function ProfilePictureUpload({
             accept="image/*"
             onChange={handleFileSelect}
             className="hidden"
+            disabled={uploading}
           />
 
           {/* Status Messages */}
           {uploadError && (
-            <div className="flex items-center gap-2 text-red-600 text-sm">
-              <AlertCircle className="w-4 h-4" />
-              {uploadError}
+            <div className="flex items-center gap-2 p-2 bg-app-red-50 dark:bg-app-red-900/20 rounded-lg">
+              <AlertCircle size={16} strokeWidth={1.5} className="text-app-red dark:text-app-red-400 flex-shrink-0" />
+              <span className="text-sm text-app-red dark:text-app-red-400">{uploadError}</span>
             </div>
           )}
 
           {uploadSuccess && (
-            <div className="flex items-center gap-2 text-green-600 text-sm">
-              <Check className="w-4 h-4" />
-              Profile picture updated successfully!
+            <div className="flex items-center gap-2 p-2 bg-app-green-50 dark:bg-dark-accent/20 rounded-lg">
+              <Check size={16} strokeWidth={1.5} className="text-app-green-700 dark:text-dark-accent flex-shrink-0" />
+              <span className="text-sm text-app-green-700 dark:text-dark-accent">
+                Profile picture updated successfully!
+              </span>
             </div>
           )}
 
-          <p className="text-xs text-gray-400">
-            Accepted formats: JPEG, PNG, GIF, WebP. Max size: 5MB
+          <p className="text-xs text-app-gray dark:text-app-light-gray">
+            Accepted formats: JPEG, PNG, GIF, WebP • Max size: 5MB
           </p>
         </div>
       </div>
     </div>
   )
 }
-
-// Usage in SettingsPage.tsx:
-// Add this component in the Account Information section:
-/*
-<ProfilePictureUpload 
-  onUploadComplete={(url) => {
-    // Optional: Handle completion, e.g., refresh user data
-    console.log('New avatar URL:', url)
-  }}
-/>
-*/

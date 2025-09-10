@@ -9,10 +9,11 @@ interface UIStore {
   setSidebarCollapsed: (collapsed: boolean) => void;
   
   // Theme state
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'system';
   toggleTheme: () => void;
-  setTheme: (theme: 'light' | 'dark') => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
   initializeTheme: () => void;
+  getEffectiveTheme: () => 'light' | 'dark';
 }
 
 const useUIStore = create<UIStore>()(
@@ -22,7 +23,7 @@ const useUIStore = create<UIStore>()(
       isSidebarCollapsed: false,
       
       // Default theme
-      theme: 'light' as const,
+      theme: 'system' as const,
       
       toggleSidebar: () => {
         const newState = !get().isSidebarCollapsed;
@@ -45,15 +46,31 @@ const useUIStore = create<UIStore>()(
       
       toggleTheme: () => {
         const currentTheme = get().theme;
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        // Cycle through: light -> dark -> system -> light
+        let newTheme: 'light' | 'dark' | 'system';
+        if (currentTheme === 'light') {
+          newTheme = 'dark';
+        } else if (currentTheme === 'dark') {
+          newTheme = 'system';
+        } else {
+          newTheme = 'light';
+        }
         get().setTheme(newTheme);
       },
       
       setTheme: (theme) => {
         set({ theme });
         
+        // Determine effective theme
+        let effectiveTheme: 'light' | 'dark';
+        if (theme === 'system') {
+          effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } else {
+          effectiveTheme = theme;
+        }
+        
         // Apply theme to document - both data-theme and class for Tailwind
-        if (theme === 'dark') {
+        if (effectiveTheme === 'dark') {
           document.documentElement.setAttribute('data-theme', 'dark');
           document.documentElement.classList.add('dark');
         } else {
@@ -61,23 +78,42 @@ const useUIStore = create<UIStore>()(
           document.documentElement.classList.remove('dark');
         }
         
+        // Also save to localStorage for backward compatibility
+        localStorage.setItem('theme', theme);
+        
         // Emit custom event for theme change
         window.dispatchEvent(new CustomEvent('theme:change', { 
-          detail: { theme } 
+          detail: { theme, effectiveTheme } 
         }));
       },
       
       initializeTheme: () => {
-        const storedTheme = get().theme;
-        
-        // Apply stored theme on initialization - both data-theme and class for Tailwind
-        if (storedTheme === 'dark') {
-          document.documentElement.setAttribute('data-theme', 'dark');
-          document.documentElement.classList.add('dark');
+        // Check for theme in localStorage first (for backward compatibility)
+        const localStorageTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
+        if (localStorageTheme) {
+          // Use the theme from localStorage if it exists
+          get().setTheme(localStorageTheme);
         } else {
-          document.documentElement.removeAttribute('data-theme');
-          document.documentElement.classList.remove('dark');
+          // Otherwise use the stored theme from zustand
+          const storedTheme = get().theme;
+          get().setTheme(storedTheme);
         }
+        
+        // Listen for system theme changes when using 'system' theme
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        mediaQuery.addEventListener('change', (e) => {
+          if (get().theme === 'system') {
+            get().setTheme('system'); // Re-apply system theme
+          }
+        });
+      },
+      
+      getEffectiveTheme: () => {
+        const theme = get().theme;
+        if (theme === 'system') {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        return theme;
       },
     }),
     {

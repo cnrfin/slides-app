@@ -1,5 +1,6 @@
 // src/components/dashboard/AnalyticsPage.tsx
 import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   TrendingUp, 
   Clock, 
@@ -14,7 +15,11 @@ import {
   Zap,
   ChevronUp,
   ChevronDown,
-  Info
+  Info,
+  BarChart3,
+  PieChart,
+  Download,
+  Filter
 } from 'lucide-react'
 import useAuthStore from '@/stores/authStore'
 import { supabase } from '@/lib/supabase'
@@ -44,6 +49,7 @@ interface StatCard {
   trend?: number
   trendLabel?: string
   color: string
+  bgColor: string
 }
 
 export default function AnalyticsPage() {
@@ -169,6 +175,11 @@ export default function AnalyticsPage() {
     Object.values(chartInstances.current).forEach(chart => chart.destroy())
     chartInstances.current = {}
 
+    // Get dark mode status
+    const isDarkMode = document.documentElement.classList.contains('dark')
+    const textColor = isDarkMode ? '#e5e7eb' : '#374151'
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
+
     // Lessons Created Chart
     if (lessonsChartRef.current) {
       const ctx = lessonsChartRef.current.getContext('2d')
@@ -182,8 +193,8 @@ export default function AnalyticsPage() {
             datasets: [{
               label: 'Lessons Created',
               data: selectedPeriod === 'week' ? analyticsData.weeklyLessons : analyticsData.monthlyProgress,
-              borderColor: 'rgb(147, 51, 234)',
-              backgroundColor: 'rgba(147, 51, 234, 0.1)',
+              borderColor: isDarkMode ? '#5EEAD4' : '#059669',
+              backgroundColor: isDarkMode ? 'rgba(94, 234, 212, 0.1)' : 'rgba(5, 150, 105, 0.1)',
               tension: 0.4,
               fill: true
             }]
@@ -196,7 +207,7 @@ export default function AnalyticsPage() {
                 display: false
               },
               tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                backgroundColor: isDarkMode ? 'rgba(31, 41, 55, 0.9)' : 'rgba(0, 0, 0, 0.8)',
                 padding: 12,
                 cornerRadius: 8
               }
@@ -206,12 +217,18 @@ export default function AnalyticsPage() {
                 beginAtZero: true,
                 grid: {
                   display: true,
-                  color: 'rgba(0, 0, 0, 0.05)'
+                  color: gridColor
+                },
+                ticks: {
+                  color: textColor
                 }
               },
               x: {
                 grid: {
                   display: false
+                },
+                ticks: {
+                  color: textColor
                 }
               }
             }
@@ -230,12 +247,18 @@ export default function AnalyticsPage() {
             labels: analyticsData.topLanguages.map(l => l.language),
             datasets: [{
               data: analyticsData.topLanguages.map(l => l.count),
-              backgroundColor: [
-                'rgb(147, 51, 234)',
-                'rgb(59, 130, 246)',
-                'rgb(16, 185, 129)',
-                'rgb(251, 146, 60)',
-                'rgb(244, 63, 94)'
+              backgroundColor: isDarkMode ? [
+                '#5EEAD4',
+                '#60A5FA',
+                '#A78BFA',
+                '#FB923C',
+                '#F87171'
+              ] : [
+                '#059669',
+                '#2563EB',
+                '#7C3AED',
+                '#EA580C',
+                '#DC2626'
               ],
               borderWidth: 0
             }]
@@ -250,11 +273,12 @@ export default function AnalyticsPage() {
                   padding: 15,
                   font: {
                     size: 12
-                  }
+                  },
+                  color: textColor
                 }
               },
               tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                backgroundColor: isDarkMode ? 'rgba(31, 41, 55, 0.9)' : 'rgba(0, 0, 0, 0.8)',
                 padding: 12,
                 cornerRadius: 8
               }
@@ -264,28 +288,10 @@ export default function AnalyticsPage() {
       }
     }
 
-    // Activity Heatmap Chart
+    // Activity Chart
     if (activityChartRef.current) {
       const ctx = activityChartRef.current.getContext('2d')
       if (ctx) {
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-        const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
-        
-        // Generate mock heatmap data
-        const heatmapData: any[] = []
-        days.forEach((day, dayIndex) => {
-          hours.forEach((hour, hourIndex) => {
-            const value = Math.random() * 10
-            if (value > 3) {
-              heatmapData.push({
-                x: hourIndex,
-                y: dayIndex,
-                v: Math.floor(value)
-              })
-            }
-          })
-        })
-
         chartInstances.current.activity = new Chart(ctx, {
           type: 'bar',
           data: {
@@ -295,9 +301,11 @@ export default function AnalyticsPage() {
               data: analyticsData.weeklyLessons,
               backgroundColor: analyticsData.weeklyLessons.map(value => {
                 const intensity = value / Math.max(...analyticsData.weeklyLessons)
-                return `rgba(147, 51, 234, ${0.3 + intensity * 0.7})`
+                return isDarkMode 
+                  ? `rgba(94, 234, 212, ${0.3 + intensity * 0.7})`
+                  : `rgba(5, 150, 105, ${0.3 + intensity * 0.7})`
               }),
-              borderColor: 'rgb(147, 51, 234)',
+              borderColor: isDarkMode ? '#5EEAD4' : '#059669',
               borderWidth: 1
             }]
           },
@@ -309,7 +317,7 @@ export default function AnalyticsPage() {
                 display: false
               },
               tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                backgroundColor: isDarkMode ? 'rgba(31, 41, 55, 0.9)' : 'rgba(0, 0, 0, 0.8)',
                 padding: 12,
                 cornerRadius: 8,
                 callbacks: {
@@ -324,12 +332,18 @@ export default function AnalyticsPage() {
                 beginAtZero: true,
                 grid: {
                   display: true,
-                  color: 'rgba(0, 0, 0, 0.05)'
+                  color: gridColor
+                },
+                ticks: {
+                  color: textColor
                 }
               },
               x: {
                 grid: {
                   display: false
+                },
+                ticks: {
+                  color: textColor
                 }
               }
             }
@@ -358,10 +372,15 @@ export default function AnalyticsPage() {
   if (isLoading || !analyticsData) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading analytics...</p>
-        </div>
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="w-8 h-8 border-2 border-app-green-700 dark:border-dark-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-app-gray dark:text-app-light-gray">Loading analytics...</p>
+        </motion.div>
       </div>
     )
   }
@@ -371,37 +390,41 @@ export default function AnalyticsPage() {
       title: 'Time Saved',
       value: formatTime(analyticsData.timeSavedMinutes),
       subtitle: 'This month',
-      icon: <Clock className="w-5 h-5" />,
+      icon: <Clock size={20} strokeWidth={1.5} />,
       trend: 12,
       trendLabel: 'vs last month',
-      color: 'bg-blue-500'
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-100 dark:bg-blue-900/30'
     },
     {
       title: 'Money Saved',
       value: formatCurrency(analyticsData.moneySaved),
       subtitle: 'Based on your hourly rate',
-      icon: <DollarSign className="w-5 h-5" />,
+      icon: <DollarSign size={20} strokeWidth={1.5} />,
       trend: 18,
       trendLabel: 'vs last month',
-      color: 'bg-green-500'
+      color: 'text-green-600 dark:text-green-400',
+      bgColor: 'bg-green-100 dark:bg-green-900/30'
     },
     {
       title: 'Login Streak',
       value: analyticsData.loginStreak,
       subtitle: 'Days in a row',
-      icon: <Zap className="w-5 h-5" />,
+      icon: <Zap size={20} strokeWidth={1.5} />,
       trend: 0,
       trendLabel: 'Keep it up!',
-      color: 'bg-orange-500'
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-100 dark:bg-orange-900/30'
     },
     {
       title: 'Lessons Created',
       value: analyticsData.totalLessonsCreated,
       subtitle: 'Total this month',
-      icon: <BookOpen className="w-5 h-5" />,
+      icon: <BookOpen size={20} strokeWidth={1.5} />,
       trend: 23,
       trendLabel: 'vs last month',
-      color: 'bg-purple-500'
+      color: 'text-purple-600 dark:text-purple-400',
+      bgColor: 'bg-purple-100 dark:bg-purple-900/30'
     }
   ]
 
@@ -409,45 +432,60 @@ export default function AnalyticsPage() {
     {
       label: 'Total Students',
       value: analyticsData.totalStudents,
-      icon: <Users className="w-4 h-4" />
+      icon: <Users size={16} strokeWidth={1.5} />
     },
     {
       label: 'PDF Exports',
       value: analyticsData.totalPdfExports,
-      icon: <FileDown className="w-4 h-4" />
+      icon: <FileDown size={16} strokeWidth={1.5} />
     },
     {
       label: 'Courses Created',
       value: analyticsData.totalCourses,
-      icon: <Target className="w-4 h-4" />
+      icon: <Target size={16} strokeWidth={1.5} />
     },
     {
       label: 'Completion Rate',
       value: `${analyticsData.completionRate}%`,
-      icon: <Award className="w-4 h-4" />
+      icon: <Award size={16} strokeWidth={1.5} />
     }
   ]
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <motion.div 
+      className="p-2 sm:p-8 max-w-7xl mx-auto"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics</h1>
-        <p className="text-gray-600">Track your progress and see how much time and money you've saved</p>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-4xl font-normal text-app-black dark:text-dark-text">Analytics</h1>
+          <motion.button
+            className="px-4 py-2 bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all flex items-center gap-2"
+            whileHover={{ scale: 1.02, transition: { type: "spring", stiffness: 400, damping: 17 } }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Download size={16} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
+            <span className="text-sm text-app-gray dark:text-app-light-gray">Export</span>
+          </motion.button>
+        </div>
+        <p className="text-app-gray dark:text-app-light-gray">Track your progress and see how much time and money you've saved</p>
       </div>
 
       {/* Period Selector */}
       <div className="mb-6 flex items-center gap-2">
-        <span className="text-sm text-gray-600">View period:</span>
-        <div className="inline-flex rounded-lg border border-gray-300 bg-white">
+        <span className="text-sm text-app-gray dark:text-app-light-gray">View period:</span>
+        <div className="inline-flex rounded-lg border border-app-border dark:border-dark-border/20 bg-white dark:bg-dark-card">
           {(['week', 'month', 'year'] as const).map((period) => (
             <button
               key={period}
               onClick={() => setSelectedPeriod(period)}
-              className={`px-4 py-2 text-sm font-medium capitalize transition-colors first:rounded-l-lg last:rounded-r-lg ${
+              className={`px-4 py-2 text-sm font-medium capitalize transition-all first:rounded-l-lg last:rounded-r-lg ${
                 selectedPeriod === period
-                  ? 'bg-purple-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-app-green-700 dark:bg-dark-accent text-white'
+                  : 'text-app-gray dark:text-app-light-gray hover:bg-app-secondary-bg-solid dark:hover:bg-white/5'
               }`}
             >
               {period}
@@ -459,126 +497,165 @@ export default function AnalyticsPage() {
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statCards.map((stat, index) => (
-          <div
+          <motion.div
             key={index}
-            className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow"
+            className="bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg p-6 hover:shadow-lg dark:hover:shadow-dark transition-shadow duration-200"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1, duration: 0.3 }}
           >
             <div className="flex items-start justify-between mb-4">
-              <div className={`p-2 ${stat.color} bg-opacity-10 rounded-lg`}>
-                <div className={`${stat.color} bg-clip-text text-transparent`}>
+              <div className={`p-2 ${stat.bgColor} rounded-lg`}>
+                <div className={stat.color}>
                   {stat.icon}
                 </div>
               </div>
               {stat.trend !== undefined && stat.trend !== 0 && (
-                <div className={`flex items-center gap-1 text-sm ${
-                  stat.trend > 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <motion.div 
+                  className={`flex items-center gap-1 text-sm ${
+                    stat.trend > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1 + 0.2 }}
+                >
                   {stat.trend > 0 ? (
-                    <ChevronUp className="w-4 h-4" />
+                    <ChevronUp size={16} strokeWidth={2} />
                   ) : (
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown size={16} strokeWidth={2} />
                   )}
-                  <span>{Math.abs(stat.trend)}%</span>
-                </div>
+                  <span className="font-medium">{Math.abs(stat.trend)}%</span>
+                </motion.div>
               )}
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-            <p className="text-sm text-gray-500">{stat.subtitle}</p>
+            <h3 className="text-2xl font-semibold text-app-black dark:text-dark-text mb-1">{stat.value}</h3>
+            <p className="text-sm text-app-gray dark:text-app-light-gray">{stat.subtitle}</p>
             {stat.trendLabel && (
-              <p className="text-xs text-gray-400 mt-2">{stat.trendLabel}</p>
+              <p className="text-xs text-app-gray dark:text-app-light-gray mt-2">{stat.trendLabel}</p>
             )}
-          </div>
+          </motion.div>
         ))}
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Lessons Created Chart */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <motion.div 
+          className="bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+        >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Lesson Creation Trend</h3>
-            <Activity className="w-5 h-5 text-gray-400" />
+            <h3 className="text-lg font-medium text-app-black dark:text-dark-text">Lesson Creation Trend</h3>
+            <BarChart3 size={20} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
           </div>
           <div className="h-64">
             <canvas ref={lessonsChartRef}></canvas>
           </div>
-        </div>
+        </motion.div>
 
         {/* Languages Distribution */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <motion.div 
+          className="bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.3 }}
+        >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Languages Taught</h3>
-            <Info className="w-5 h-5 text-gray-400" />
+            <h3 className="text-lg font-medium text-app-black dark:text-dark-text">Languages Taught</h3>
+            <PieChart size={20} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
           </div>
           <div className="h-64">
             <canvas ref={languagesChartRef}></canvas>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Activity Heatmap */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-8">
+      <motion.div 
+        className="bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg p-6 mb-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.3 }}
+      >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Weekly Activity</h3>
-          <Calendar className="w-5 h-5 text-gray-400" />
+          <h3 className="text-lg font-medium text-app-black dark:text-dark-text">Weekly Activity</h3>
+          <Activity size={20} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
         </div>
         <div className="h-48">
           <canvas ref={activityChartRef}></canvas>
         </div>
-      </div>
+      </motion.div>
 
       {/* Additional Stats */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Metrics</h3>
+      <motion.div 
+        className="bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.3 }}
+      >
+        <h3 className="text-lg font-medium text-app-black dark:text-dark-text mb-4">Additional Metrics</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {additionalStats.map((stat, index) => (
-            <div key={index} className="text-center">
-              <div className="flex items-center justify-center gap-2 text-gray-600 mb-2">
+            <motion.div 
+              key={index} 
+              className="text-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.6 + index * 0.05 }}
+            >
+              <div className="flex items-center justify-center gap-2 text-app-gray dark:text-app-light-gray mb-2">
                 {stat.icon}
                 <span className="text-sm">{stat.label}</span>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-            </div>
+              <p className="text-2xl font-semibold text-app-black dark:text-dark-text">{stat.value}</p>
+            </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* Insights Section */}
-      <div className="mt-8 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-6">
+      <motion.div 
+        className="mt-8 bg-gradient-to-r from-app-green-50 to-green-100 dark:from-dark-accent/10 dark:to-dark-accent/20 border border-app-green-200 dark:border-dark-accent/30 rounded-lg p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7, duration: 0.3 }}
+      >
         <div className="flex items-start gap-4">
-          <div className="p-2 bg-purple-600 bg-opacity-10 rounded-lg">
-            <TrendingUp className="w-6 h-6 text-purple-600" />
+          <div className="p-2 bg-app-green-700 dark:bg-dark-accent bg-opacity-10 dark:bg-opacity-20 rounded-lg">
+            <TrendingUp size={24} className="text-app-green-700 dark:text-dark-accent" strokeWidth={1.5} />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Progress Summary</h3>
-            <p className="text-gray-700 mb-3">
-              Great job! You've saved <strong>{formatTime(analyticsData.timeSavedMinutes)}</strong> of preparation time 
-              this month, equivalent to <strong>{formatCurrency(analyticsData.moneySaved)}</strong> based on your hourly rate. 
+            <h3 className="text-lg font-medium text-app-black dark:text-dark-text mb-2">Your Progress Summary</h3>
+            <p className="text-app-gray dark:text-app-light-gray mb-3">
+              Great job! You've saved <strong className="text-app-black dark:text-dark-text">{formatTime(analyticsData.timeSavedMinutes)}</strong> of preparation time 
+              this month, equivalent to <strong className="text-app-black dark:text-dark-text">{formatCurrency(analyticsData.moneySaved)}</strong> based on your hourly rate. 
               Your {analyticsData.loginStreak}-day login streak shows consistent dedication!
             </p>
             <div className="flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-gray-600">
-                  <strong className="text-gray-900">{analyticsData.totalLessonsCreated}</strong> lessons created
+                <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full"></div>
+                <span className="text-app-gray dark:text-app-light-gray">
+                  <strong className="text-app-black dark:text-dark-text">{analyticsData.totalLessonsCreated}</strong> lessons created
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-gray-600">
-                  <strong className="text-gray-900">{analyticsData.totalStudents}</strong> students managed
+                <div className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
+                <span className="text-app-gray dark:text-app-light-gray">
+                  <strong className="text-app-black dark:text-dark-text">{analyticsData.totalStudents}</strong> students managed
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span className="text-gray-600">
-                  <strong className="text-gray-900">{analyticsData.completionRate}%</strong> completion rate
+                <div className="w-2 h-2 bg-purple-500 dark:bg-purple-400 rounded-full"></div>
+                <span className="text-app-gray dark:text-app-light-gray">
+                  <strong className="text-app-black dark:text-dark-text">{analyticsData.completionRate}%</strong> completion rate
                 </span>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

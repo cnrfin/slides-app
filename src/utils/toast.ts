@@ -59,8 +59,7 @@ export const toast: ToastHelpers = {
   },
   
   warning: (message: string, options?: ToastOptions) => {
-    // Use 'info' type for warnings as the current Toast component doesn't have a warning type
-    showToast('info', message, options?.duration)
+    showToast('warning', message, options?.duration)
     if (options?.action) {
       console.log('Toast action requested but not yet implemented:', options.action)
     }

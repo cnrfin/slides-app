@@ -132,7 +132,7 @@ function LanguagePopup({ isOpen, onClose, anchorElement, userMenuElement, onClos
       const menuRect = userMenuElement.getBoundingClientRect();
       return {
         top: menuRect.top,
-        left: menuRect.right + 8
+        left: menuRect.right + -4
       };
     }
     
@@ -220,7 +220,7 @@ export default function Sidebar({}: SidebarProps = {}) {
   const [isHoveringCollapseBtn, setIsHoveringCollapseBtn] = useState(false)
   
   // Use the UI store for persisted collapse state and theme
-  const { isSidebarCollapsed: isCollapsed, toggleSidebar, theme, toggleTheme } = useUIStore()
+  const { isSidebarCollapsed: isCollapsed, toggleSidebar, theme, setTheme, toggleTheme, getEffectiveTheme } = useUIStore()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isLanguagePopupOpen, setIsLanguagePopupOpen] = useState(false)
   const [isMobileLanguagePanelOpen, setIsMobileLanguagePanelOpen] = useState(false)
@@ -607,14 +607,14 @@ export default function Sidebar({}: SidebarProps = {}) {
               {!isCollapsed && (
                 <>
                   <div className="flex-1 text-left">
-                    <div className="text-body-small font-medium text-gray-900 dark:text-gray-200 truncate">
+                    <div className="text-body-small font-medium text-app-black dark:text-dark-text truncate">
                       {user?.display_name || user?.email?.split('@')[0] || 'User'}
                     </div>
-                    <div className="text-caption text-gray-500 dark:text-gray-400 truncate">
+                    <div className="text-caption text-app-light-gray dark:text-app-light-gray truncate">
                       {user?.email || 'email@example.com'}
                     </div>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 text-app-light-gray dark:text-app-light-gray transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </>
               )}
             </button>
@@ -680,30 +680,33 @@ export default function Sidebar({}: SidebarProps = {}) {
                     
                     <button
                       onClick={() => {
-                        toggleTheme();
+                        // When using the toggle, switch between light and dark only
+                        // System theme can only be set from settings page
+                        const effectiveTheme = getEffectiveTheme();
+                        setTheme(effectiveTheme === 'dark' ? 'light' : 'dark');
                         // Don't close the menu when toggling theme
                       }}
                       className="w-full flex items-center justify-between px-3 py-2 text-menu font-normal text-app-black dark:text-dark-text hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 transition-colors rounded"
                     >
                       <span className="flex items-center gap-3">
-                        {theme === 'dark' ? (
+                        {getEffectiveTheme() === 'dark' ? (
                           <Sun className="w-4 h-4" strokeWidth={1.5} />
                         ) : (
                           <Moon className="w-4 h-4" strokeWidth={1.5} />
                         )}
-                        <span>{theme === 'dark' ? t('lightMode', 'Light Mode') : t('darkMode', 'Dark Mode')}</span>
+                        <span>{getEffectiveTheme() === 'dark' ? t('lightMode', 'Light Mode') : t('darkMode', 'Dark Mode')}</span>
                       </span>
                       <div className="flex items-center">
                         <div 
                           className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ease-in-out cursor-pointer"
                           style={{
-                            backgroundColor: theme === 'dark' ? '#34968b' : '#e5e7eb'
+                            backgroundColor: getEffectiveTheme() === 'dark' ? '#34968b' : '#e5e7eb'
                           }}
                         >
                           <span
                             className="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out"
                             style={{
-                              transform: theme === 'dark' ? 'translateX(18px)' : 'translateX(2px)'
+                              transform: getEffectiveTheme() === 'dark' ? 'translateX(18px)' : 'translateX(2px)'
                             }}
                           />
                         </div>
@@ -852,30 +855,33 @@ export default function Sidebar({}: SidebarProps = {}) {
             
             <button
               onClick={() => {
-                toggleTheme();
+                // When using the toggle, switch between light and dark only
+                // System theme can only be set from settings page
+                const effectiveTheme = getEffectiveTheme();
+                setTheme(effectiveTheme === 'dark' ? 'light' : 'dark');
                 // Don't close mobile menu when toggling theme
               }}
               className="w-full flex items-center justify-between px-3 py-2 text-menu text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-white/10 rounded-lg transition-colors"
             >
               <span className="flex items-center gap-3">
-                {theme === 'dark' ? (
+                {getEffectiveTheme() === 'dark' ? (
                   <Sun className="w-4 h-4" strokeWidth={1.5} />
                 ) : (
                   <Moon className="w-4 h-4" strokeWidth={1.5} />
                 )}
-                <span>{theme === 'dark' ? t('lightMode', 'Light Mode') : t('darkMode', 'Dark Mode')}</span>
+                <span>{getEffectiveTheme() === 'dark' ? t('lightMode', 'Light Mode') : t('darkMode', 'Dark Mode')}</span>
               </span>
               <div className="flex items-center">
                 <div 
                   className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ease-in-out cursor-pointer"
                   style={{
-                    backgroundColor: theme === 'dark' ? '#34968b' : '#e5e7eb'
+                    backgroundColor: getEffectiveTheme() === 'dark' ? '#34968b' : '#e5e7eb'
                   }}
                 >
                   <span
                     className="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out"
                     style={{
-                      transform: theme === 'dark' ? 'translateX(18px)' : 'translateX(2px)'
+                      transform: getEffectiveTheme() === 'dark' ? 'translateX(18px)' : 'translateX(2px)'
                     }}
                   />
                 </div>

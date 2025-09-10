@@ -481,17 +481,58 @@
 }
 
 /* Dark mode shadow adjustments for inputs and interactive elements */
-[data-theme='dark'] input,
-[data-theme='dark'] textarea,
-[data-theme='dark'] select {
+/* Use :where() to reduce specificity, allowing utility classes to override */
+:where([data-theme='dark'] input),
+:where([data-theme='dark'] textarea),
+:where([data-theme='dark'] select) {
   background-color: var(--color-text-input-bg);
   border-color: var(--dark-border);
   color: var(--dark-text);
 }
 
+/* Allow transparent background when explicitly set */
+[data-theme='dark'] input.bg-transparent,
+[data-theme='dark'] textarea.bg-transparent,
+[data-theme='dark'] select.bg-transparent {
+  background-color: transparent !important;
+}
+
+/* Also support light mode transparent inputs */
+input.bg-transparent,
+textarea.bg-transparent,
+select.bg-transparent {
+  background-color: transparent !important;
+}
+
+/* Custom input variants - these will override the defaults */
+.input-filled {
+  background-color: var(--color-light-gray-200) !important;
+}
+
+[data-theme='dark'] .input-filled {
+  background-color: var(--color-gray-800) !important;
+}
+
+.input-elevated {
+  background-color: var(--color-white-pure) !important;
+}
+
+[data-theme='dark'] .input-elevated {
+  background-color: var(--color-white-400) !important;
+}
+
+.input-accent {
+  background-color: var(--color-green-50) !important;
+}
+
+[data-theme='dark'] .input-accent {
+  background-color: rgba(52, 150, 139, 0.1) !important;
+}
+
 [data-theme='dark'] input:focus,
 [data-theme='dark'] textarea:focus,
 [data-theme='dark'] select:focus {
+  /* Keep empty for now */
 }
 
 /* Removed hardcoded dark mode overrides - use Tailwind's dark: utilities instead */
