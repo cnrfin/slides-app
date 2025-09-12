@@ -19,11 +19,20 @@ import {
   ChevronLeft,
   Languages,
   Target,
-  Library
+  Library,
+  Book
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { getCurrentUser } from '@/lib/database'
+import { 
+  getCurrentUser, 
+  getStudentLessons, 
+  getAllUserLessons,
+  assignLessonToStudent,
+  unassignLessonFromStudent,
+  updateLessonProgress 
+} from '@/lib/database'
 import { toast } from '@/utils/toast'
+import { AssignLessonModal } from './AssignLessonModal'
 
 interface StudentProfile {
   id: string
@@ -72,8 +81,15 @@ const LEVEL_COLORS = {
 
 const ITEMS_PER_PAGE = 10
 
-// Mock data for lessons - in production this would come from the database
-const mockLessons: Record<string, StudentLesson[]> = {}
+// Real lesson data will be loaded from the database
+interface AssignedLesson {
+  id: string
+  name: string
+  date: string
+  vocabulary: string[]
+  progress?: number
+  completed?: boolean
+}
 
 // Custom No Students Icon Component with animation
 const NoStudentsIcon = () => (
@@ -111,11 +127,18 @@ export default function StudentsPage() {
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [currentPage, setCurrentPage] = useState(1)
-  const [studentLessons, setStudentLessons] = useState<Record<string, StudentLesson[]>>(mockLessons)
+  const [studentLessons, setStudentLessons] = useState<Record<string, AssignedLesson[]>>({})
+  const [availableLessons, setAvailableLessons] = useState<any[]>([])
+  const [loadingAvailableLessons, setLoadingAvailableLessons] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [assigningToStudent, setAssigningToStudent] = useState<StudentProfile | null>(null)
+  const [loadingLessons, setLoadingLessons] = useState<Set<string>>(new Set())
+  const [vocabularyModal, setVocabularyModal] = useState<{ lessonName: string; vocabulary: string[] } | null>(null)
 
   useEffect(() => {
     loadStudents()
     loadLanguages()
+    loadAvailableLessons()
   }, [])
 
   // Close dropdown when clicking outside, pressing Escape, scrolling, or resizing window
@@ -199,35 +222,116 @@ export default function StudentsPage() {
       if (error) throw error
       
       // Add mock lesson count and generate mock lessons for demo
-      const studentsWithStats = (data || []).map(student => {
-        const lessonCount = Math.floor(Math.random() * 20) + 5
-        
-        // Generate mock lessons for this student
-        const lessons: StudentLesson[] = Array.from({ length: Math.min(lessonCount, 5) }, (_, i) => ({
-          id: `lesson-${student.id}-${i}`,
-          name: `Lesson ${i + 1}: ${['Grammar Basics', 'Conversation Practice', 'Vocabulary Building', 'Reading Comprehension', 'Writing Skills'][i % 5]}`,
-          date: new Date(Date.now() - (i * 7 * 24 * 60 * 60 * 1000)).toISOString(),
-          vocabulary: Array.from({ length: Math.floor(Math.random() * 8) + 3 }, (_, j) => 
-            ['apple', 'house', 'car', 'book', 'computer', 'phone', 'table', 'chair', 'window', 'door', 'tree', 'water'][Math.floor(Math.random() * 12)]
-          )
-        }))
-        
-        mockLessons[student.id] = lessons
-        
-        return {
-          ...student,
-          lesson_count: lessonCount,
-          progress: Math.floor(Math.random() * 100)
-        }
-      })
+      const studentsWithStats = (data || []).map(student => ({
+        ...student,
+        lesson_count: 0, // Will be updated when lessons are loaded
+        progress: 0
+      }))
       
       setStudents(studentsWithStats)
-      setStudentLessons(mockLessons)
+      
+      // Load lessons for each student
+      for (const student of studentsWithStats) {
+        loadStudentLessonData(student.id)
+      }
     } catch (error: any) {
       console.error('Error loading students:', error)
       toast.error(t('studentsPage.errors.loadFailed'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadAvailableLessons = async () => {
+    try {
+      setLoadingAvailableLessons(true)
+      console.log('Loading available lessons...')
+      const lessons = await getAllUserLessons()
+      console.log('Loaded lessons:', lessons)
+      setAvailableLessons(lessons || [])
+      
+      // If no lessons found, show a helpful message
+      if (!lessons || lessons.length === 0) {
+        console.log('No lessons found for user')
+      }
+    } catch (error: any) {
+      console.error('Error loading available lessons:', error)
+      toast.error(t('studentsPage.errors.loadLessonsFailed') || 'Failed to load lessons')
+      setAvailableLessons([])
+    } finally {
+      setLoadingAvailableLessons(false)
+    }
+  }
+
+  const loadStudentLessonData = async (studentId: string) => {
+    try {
+      // Add to loading set
+      setLoadingLessons(prev => new Set([...prev, studentId]))
+      
+      const lessons = await getStudentLessons(studentId)
+      
+      const formattedLessons: AssignedLesson[] = lessons
+        .filter(sl => sl.lesson || sl.lessons) // Filter out any entries without a lesson (handle both naming conventions)
+        .map(sl => {
+          const lessonData = sl.lesson || sl.lessons // Handle both naming conventions
+          return {
+            id: lessonData.id,
+            name: lessonData.title || 'Untitled Lesson',
+            date: sl.assigned_at,
+            vocabulary: sl.vocabulary || [], // Use the extracted vocabulary
+            progress: sl.progress || 0,
+            completed: sl.completed_at !== null
+          }
+        })
+      
+      setStudentLessons(prev => ({
+        ...prev,
+        [studentId]: formattedLessons
+      }))
+      
+      // Update student's lesson count
+      setStudents(prev => prev.map(s => 
+        s.id === studentId 
+          ? { ...s, lesson_count: formattedLessons.length }
+          : s
+      ))
+    } catch (error: any) {
+      console.error(`Error loading lessons for student ${studentId}:`, error)
+    } finally {
+      // Remove from loading set
+      setLoadingLessons(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(studentId)
+        return newSet
+      })
+    }
+  }
+
+  const handleAssignLesson = async (studentId: string, lessonId: string) => {
+    try {
+      await assignLessonToStudent(studentId, lessonId)
+      toast.success(t('studentsPage.assignSuccess'))
+      // Reload the student's lessons
+      await loadStudentLessonData(studentId)
+    } catch (error: any) {
+      console.error('Error assigning lesson:', error)
+      toast.error(t('studentsPage.errors.assignFailed'))
+    }
+  }
+
+  const handleUnassignLesson = async (studentId: string, lessonId: string) => {
+    if (!confirm(t('studentsPage.unassignConfirmation'))) {
+      return
+    }
+    
+    try {
+      await unassignLessonFromStudent(studentId, lessonId)
+      toast.success(t('studentsPage.unassignSuccess'))
+      // Reload the student's lessons
+      await loadStudentLessonData(studentId)
+    } catch (error: any) {
+      console.error('Error unassigning lesson:', error)
+      toast.error(t('studentsPage.errors.unassignFailed'))
     }
   }
 
@@ -326,12 +430,16 @@ export default function StudentsPage() {
     }
   }
 
-  const toggleRowExpansion = (studentId: string) => {
+  const toggleRowExpansion = async (studentId: string) => {
     const newExpanded = new Set(expandedRows)
     if (newExpanded.has(studentId)) {
       newExpanded.delete(studentId)
     } else {
       newExpanded.add(studentId)
+      // Load lessons if not already loaded
+      if (!studentLessons[studentId] && !loadingLessons.has(studentId)) {
+        await loadStudentLessonData(studentId)
+      }
     }
     setExpandedRows(newExpanded)
   }
@@ -486,7 +594,9 @@ export default function StudentsPage() {
                     <React.Fragment key={student.id}>
                       <motion.tr
                         className={`hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-colors ${
-                          index < paginatedStudents.length - 1 ? 'border-b border-app-border dark:border-dark-border/20' : ''
+                          index < paginatedStudents.length - 1 || expandedRows.has(student.id)
+                            ? 'border-b border-app-border dark:border-dark-border/20' 
+                            : ''
                         }`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -570,72 +680,224 @@ export default function StudentsPage() {
                       <AnimatePresence>
                         {expandedRows.has(student.id) && (
                           <>
-                            {studentLessons[student.id] && studentLessons[student.id].length > 0 ? (
-                              studentLessons[student.id].map((lesson, lessonIndex) => (
+                            {loadingLessons.has(student.id) ? (
+                              <motion.tr
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className={`bg-white dark:bg-dark-card ${
+                                  index < paginatedStudents.length - 1
+                                    ? 'border-b border-app-border dark:border-dark-border/20'
+                                    : ''
+                                }`}
+                              >
+                                <td colSpan={6} className="px-4 py-4">
+                                  <div className="text-center">
+                                    <div className="w-6 h-6 border-2 border-app-green-700 dark:border-dark-accent border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                    <p className="text-sm text-app-gray dark:text-app-light-gray">
+                                      {t('studentsPage.loadingLessons')}
+                                    </p>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            ) : studentLessons[student.id] && studentLessons[student.id].length > 0 ? (
+                              <>
+                                {studentLessons[student.id].map((lesson, lessonIndex) => (
+                                  <motion.tr
+                                    key={lesson.id}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2, delay: lessonIndex * 0.02 }}
+                                    className={`bg-app-secondary-bg-solid/30 dark:bg-white/[0.02] hover:bg-app-secondary-bg-solid/50 dark:hover:bg-white/[0.03] ${
+                                      lessonIndex < studentLessons[student.id].length - 1
+                                        ? 'border-b border-app-border dark:border-dark-border/20' 
+                                        : ''
+                                    }`}
+                                  >
+                                    <td className="px-4 py-3"></td>
+                                    <td className="px-4 py-3" colSpan={2}>
+                                      <div className="flex items-center justify-between">
+                                        <button
+                                          onClick={() => navigate(`/canvas/${lesson.id}`)}
+                                          className="text-sm font-medium text-app-black dark:text-dark-text hover:text-app-green-700 dark:hover:text-dark-accent transition-colors text-left"
+                                        >
+                                          {lesson.name}
+                                        </button>
+                                        {lesson.progress !== undefined && lesson.progress > 0 && (
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-20 h-1.5 bg-app-border dark:bg-dark-border/20 rounded-full overflow-hidden">
+                                              <div 
+                                                className="h-full bg-app-green-700 dark:bg-dark-accent transition-all"
+                                                style={{ width: `${lesson.progress}%` }}
+                                              />
+                                            </div>
+                                            <span className="text-xs text-app-gray dark:text-app-light-gray">
+                                              {lesson.progress}%
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td 
+                                      className="px-4 py-3 cursor-pointer hover:bg-app-secondary-bg-solid/50 dark:hover:bg-white/[0.015] transition-colors group" 
+                                      colSpan={2}
+                                      onClick={() => {
+                                        if (lesson.vocabulary.length > 0) {
+                                          setVocabularyModal({ 
+                                            lessonName: lesson.name, 
+                                            vocabulary: lesson.vocabulary 
+                                          })
+                                        }
+                                      }}
+                                      title={lesson.vocabulary.length > 0 ? t('studentsPage.clickToViewVocabulary') || 'Click to view all vocabulary' : ''}
+                                    >
+                                      <div className="flex items-center gap-2 pointer-events-none">
+                                        {lesson.vocabulary.length > 0 ? (
+                                          <>
+                                            {lesson.vocabulary.slice(0, 3).map((word, idx) => (
+                                              <span key={idx} className="inline-flex px-2 py-0.5 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded-full text-xs">
+                                                {word}
+                                              </span>
+                                            ))}
+                                            {lesson.vocabulary.length > 3 && (
+                                              <span className="text-xs text-app-gray dark:text-app-light-gray group-hover:text-app-green-700 dark:group-hover:text-dark-accent transition-colors">
+                                                +{lesson.vocabulary.length - 3} {t('studentsPage.more') || 'more'}
+                                              </span>
+                                            )}
+                                          </>
+                                        ) : (
+                                          <span className="text-xs text-app-gray dark:text-app-light-gray italic">No vocabulary</span>
+                                        )}
+                                        {lesson.completed && (
+                                          <span className="inline-flex px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs ml-auto">
+                                            {t('studentsPage.completed')}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <button
+                                        onClick={() => handleUnassignLesson(student.id, lesson.id)}
+                                        className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                                      >
+                                        {t('studentsPage.unassign')}
+                                      </button>
+                                    </td>
+                                  </motion.tr>
+                                ))}
                                 <motion.tr
-                                  key={lesson.id}
                                   initial={{ opacity: 0 }}
                                   animate={{ opacity: 1 }}
                                   exit={{ opacity: 0 }}
-                                  transition={{ duration: 0.2, delay: lessonIndex * 0.02 }}
+                                  transition={{ duration: 0.2 }}
                                   className={`bg-white dark:bg-dark-card ${
-                                    lessonIndex < studentLessons[student.id].length - 1 || index < paginatedStudents.length - 1
-                                      ? 'border-b border-app-border dark:border-dark-border/20' 
+                                    index < paginatedStudents.length - 1
+                                      ? 'border-b border-app-border dark:border-dark-border/20'
                                       : ''
                                   }`}
                                 >
-                                  <td className="px-4 py-2" colSpan={2}>
-                                    <button
-                                      onClick={() => navigate(`/canvas/${lesson.id}`)}
-                                      className="text-sm text-app-black dark:text-dark-text hover:text-app-green-700 dark:hover:text-dark-accent transition-colors text-left"
-                                    >
-                                      {lesson.name}
-                                    </button>
-                                  </td>
-                                  <td className="px-4 py-2" colSpan={4}>
-                                    <div className="flex flex-wrap gap-1">
-                                      {lesson.vocabulary.map((word, idx) => (
-                                        <span key={idx} className="inline-flex px-2 py-0.5 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded-full text-xs">
-                                          {word}
-                                        </span>
-                                      ))}
+                                  <td colSpan={6} className="px-4 py-3">
+                                    <div className="flex justify-center gap-2">
+                                      <button
+                                        onClick={() => {
+                                          console.log('Assigning to student:', student)
+                                          console.log('Available lessons:', availableLessons)
+                                          setAssigningToStudent(student)
+                                          setShowAssignModal(true)
+                                        }}
+                                        className="px-3 py-1.5 text-xs bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all text-app-green-700 dark:text-dark-accent font-medium disabled:opacity-50"
+                                        disabled={loadingAvailableLessons}
+                                      >
+                                        <div className="flex items-center gap-1.5">
+                                          <Library size={12} strokeWidth={1.5} />
+                                          {loadingAvailableLessons 
+                                            ? t('studentsPage.loadingLessons') || 'Loading...'
+                                            : `${t('studentsPage.assignLesson')} (${availableLessons.length})`}
+                                        </div>
+                                      </button>
+                                      <button
+                                        onClick={() => navigate('/dashboard', {
+                                          state: {
+                                            expandPrompt: true,
+                                            selectedStudent: {
+                                              id: student.id,
+                                              name: student.name,
+                                              target_language: student.target_language,
+                                              native_language: student.native_language,
+                                              level: student.level,
+                                              goals: student.goals,
+                                              interests: student.interests
+                                            }
+                                          }
+                                        })}
+                                        className="px-3 py-1.5 text-xs text-app-gray dark:text-app-light-gray hover:text-app-green-700 dark:hover:text-dark-accent hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 rounded-lg transition-all flex items-center gap-1.5 font-medium"
+                                      >
+                                        <Sparkles size={12} strokeWidth={1.5} />
+                                        {t('studentsPage.createNewLesson')}
+                                      </button>
                                     </div>
                                   </td>
                                 </motion.tr>
-                              ))
+                              </>
                             ) : (
                               <motion.tr
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.2 }}
-                                className="bg-white dark:bg-dark-card border-b border-app-border dark:border-dark-border/20"
+                                className={`bg-white dark:bg-dark-card ${
+                                  index < paginatedStudents.length - 1
+                                    ? 'border-b border-app-border dark:border-dark-border/20'
+                                    : ''
+                                }`}
                               >
                                 <td colSpan={6} className="px-4 py-6">
                                   <div className="text-center">
-                                    <BookOpen size={20} className="mx-auto text-app-gray dark:text-app-light-gray mb-2" strokeWidth={1.5} />
-                                    <p className="text-sm text-app-gray dark:text-app-light-gray">
+                                    <BookOpen size={24} className="mx-auto text-app-gray dark:text-app-light-gray mb-2" strokeWidth={1.5} />
+                                    <p className="text-sm text-app-gray dark:text-app-light-gray mb-3">
                                       {t('studentsPage.table.noLessonsYet')}
                                     </p>
-                                    <button
-                                      onClick={() => navigate('/dashboard', {
-                                        state: {
-                                          expandPrompt: true,
-                                          selectedStudent: {
-                                            id: student.id,
-                                            name: student.name,
-                                            target_language: student.target_language,
-                                            native_language: student.native_language,
-                                            level: student.level,
-                                            goals: student.goals,
-                                            interests: student.interests
+                                    <div className="flex gap-2 justify-center">
+                                      <button
+                                        onClick={() => {
+                                          console.log('Assigning to student (empty state):', student)
+                                          console.log('Available lessons:', availableLessons)
+                                          setAssigningToStudent(student)
+                                          setShowAssignModal(true)
+                                        }}
+                                        className="px-3 py-1.5 text-xs bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all text-app-green-700 dark:text-dark-accent font-medium disabled:opacity-50"
+                                        disabled={loadingAvailableLessons}
+                                      >
+                                        <div className="flex items-center gap-1.5">
+                                          <Library size={12} strokeWidth={1.5} />
+                                          {loadingAvailableLessons 
+                                            ? t('studentsPage.loadingLessons') || 'Loading...'
+                                            : `${t('studentsPage.assignExistingLesson')} (${availableLessons.length})`}
+                                        </div>
+                                      </button>
+                                      <button
+                                        onClick={() => navigate('/dashboard', {
+                                          state: {
+                                            expandPrompt: true,
+                                            selectedStudent: {
+                                              id: student.id,
+                                              name: student.name,
+                                              target_language: student.target_language,
+                                              native_language: student.native_language,
+                                              level: student.level,
+                                              goals: student.goals,
+                                              interests: student.interests
+                                            }
                                           }
-                                        }
-                                      })}
-                                      className="mt-2 px-3 py-1.5 text-xs bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all"
-                                    >
-                                      {t('studentsPage.table.createFirstLesson')}
-                                    </button>
+                                        })}
+                                        className="px-3 py-1.5 text-xs text-app-gray dark:text-app-light-gray hover:text-app-green-700 dark:hover:text-dark-accent hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 rounded-lg transition-all flex items-center gap-1.5 font-medium"
+                                      >
+                                        <Sparkles size={12} strokeWidth={1.5} />
+                                        {t('studentsPage.table.createFirstLesson')}
+                                      </button>
+                                    </div>
                                   </div>
                                 </td>
                               </motion.tr>
@@ -823,52 +1085,137 @@ export default function StudentsPage() {
                               {studentLessons[student.id].map((lesson, lessonIndex) => (
                                 <div 
                                   key={lesson.id} 
-                                  className="flex justify-between items-center px-4 py-2 border-b border-app-border/10 dark:border-dark-border/10 last:border-b-0"
+                                  className="px-4 py-3 border-b border-app-border/10 dark:border-dark-border/10 last:border-b-0"
                                 >
-                                  <button
-                                    onClick={() => navigate(`/canvas/${lesson.id}`)}
-                                    className="text-sm text-app-black dark:text-dark-text hover:text-app-green-700 dark:hover:text-dark-accent transition-colors text-left flex-1"
+                                  <div className="flex justify-between items-start mb-2">
+                                    <button
+                                      onClick={() => navigate(`/canvas/${lesson.id}`)}
+                                      className="text-sm font-medium text-app-black dark:text-dark-text hover:text-app-green-700 dark:hover:text-dark-accent transition-colors text-left flex-1"
+                                    >
+                                      {lesson.name}
+                                    </button>
+                                    <button
+                                      onClick={() => handleUnassignLesson(student.id, lesson.id)}
+                                      className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors ml-2"
+                                    >
+                                      {t('studentsPage.unassign')}
+                                    </button>
+                                  </div>
+                                  <div 
+                                    className="flex flex-wrap items-center gap-1 cursor-pointer group p-1 -m-1 rounded hover:bg-app-secondary-bg-solid/30 dark:hover:bg-white/[0.02] transition-colors"
+                                    onClick={() => {
+                                      if (lesson.vocabulary.length > 0) {
+                                        setVocabularyModal({ 
+                                          lessonName: lesson.name, 
+                                          vocabulary: lesson.vocabulary 
+                                        })
+                                      }
+                                    }}
+                                    title={lesson.vocabulary.length > 0 ? t('studentsPage.clickToViewVocabulary') || 'Click to view all vocabulary' : ''}
                                   >
-                                    {lesson.name}
-                                  </button>
-                                  <div className="flex flex-wrap gap-1 justify-end max-w-[50%]">
-                                    {lesson.vocabulary.slice(0, 2).map((word, idx) => (
-                                      <span key={idx} className="inline-flex px-2 py-0.5 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded-full text-xs">
-                                        {word}
+                                    {lesson.vocabulary.length > 0 ? (
+                                      <>
+                                        {lesson.vocabulary.slice(0, 3).map((word, idx) => (
+                                          <span key={idx} className="inline-flex px-2 py-0.5 bg-app-green-100 dark:bg-dark-accent/20 text-app-green-700 dark:text-dark-accent rounded-full text-xs">
+                                            {word}
+                                          </span>
+                                        ))}
+                                        {lesson.vocabulary.length > 3 && (
+                                          <span className="text-xs text-app-gray dark:text-app-light-gray group-hover:text-app-green-700 dark:group-hover:text-dark-accent transition-colors">
+                                            +{lesson.vocabulary.length - 3}
+                                          </span>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <span className="text-xs text-app-gray dark:text-app-light-gray italic">No vocabulary</span>
+                                    )}
+                                    {lesson.completed && (
+                                      <span className="inline-flex px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs ml-auto">
+                                        {t('studentsPage.completed')}
                                       </span>
-                                    ))}
-                                    {lesson.vocabulary.length > 2 && (
-                                      <span className="text-xs text-app-gray dark:text-app-light-gray">+{lesson.vocabulary.length - 2}</span>
                                     )}
                                   </div>
                                 </div>
                               ))}
+                              <div className="px-4 py-3">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setAssigningToStudent(student)
+                                      setShowAssignModal(true)
+                                    }}
+                                    className="flex-1 px-3 py-1.5 text-xs bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all text-app-green-700 dark:text-dark-accent font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                    disabled={loadingAvailableLessons}
+                                  >
+                                    <Library size={12} strokeWidth={1.5} />
+                                    {loadingAvailableLessons 
+                                      ? t('studentsPage.loadingLessons') || 'Loading...'
+                                      : `${t('studentsPage.assignLesson')} (${availableLessons.length})`}
+                                  </button>
+                                  <button
+                                    onClick={() => navigate('/dashboard', {
+                                      state: {
+                                        expandPrompt: true,
+                                        selectedStudent: {
+                                          id: student.id,
+                                          name: student.name,
+                                          target_language: student.target_language,
+                                          native_language: student.native_language,
+                                          level: student.level,
+                                          goals: student.goals,
+                                          interests: student.interests
+                                        }
+                                      }
+                                    })}
+                                    className="flex-1 px-3 py-1.5 text-xs text-app-gray dark:text-app-light-gray hover:text-app-green-700 dark:hover:text-dark-accent hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 rounded-lg transition-all flex items-center justify-center gap-1.5 font-medium"
+                                  >
+                                    <Sparkles size={12} strokeWidth={1.5} />
+                                    {t('studentsPage.createNewLesson')}
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           ) : (
                             <div className="text-center py-4 px-4">
                               <BookOpen size={20} className="mx-auto text-app-gray dark:text-app-light-gray mb-2" strokeWidth={1.5} />
-                              <p className="text-xs text-app-gray dark:text-app-light-gray">
+                              <p className="text-xs text-app-gray dark:text-app-light-gray mb-3">
                                 {t('studentsPage.table.noLessonsYet')}
                               </p>
-                              <button
-                                onClick={() => navigate('/dashboard', {
-                                  state: {
-                                    expandPrompt: true,
-                                    selectedStudent: {
-                                      id: student.id,
-                                      name: student.name,
-                                      target_language: student.target_language,
-                                      native_language: student.native_language,
-                                      level: student.level,
-                                      goals: student.goals,
-                                      interests: student.interests
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setAssigningToStudent(student)
+                                    setShowAssignModal(true)
+                                  }}
+                                  className="flex-1 px-3 py-1 text-xs bg-white dark:bg-dark-card border border-app-border dark:border-dark-border/20 rounded-lg hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 transition-all text-app-green-700 dark:text-dark-accent font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                  disabled={loadingAvailableLessons}
+                                >
+                                  <Library size={12} strokeWidth={1.5} />
+                                  {loadingAvailableLessons 
+                                    ? t('studentsPage.loadingLessons') || 'Loading...'
+                                    : `${t('studentsPage.assignExistingLesson')} (${availableLessons.length})`}
+                                </button>
+                                <button
+                                  onClick={() => navigate('/dashboard', {
+                                    state: {
+                                      expandPrompt: true,
+                                      selectedStudent: {
+                                        id: student.id,
+                                        name: student.name,
+                                        target_language: student.target_language,
+                                        native_language: student.native_language,
+                                        level: student.level,
+                                        goals: student.goals,
+                                        interests: student.interests
+                                      }
                                     }
-                                  }
-                                })}
-                                className="mt-2 px-3 py-1 text-xs bg-app-green-700 dark:bg-dark-accent text-white rounded-lg hover:bg-app-green-800 dark:hover:bg-dark-accent/80 transition-all"
-                              >
-                                {t('studentsPage.table.createFirstLesson')}
-                              </button>
+                                  })}
+                                  className="flex-1 px-3 py-1 text-xs text-app-gray dark:text-app-light-gray hover:text-app-green-700 dark:hover:text-dark-accent hover:bg-app-secondary-bg-solid dark:hover:bg-white/5 rounded-lg transition-all flex items-center justify-center gap-1.5 font-medium"
+                                >
+                                  <Sparkles size={12} strokeWidth={1.5} />
+                                  {t('studentsPage.table.createFirstLesson')}
+                                </button>
+                              </div>
                             </div>
                           )}
                         </motion.div>
@@ -1006,6 +1353,35 @@ export default function StudentsPage() {
             </button>
           </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Assign Lesson Modal */}
+      <AnimatePresence>
+        {showAssignModal && assigningToStudent && (
+          <AssignLessonModal
+            isOpen={showAssignModal}
+            onClose={() => {
+              setShowAssignModal(false)
+              setAssigningToStudent(null)
+            }}
+            studentId={assigningToStudent.id}
+            studentName={assigningToStudent.name}
+            availableLessons={availableLessons}
+            assignedLessonIds={studentLessons[assigningToStudent.id]?.map(l => l.id) || []}
+            onAssign={(lessonId) => handleAssignLesson(assigningToStudent.id, lessonId)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Vocabulary Modal */}
+      <AnimatePresence>
+        {vocabularyModal && (
+          <VocabularyModal
+            lessonName={vocabularyModal.lessonName}
+            vocabulary={vocabularyModal.vocabulary}
+            onClose={() => setVocabularyModal(null)}
+          />
         )}
       </AnimatePresence>
 
@@ -1255,6 +1631,95 @@ function StudentModal({ onClose, onSave, languages, saving, title, initialData }
             </motion.button>
           </div>
         </form>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// Vocabulary Modal Component
+interface VocabularyModalProps {
+  lessonName: string
+  vocabulary: string[]
+  onClose: () => void
+}
+
+function VocabularyModal({ lessonName, vocabulary, onClose }: VocabularyModalProps) {
+  const { t } = useTranslation('dashboard')
+  
+  return (
+    <motion.div 
+      className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onClick={onClose}
+    >
+      <motion.div 
+        className="bg-white dark:bg-dark-card rounded-lg w-full max-w-md border border-app-border dark:border-dark-border/20 shadow-xl overflow-hidden"
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        transition={{ duration: 0.2, type: "spring", damping: 25, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-app-border/10 dark:border-dark-border/20">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-app-green-100 dark:bg-dark-accent/20 rounded-full flex items-center justify-center">
+              <Book size={18} className="text-app-green-700 dark:text-dark-accent" strokeWidth={1.5} />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-app-black dark:text-dark-text">
+                {t('studentsPage.vocabularyModal.title') || 'Vocabulary List'}
+              </h3>
+              <p className="text-xs text-app-gray dark:text-app-light-gray mt-0.5">
+                {lessonName}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-app-secondary-bg-solid dark:hover:bg-white/10 rounded-lg transition-all"
+          >
+            <X size={18} className="text-app-gray dark:text-app-light-gray" strokeWidth={1.5} />
+          </button>
+        </div>
+        
+        {/* Vocabulary Count Badge */}
+        <div className="px-4 py-3 bg-app-secondary-bg-solid/50 dark:bg-white/[0.02] border-b border-app-border/10 dark:border-dark-border/10">
+          <span className="text-sm text-app-gray dark:text-app-light-gray">
+            {t('studentsPage.vocabularyModal.totalWords', { count: vocabulary.length }) || `${vocabulary.length} words in this lesson`}
+          </span>
+        </div>
+        
+        {/* Vocabulary List */}
+        <div className="max-h-[460px] overflow-y-auto p-4">
+          <div className={`grid gap-2 ${
+            vocabulary.length <= 10 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'
+          }`}>
+            {vocabulary.map((word, index) => (
+              <motion.div
+                key={index}
+                className="flex items-center gap-3 p-3 bg-app-secondary-bg-solid/30 dark:bg-white/[0.02] rounded-lg border border-app-border/10 dark:border-dark-border/10"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ 
+                  delay: Math.min(index * 0.02, 0.3), 
+                  duration: 0.2,
+                  ease: [0.4, 0, 0.2, 1]
+                }}
+              >
+                <span className="flex-shrink-0 w-8 h-8 bg-app-green-100 dark:bg-dark-accent/20 rounded-full flex items-center justify-center text-xs font-medium text-app-green-700 dark:text-dark-accent">
+                  {index + 1}
+                </span>
+                <span className="text-sm text-app-black dark:text-dark-text font-medium">
+                  {word}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </motion.div>
     </motion.div>
   )

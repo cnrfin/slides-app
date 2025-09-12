@@ -5,7 +5,15 @@ export interface PromptHistoryItem {
   id?: string
   user_id: string
   prompt: string
+  prompt_text?: string  // Support both field names for backward compatibility
   created_at?: string
+  student_profile_id?: string
+  genius_mode_used?: boolean
+  slides_generated?: number
+  template_types_used?: string[]
+  template_order?: string[]
+  model_used?: string
+  generation_time_ms?: number
 }
 
 export async function savePromptToHistory(userId: string, prompt: string) {
@@ -15,7 +23,7 @@ export async function savePromptToHistory(userId: string, prompt: string) {
       .insert([
         {
           user_id: userId,
-          prompt: prompt.trim()
+          prompt_text: prompt.trim()  // Changed from 'prompt' to 'prompt_text'
         }
       ])
       .select()
@@ -47,7 +55,14 @@ export async function getPromptHistory(userId: string, limit = 50) {
       return { success: false, error, data: [] }
     }
 
-    return { success: true, data: data || [] }
+    // Transform the data to ensure consistent field naming
+    // Map 'prompt_text' to 'prompt' for backward compatibility
+    const transformedData = (data || []).map(item => ({
+      ...item,
+      prompt: item.prompt_text || item.prompt || ''  // Use prompt_text if available, fallback to prompt
+    }))
+
+    return { success: true, data: transformedData }
   } catch (error) {
     console.error('Error fetching prompt history:', error)
     return { success: false, error, data: [] }

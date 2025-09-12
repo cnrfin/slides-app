@@ -262,6 +262,36 @@
     "updateSuccess": "Schüler erfolgreich aktualisiert!",
     "deleteSuccess": "Schüler erfolgreich entfernt",
     "deleteConfirmation": "Sind Sie sicher, dass Sie diesen Schüler entfernen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "assignExistingLesson": "Vorhandene Lektion zuweisen",
+    "unassign": "Zuweisung aufheben",
+    "createNewLesson": "Neue Lektion erstellen",
+    "assignLesson": "Lektion zuweisen",
+    "assignSuccess": "Lektion erfolgreich zugewiesen!",
+    "unassignSuccess": "Lektionszuweisung erfolgreich aufgehoben!",
+    "unassignConfirmation": "Möchten Sie die Zuweisung dieser Lektion wirklich aufheben?",
+    "loadingLessons": "Lektionen werden geladen...",
+    "completed": "Abgeschlossen",
+    "assignModal": {
+      "title": "Lektion zuweisen",
+      "subtitle": "Wählen Sie eine Lektion für {{name}} aus",
+      "searchPlaceholder": "Lektionen nach Titel oder Typ suchen...",
+      "noLessonsFound": "Keine Lektionen gefunden, die Ihrer Suche entsprechen",
+      "noLessonsCreated": "Sie haben noch keine Lektionen erstellt",
+      "noAvailableLessons": "Alle Lektionen wurden diesem Schüler bereits zugewiesen",
+      "createLessonHint": "Erstellen Sie zuerst eine Lektion im Dashboard",
+      "vocabularyCount": "{{count}} Wörter",
+      "created": "Erstellt",
+      "lastUpdated": "Zuletzt aktualisiert",
+      "oneLesson": "1 Lektion verfügbar",
+      "lessonsAvailable": "{{count}} Lektionen verfügbar",
+      "cancel": "Abbrechen",
+      "assignLesson": "Lektion zuweisen",
+      "assignMultipleLessons": "{{count}} Lektionen zuweisen",
+      "assigning": "Wird zugewiesen...",
+      "selectedCount": "{{selected}} von {{total}} ausgewählt",
+      "selectAll": "Alle auswählen",
+      "deselectAll": "Alle abwählen"
+    },
     "table": {
       "name": "Name",
       "level": "Niveau",
@@ -304,12 +334,20 @@
       "addStudent": "Schüler hinzufügen",
       "updateStudent": "Schüler aktualisieren"
     },
+    "vocabularyModal": {
+      "title": "Vokabelliste",
+      "totalWords": "{{count}} Wörter in dieser Lektion"
+    },
+    "clickToViewVocabulary": "Klicken Sie, um alle Vokabeln anzuzeigen",
     "errors": {
       "signInRequired": "Bitte melden Sie sich an, um Schüler anzuzeigen",
       "loadFailed": "Fehler beim Laden der Schüler",
       "addFailed": "Fehler beim Hinzufügen des Schülers",
       "updateFailed": "Fehler beim Aktualisieren des Schülers",
-      "deleteFailed": "Fehler beim Entfernen des Schülers"
+      "deleteFailed": "Fehler beim Entfernen des Schülers",
+      "assignFailed": "Fehler beim Zuweisen der Lektion",
+      "unassignFailed": "Fehler beim Aufheben der Lektionszuweisung",
+      "loadLessonsFailed": "Fehler beim Laden der Lektionen"
     }
   }
 }

@@ -5,6 +5,7 @@ import useUIStore from '@/stores/uiStore'
 import { supabase } from '@/lib/supabase'
 import ProfilePictureUpload from './ProfilePictureUpload'
 import PasswordUpdateModal from './PasswordUpdateModal'
+import VocabularyFixButton from '../admin/VocabularyFixButton'
 import { 
   Mail, 
   Globe, 

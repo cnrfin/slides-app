@@ -116,6 +116,14 @@ const router = createBrowserRouter([
         <Canvas />
       </ProtectedRoute>
     )
+  },
+  {
+    path: '/canvas/:lessonId',
+    element: (
+      <ProtectedRoute>
+        <Canvas />
+      </ProtectedRoute>
+    )
   }
 ])
 

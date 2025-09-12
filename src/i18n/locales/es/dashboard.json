@@ -262,6 +262,36 @@
     "updateSuccess": "¡Estudiante actualizado con éxito!",
     "deleteSuccess": "Estudiante eliminado con éxito",
     "deleteConfirmation": "¿Estás seguro de que quieres eliminar este estudiante? Esta acción no se puede deshacer.",
+    "assignExistingLesson": "Asignar lección existente",
+    "unassign": "Desasignar",
+    "createNewLesson": "Crear nueva lección",
+    "assignLesson": "Asignar lección",
+    "assignSuccess": "¡Lección asignada con éxito!",
+    "unassignSuccess": "¡Lección desasignada con éxito!",
+    "unassignConfirmation": "¿Estás seguro de que quieres desasignar esta lección?",
+    "loadingLessons": "Cargando lecciones...",
+    "completed": "Completada",
+    "assignModal": {
+      "title": "Asignar lección",
+      "subtitle": "Selecciona una lección para asignar a {{name}}",
+      "searchPlaceholder": "Buscar lecciones por título o tipo...",
+      "noLessonsFound": "No se encontraron lecciones que coincidan con tu búsqueda",
+      "noLessonsCreated": "Aún no has creado ninguna lección",
+      "noAvailableLessons": "Todas las lecciones han sido asignadas a este estudiante",
+      "createLessonHint": "Primero crea una lección desde el Panel de Control",
+      "vocabularyCount": "{{count}} palabras",
+      "created": "Creada",
+      "lastUpdated": "Última actualización",
+      "oneLesson": "1 lección disponible",
+      "lessonsAvailable": "{{count}} lecciones disponibles",
+      "cancel": "Cancelar",
+      "assignLesson": "Asignar lección",
+      "assignMultipleLessons": "Asignar {{count}} lecciones",
+      "assigning": "Asignando...",
+      "selectedCount": "{{selected}} de {{total}} seleccionadas",
+      "selectAll": "Seleccionar todas",
+      "deselectAll": "Deseleccionar todas"
+    },
     "table": {
       "name": "Nombre",
       "level": "Nivel",
@@ -304,12 +334,20 @@
       "addStudent": "Añadir estudiante",
       "updateStudent": "Actualizar estudiante"
     },
+    "vocabularyModal": {
+      "title": "Lista de vocabulario",
+      "totalWords": "{{count}} palabras en esta lección"
+    },
+    "clickToViewVocabulary": "Haz clic para ver todo el vocabulario",
     "errors": {
       "signInRequired": "Por favor inicia sesión para ver estudiantes",
       "loadFailed": "Error al cargar estudiantes",
       "addFailed": "Error al añadir estudiante",
       "updateFailed": "Error al actualizar estudiante",
-      "deleteFailed": "Error al eliminar estudiante"
+      "deleteFailed": "Error al eliminar estudiante",
+      "assignFailed": "Error al asignar la lección",
+      "unassignFailed": "Error al desasignar la lección",
+      "loadLessonsFailed": "Error al cargar las lecciones"
     }
   }
 }

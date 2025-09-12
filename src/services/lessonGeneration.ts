@@ -1,8 +1,11 @@
 // src/services/lessonGeneration.ts
 import { openai } from '@/lib/openai'
 import type { SlideTemplate } from '@/types/template.types'
-import { getCurrentUser, trackLessonGeneration } from '@/lib/database'
+import { getCurrentUser, trackLessonGeneration, getUserProfile, getCurrentMonthUsage } from '@/lib/database'
 import type { FileUpload } from '@/utils/fileUtils'
+import { buildSmartVocabularyContext, formatVocabularyContext, validateGenerationLimits } from './vocabularyContext'
+import { SUBSCRIPTION_PLANS } from '@/config/subscription-plans'
+import { supabase } from '@/lib/supabase'
 
 export interface StudentProfile {
   id: string
@@ -38,11 +41,13 @@ export interface GenerationRequest {
   selectedLesson?: Lesson | null
   isGeniusMode?: boolean
   uploadedFile?: FileUpload | null
+  studentVocabularyHistory?: string[] | null // All vocabulary the student has learned
 }
 
 export interface GenerationResponse {
   lessonTitle: string
   slides: any[]
+  vocabulary?: Array<{ word: string; meaning?: string; translation?: string }>
 }
 
 // Template data structure examples for OpenAI
@@ -174,7 +179,12 @@ Important guidelines:
 - Keep content appropriate for language learning
 - Make content engaging and educational
 - If a school name is needed, use "Language Learning Academy" as default
-- Ensure all text is clear and concise`
+- Ensure all text is clear and concise
+
+Vocabulary Management:
+- Pay special attention to any instructions about vocabulary usage in the user's prompt and the student's vocabulary profile
+- The student's vocabulary context will be provided - use it intelligently
+- Consider the student's proficiency level and learning pace when selecting vocabulary`
   
   // Add advanced reasoning instructions for genius mode
   if (geniusMode) {
@@ -192,11 +202,48 @@ ADVANCED REASONING MODE ACTIVATED:
 - Ensure content builds upon previous concepts systematically
 - Use more creative and engaging examples
 - Consider real-world applications of the language concepts
+- Leverage the comprehensive vocabulary analysis provided
 
 The user's language learning topic/prompt is below.`
   }
   
   return basePrompt + `\n\nThe user's language learning topic/prompt is below.`
+}
+
+// Helper function to update genius usage
+async function updateGeniusUsage(userId: string) {
+  const currentMonth = new Date().toISOString().slice(0, 7)
+  
+  try {
+    // First, get current usage
+    const { data: currentUsage } = await supabase
+      .from('usage_tracking')
+      .select('genius_generations')
+      .eq('user_id', userId)
+      .eq('month_year', currentMonth)
+      .single()
+    
+    const newCount = (currentUsage?.genius_generations || 0) + 1
+    
+    // Upsert the updated count
+    const { error } = await supabase
+      .from('usage_tracking')
+      .upsert({
+        user_id: userId,
+        month_year: currentMonth,
+        genius_generations: newCount
+      }, {
+        onConflict: 'user_id,month_year'
+      })
+    
+    if (error) {
+      console.error('Error updating genius usage:', error)
+    } else {
+      console.log(`✅ Updated genius usage to ${newCount} for month ${currentMonth}`)
+    }
+  } catch (error) {
+    console.error('Failed to update genius usage:', error)
+  }
 }
 
 export async function generateLesson(request: GenerationRequest): Promise<GenerationResponse> {
@@ -205,6 +252,48 @@ export async function generateLesson(request: GenerationRequest): Promise<Genera
   // Check if OpenAI API key is configured
   if (!import.meta.env.VITE_OPENAI_API_KEY) {
     throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.')
+  }
+  
+  // Get user and check usage limits
+  const user = await getCurrentUser()
+  if (!user) throw new Error('User not authenticated')
+  
+  // Get user's subscription plan (default to 'free' if not set)
+  const profile = await getUserProfile(user.id)
+  const userPlan = profile?.subscription_plan || 'free'
+  
+  console.log('🎯 User plan:', userPlan, 'Genius mode:', request.isGeniusMode)
+  
+  // Validate usage limits
+  const validation = await validateGenerationLimits(user.id, userPlan, request.isGeniusMode || false)
+  if (!validation.allowed) {
+    throw new Error(validation.reason)
+  }
+  
+  // Build smart vocabulary context
+  let vocabularyContextString = ''
+  if (request.selectedProfile?.id) {
+    try {
+      const vocabularyContext = await buildSmartVocabularyContext(
+        request.selectedProfile.id,
+        request.prompt,
+        userPlan,
+        request.isGeniusMode || false
+      )
+      
+      vocabularyContextString = formatVocabularyContext(vocabularyContext)
+      
+      console.log(`📚 Smart vocabulary context built:`, {
+        totalWords: vocabularyContext.summary.totalWords,
+        contextType: vocabularyContext.relevant?.purpose || 'summary_only',
+        wordsIncluded: vocabularyContext.relevant?.words.length || 0,
+        plan: userPlan,
+        isGenius: request.isGeniusMode
+      })
+    } catch (error) {
+      console.error('Failed to build vocabulary context:', error)
+      // Continue without vocabulary context rather than failing
+    }
   }
   
   // Build the complete prompt with additional context
@@ -226,8 +315,12 @@ Please create lesson content based on the above article. Extract key vocabulary,
 - Native Language: ${request.selectedProfile.native_language || 'Not specified'}
 - Level: ${request.selectedProfile.level || 'Not specified'}
 - Goals: ${request.selectedProfile.goals?.join(', ') || 'Not specified'}
-- Interests: ${request.selectedProfile.interests || 'Not specified'}
-Please tailor the content appropriately for this student's background and language learning needs.`
+- Interests: ${request.selectedProfile.interests || 'Not specified'}`
+    
+    // Add smart vocabulary context
+    fullPrompt += vocabularyContextString
+    
+    fullPrompt += `\n\nPlease tailor the content appropriately for this student's background and language learning needs.`
   }
   
   // Add lesson context if selected
@@ -259,25 +352,75 @@ Please build upon or reference this previous lesson content where appropriate.`
   const content = response.choices[0].message.content
   if (!content) throw new Error('No content generated')
   
-  const data = JSON.parse(content)
+  const data = JSON.parse(content) as GenerationResponse
+  
+  // Extract vocabulary from the generated slides
+  const extractedVocabulary: Array<{ word: string; meaning?: string; translation?: string }> = []
+  
+  // Look through all slides for vocabulary data
+  if (data.slides && Array.isArray(data.slides)) {
+    data.slides.forEach(slide => {
+      // Check for vocabulary array in slide data
+      if (slide.vocabulary && Array.isArray(slide.vocabulary)) {
+        slide.vocabulary.forEach((item: any) => {
+          if (typeof item === 'string') {
+            // Simple string vocabulary
+            extractedVocabulary.push({ word: item })
+          } else if (item && typeof item === 'object') {
+            // Object with word and meaning/translation
+            extractedVocabulary.push({
+              word: item.word || item.term || item.vocab || '',
+              meaning: item.meaning || item.definition || item.translation || ''
+            })
+          }
+        })
+      }
+      
+      // Also check for words in other formats (e.g., in questions or passages)
+      if (slide.words && Array.isArray(slide.words)) {
+        slide.words.forEach((word: any) => {
+          if (typeof word === 'string') {
+            extractedVocabulary.push({ word })
+          } else if (word && typeof word === 'object') {
+            extractedVocabulary.push({
+              word: word.word || word.term || '',
+              meaning: word.meaning || word.definition || ''
+            })
+          }
+        })
+      }
+    })
+  }
+  
+  // Remove duplicates based on word
+  const uniqueVocabulary = Array.from(
+    new Map(extractedVocabulary.map(item => [item.word.toLowerCase(), item])).values()
+  )
+  
+  // Add extracted vocabulary to the response
+  data.vocabulary = uniqueVocabulary
+  
+  console.log(`📚 Extracted ${uniqueVocabulary.length} vocabulary words from generated content`)
   
   // Track the lesson generation in the database
   try {
-    const user = await getCurrentUser()
-    if (user) {
-      const generationTimeMs = Date.now() - startTime
-      
-      await trackLessonGeneration(user.id, {
-        studentProfileId: request.selectedProfile?.id || null,
-        promptText: request.prompt,
-        geniusModeUsed: request.isGeniusMode || false,
-        slidesGenerated: request.selectedTemplates.length,
-        templateTypesUsed: [...new Set(request.selectedTemplates.map(t => t.category))], // Unique categories
-        templateOrder: request.selectedTemplates.map(t => t.id), // Template IDs in order
-        modelUsed: model,
-        generationTimeMs,
-      })
-      console.log('✅ Tracked lesson generation in prompt_history')
+    const generationTimeMs = Date.now() - startTime
+    
+    await trackLessonGeneration(user.id, {
+      studentProfileId: request.selectedProfile?.id || null,
+      promptText: request.prompt,
+      geniusModeUsed: request.isGeniusMode || false,
+      slidesGenerated: request.selectedTemplates.length,
+      templateTypesUsed: [...new Set(request.selectedTemplates.map(t => t.category))], // Unique categories
+      templateOrder: request.selectedTemplates.map(t => t.id), // Template IDs in order
+      modelUsed: model,
+      generationTimeMs,
+    })
+    console.log('✅ Tracked lesson generation in prompt_history')
+    
+    // Update genius usage tracking if genius mode was used
+    if (request.isGeniusMode) {
+      await updateGeniusUsage(user.id)
     }
   } catch (error) {
     console.error('Failed to track lesson generation:', error)

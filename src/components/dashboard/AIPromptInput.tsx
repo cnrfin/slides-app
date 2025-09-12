@@ -357,13 +357,16 @@ export default function AIPromptInput({
       // Small delay to ensure toast is visible
       await new Promise(resolve => setTimeout(resolve, 100))
       
-      // Navigate to canvas with the generated data
+      // Navigate to canvas with the generated data and context
       navigate('/canvas', {
         state: {
           action: 'applyGenerated',
           generatedData,
           selectedTemplates: selectedTemplateObjects,
-          prompt: prompt.trim()
+          prompt: prompt.trim(),
+          selectedStudent: selectedProfile, // Include student for assignment
+          selectedLesson: selectedLesson,   // Include lesson context
+          geniusMode: isGeniusMode
         }
       })
       

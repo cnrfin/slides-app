@@ -262,6 +262,36 @@
     "updateSuccess": "学生更新成功！",
     "deleteSuccess": "学生删除成功",
     "deleteConfirmation": "您确定要删除此学生吗？此操作无法撤销。",
+    "assignExistingLesson": "分配现有课程",
+    "unassign": "取消分配",
+    "createNewLesson": "创建新课程",
+    "assignLesson": "分配课程",
+    "assignSuccess": "课程分配成功！",
+    "unassignSuccess": "课程取消分配成功！",
+    "unassignConfirmation": "您确定要取消分配此课程吗？",
+    "loadingLessons": "正在加载课程...",
+    "completed": "已完成",
+    "assignModal": {
+      "title": "分配课程",
+      "subtitle": "选择要分配给{{name}}的课程",
+      "searchPlaceholder": "按标题或类型搜索课程...",
+      "noLessonsFound": "没有找到与搜索匹配的课程",
+      "noLessonsCreated": "您还没有创建任何课程",
+      "noAvailableLessons": "所有课程都已分配给该学生",
+      "createLessonHint": "请先从仪表板创建课程",
+      "vocabularyCount": "{{count}}个词汇",
+      "created": "创建时间",
+      "lastUpdated": "最后更新",
+      "oneLesson": "1个可用课程",
+      "lessonsAvailable": "{{count}}个可用课程",
+      "cancel": "取消",
+      "assignLesson": "分配课程",
+      "assignMultipleLessons": "分配 {{count}} 个课程",
+      "assigning": "正在分配...",
+      "selectedCount": "已选择 {{selected}} / {{total}}",
+      "selectAll": "全选",
+      "deselectAll": "取消全选"
+    },
     "table": {
       "name": "姓名",
       "level": "级别",
@@ -304,12 +334,20 @@
       "addStudent": "添加学生",
       "updateStudent": "更新学生"
     },
+    "vocabularyModal": {
+      "title": "词汇列表",
+      "totalWords": "本课有{{count}}个单词"
+    },
+    "clickToViewVocabulary": "点击查看所有词汇",
     "errors": {
       "signInRequired": "请登录以查看学生",
       "loadFailed": "加载学生失败",
       "addFailed": "添加学生失败",
       "updateFailed": "更新学生失败",
-      "deleteFailed": "删除学生失败"
+      "deleteFailed": "删除学生失败",
+      "assignFailed": "分配课程失败",
+      "unassignFailed": "取消分配课程失败",
+      "loadLessonsFailed": "加载课程失败"
     }
   }
 }

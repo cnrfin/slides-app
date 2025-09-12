@@ -1,6 +1,6 @@
 // src/Canvas.tsx
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useLocation, useNavigate, useBeforeUnload } from 'react-router-dom'
+import { useLocation, useNavigate, useBeforeUnload, useParams } from 'react-router-dom'
 import SlideCanvas from '@/components/canvas/SlideCanvas'
 import useSlideStore from '@/stores/slideStore'
 import useKeyboardShortcuts from '@/hooks/useKeyboardShortcuts'
@@ -27,6 +27,7 @@ import useAuthStore from '@/stores/authStore'
 export default function Canvas() {
   const location = useLocation()
   const navigate = useNavigate()
+  const params = useParams<{ lessonId?: string }>()
   const { user } = useAuthStore()
   const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
@@ -151,15 +152,21 @@ export default function Canvas() {
     if (hasProcessedInitialLoad) return
     
     const loadLesson = async () => {
-      if (location.state?.lessonId) {
-        console.log('Loading lesson:', location.state.lessonId)
+      // Check for lesson ID from URL params first, then from state
+      const lessonId = params.lessonId || location.state?.lessonId
+      
+      if (lessonId) {
+        console.log('Loading lesson:', lessonId)
         setIsLoadingLesson(true)
         setHasProcessedInitialLoad(true) // Mark as processed immediately
         
         try {
-          await loadFromDatabase(location.state.lessonId)
+          await loadFromDatabase(lessonId)
           // Clear the state after loading
-          navigate('/canvas', { replace: true })
+          // If we're loading from URL params, keep the URL as is
+          if (location.state?.lessonId) {
+            navigate('/canvas', { replace: true })
+          }
         } catch (error) {
           console.error('Failed to load lesson:', error)
           toast.error('Failed to load lesson. Starting with a blank canvas.')
@@ -180,8 +187,10 @@ export default function Canvas() {
           createPresentation(location.state.generatedData.lessonTitle || 'My Language Lesson')
         }
         
-        // Apply the generated slides
-        applyGeneratedSlides(location.state.generatedData, location.state.selectedTemplates)
+        // Apply the generated slides (now async)
+        applyGeneratedSlides(location.state.generatedData, location.state.selectedTemplates).catch(err => {
+          console.error('Error applying generated slides:', err)
+        })
         
         // Clear the state after applying
         navigate('/canvas', { replace: true })
@@ -195,7 +204,7 @@ export default function Canvas() {
     }
     
     loadLesson()
-  }, [location.state?.lessonId, location.state?.action, hasProcessedInitialLoad]) // Removed dependencies that could cause re-runs
+  }, [params.lessonId, location.state?.lessonId, location.state?.action, hasProcessedInitialLoad]) // Include params.lessonId in dependencies
   
   useEffect(() => {
     preloadCommonFonts().catch(err => {
@@ -236,7 +245,7 @@ export default function Canvas() {
     setSlideBottomY(slideBottomY)
   }, [currentZoom, canvasSize.height])
   
-  const applyGeneratedSlides = (generatedData: any, selectedTemplates: SlideTemplate[]) => {
+  const applyGeneratedSlides = async (generatedData: any, selectedTemplates: SlideTemplate[]) => {
     if (!generatedData?.slides || !Array.isArray(generatedData.slides)) {
       console.error('Invalid generated data structure')
       return
@@ -360,6 +369,114 @@ export default function Canvas() {
         freshState.deleteSlide(slideId)
       }
     })
+    
+    // Auto-save the generated lesson to database
+    try {
+      // Wait a bit to ensure all state updates are complete
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Save to database to get proper lesson ID
+      await saveToDatabase(true) // silent save
+      
+      // Now handle student assignment and vocabulary if needed
+      const locationState = location.state as any
+      if (locationState?.selectedStudent || locationState?.studentId) {
+        const studentId = locationState?.selectedStudent?.id || locationState?.studentId
+        const freshState = useSlideStore.getState()
+        const lessonId = freshState.presentation?.id
+        
+        if (lessonId && studentId) {
+          // Import the database functions we need
+          const { assignLessonToStudent } = await import('@/lib/database')
+          
+          try {
+            await assignLessonToStudent(studentId, lessonId)
+            console.log('✅ Assigned lesson to student:', studentId)
+            // No toast - assignment is assumed/expected
+          } catch (error) {
+            console.error('Failed to assign lesson to student:', error)
+            // Don't show error toast if it's a duplicate assignment
+            if (error instanceof Error && !error.message.includes('already assigned')) {
+              // Still show error if something went wrong (but not for duplicates)
+              toast.error('Failed to assign lesson to student')
+            }
+          }
+        }
+      }
+      
+      // Extract and save vocabulary
+      const freshState = useSlideStore.getState()
+      const lessonId = freshState.presentation?.id
+      
+      if (lessonId) {
+        // Try to get vocabulary from generatedData first
+        let vocabularyToSave: any[] = []
+        
+        if (generatedData.vocabulary && generatedData.vocabulary.length > 0) {
+          // Use the extracted vocabulary from the generation service
+          vocabularyToSave = generatedData.vocabulary.map((item: any) => ({
+            word: item.word,
+            translation: item.meaning || item.translation || null,
+            category: null,
+            difficulty_level: null,
+            context_sentence: null
+          }))
+        } else {
+          // Fallback: Extract vocabulary from slide data
+          const extractedWords: Set<string> = new Set()
+          
+          generatedData.slides?.forEach((slide: any) => {
+            // Extract from vocabulary arrays
+            if (slide.vocabulary && Array.isArray(slide.vocabulary)) {
+              slide.vocabulary.forEach((item: any) => {
+                if (typeof item === 'string') {
+                  extractedWords.add(item)
+                } else if (item?.word) {
+                  vocabularyToSave.push({
+                    word: item.word,
+                    translation: item.meaning || item.translation || null,
+                    category: null,
+                    difficulty_level: null,
+                    context_sentence: null
+                  })
+                }
+              })
+            }
+          })
+          
+          // Add any extracted words that weren't already in vocabularyToSave
+          extractedWords.forEach(word => {
+            if (!vocabularyToSave.some(v => v.word === word)) {
+              vocabularyToSave.push({
+                word,
+                translation: null,
+                category: null,
+                difficulty_level: null,
+                context_sentence: null
+              })
+            }
+          })
+        }
+        
+        // Save vocabulary if we found any
+        if (vocabularyToSave.length > 0) {
+          const { saveLessonVocabulary } = await import('@/lib/database')
+          
+          try {
+            await saveLessonVocabulary(lessonId, vocabularyToSave)
+            console.log(`✅ Saved ${vocabularyToSave.length} vocabulary words for lesson`)
+          } catch (error) {
+            console.error('Failed to save vocabulary:', error)
+          }
+        }
+      }
+      
+      console.log('✅ Generated lesson saved to database')
+    } catch (error) {
+      console.error('Failed to auto-save generated lesson:', error)
+      // Show a warning but don't block the UI
+      toast.warning('Lesson generated but not saved. Please save manually.')
+    }
   }
   
   const currentSlideIndex = slides.findIndex(s => s.id === currentSlideId)

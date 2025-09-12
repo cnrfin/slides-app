@@ -264,6 +264,36 @@
     "updateSuccess": "Student updated successfully!",
     "deleteSuccess": "Student removed successfully",
     "deleteConfirmation": "Are you sure you want to remove this student? This action cannot be undone.",
+    "assignExistingLesson": "Assign Existing Lesson",
+    "unassign": "Unassign",
+    "createNewLesson": "Create New Lesson",
+    "assignLesson": "Assign Lesson",
+    "assignSuccess": "Lesson assigned successfully!",
+    "unassignSuccess": "Lesson unassigned successfully!",
+    "unassignConfirmation": "Are you sure you want to unassign this lesson?",
+    "loadingLessons": "Loading lessons...",
+    "completed": "Completed",
+    "assignModal": {
+      "title": "Assign Lesson",
+      "subtitle": "Select a lesson to assign to {{name}}",
+      "searchPlaceholder": "Search lessons by title or type...",
+      "noLessonsFound": "No lessons found matching your search",
+      "noLessonsCreated": "You haven't created any lessons yet",
+      "noAvailableLessons": "All lessons have been assigned to this student",
+      "createLessonHint": "Create a lesson first from the Dashboard",
+      "vocabularyCount": "{{count}} words",
+      "created": "Created",
+      "lastUpdated": "Last updated",
+      "oneLesson": "1 lesson available",
+      "lessonsAvailable": "{{count}} lessons available",
+      "cancel": "Cancel",
+      "assignLesson": "Assign Lesson",
+      "assignMultipleLessons": "Assign {{count}} Lessons",
+      "assigning": "Assigning...",
+      "selectedCount": "{{selected}} of {{total}} selected",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all"
+    },
     "table": {
       "name": "Name",
       "level": "Level",
@@ -306,12 +336,20 @@
       "addStudent": "Add Student",
       "updateStudent": "Update Student"
     },
+    "vocabularyModal": {
+      "title": "Vocabulary List",
+      "totalWords": "{{count}} words in this lesson"
+    },
+    "clickToViewVocabulary": "Click to view all vocabulary",
     "errors": {
       "signInRequired": "Please sign in to view students",
       "loadFailed": "Failed to load students",
       "addFailed": "Failed to add student",
       "updateFailed": "Failed to update student",
-      "deleteFailed": "Failed to remove student"
+      "deleteFailed": "Failed to remove student",
+      "assignFailed": "Failed to assign lesson",
+      "unassignFailed": "Failed to unassign lesson",
+      "loadLessonsFailed": "Failed to load lessons"
     }
   }
 }

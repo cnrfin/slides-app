@@ -1,6 +1,7 @@
 // src/lib/database.ts
 import { supabase } from './supabase'
 import { sessionManager } from './session-manager'
+import { extractVocabularyFromSlides, extractDetailedVocabularyFromSlides } from '@/utils/vocabulary-extractor'
 import type { 
   Presentation, 
   Slide, 
@@ -218,11 +219,83 @@ export async function saveLesson(presentation: Presentation, slides: Slide[]) {
         lesson = updatedLesson
       }
 
+      // ===== VOCABULARY EXTRACTION AND SAVING =====
+      console.log('📚 Extracting vocabulary from slides...')
+      
+      try {
+        // Extract vocabulary from the slides
+        const extractedVocabulary = extractDetailedVocabularyFromSlides(slides)
+        console.log(`Found ${extractedVocabulary.length} vocabulary words`)
+        
+        if (extractedVocabulary.length > 0) {
+          // First, check if lesson_vocabulary table exists
+          const { error: tableCheckError } = await supabase
+            .from('lesson_vocabulary')
+            .select('id')
+            .limit(0)
+          
+          if (tableCheckError && tableCheckError.code === '42P01') {
+            console.warn('lesson_vocabulary table does not exist. Skipping vocabulary save.')
+          } else {
+            // Delete existing vocabulary for this lesson
+            const { error: deleteVocabError } = await supabase
+              .from('lesson_vocabulary')
+              .delete()
+              .eq('lesson_id', lesson.id)
+            
+            if (deleteVocabError) {
+              console.error('Error deleting existing vocabulary:', deleteVocabError)
+            }
+            
+            // Insert new vocabulary
+            const vocabularyToInsert = extractedVocabulary.map(v => ({
+              lesson_id: lesson.id,
+              word: v.word,
+              translation: v.translation || null,
+              category: v.category || null,
+              difficulty_level: v.difficulty_level || null,
+              context_sentence: v.context_sentence || null
+            }))
+            
+            const { data: insertedVocab, error: insertVocabError } = await supabase
+              .from('lesson_vocabulary')
+              .insert(vocabularyToInsert)
+              .select()
+            
+            if (insertVocabError) {
+              console.error('Error inserting vocabulary:', insertVocabError)
+            } else {
+              console.log(`✅ Successfully saved ${insertedVocab?.length || 0} vocabulary words`)
+              
+              // Update vocabulary count in lessons table
+              const { error: updateCountError } = await supabase
+                .from('lessons')
+                .update({ vocabulary_count: extractedVocabulary.length })
+                .eq('id', lesson.id)
+              
+              if (updateCountError) {
+                console.error('Error updating vocabulary count:', updateCountError)
+              }
+            }
+          }
+        } else {
+          // No vocabulary found, update count to 0
+          await supabase
+            .from('lessons')
+            .update({ vocabulary_count: 0 })
+            .eq('id', lesson.id)
+        }
+      } catch (vocabError) {
+        console.error('Error processing vocabulary:', vocabError)
+        // Don't fail the entire save operation if vocabulary extraction fails
+      }
+
       console.log('✅ Lesson saved successfully!', {
         lessonId: lesson.id,
         totalSlides: savedSlides.length,
         mappedSlides: Object.keys(idMapping.slides).length,
-        mappedElements: Object.keys(idMapping.elements).length
+        mappedElements: Object.keys(idMapping.elements).length,
+        vocabularyCount: lesson.vocabulary_count || 0
       })
       
       // Return the lesson with the mapping info so the frontend can update its state
@@ -569,6 +642,414 @@ export async function createStudentProfile(profile: any) {
 }
 
 // =============================================
+// STUDENT-LESSON ASSOCIATIONS
+// =============================================
+
+export async function assignLessonToStudent(studentId: string, lessonId: string, notes?: string) {
+  try {
+    // Check if table exists first
+    const { error: tableError } = await supabase
+      .from('student_lessons')
+      .select('id')
+      .limit(0)
+    
+    if (tableError && tableError.code === '42P01') {
+      console.error('student_lessons table does not exist. Please run the migration.')
+      throw new Error('Database tables not configured. Please contact support.')
+    }
+    
+    const { data, error } = await supabase
+      .from('student_lessons')
+      .insert({
+        student_id: studentId,
+        lesson_id: lessonId,
+        notes
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('This lesson is already assigned to this student')
+      }
+      throw error
+    }
+    
+    // Check if the lesson has vocabulary count, if not, try to extract and save
+    const { data: lessonData } = await supabase
+      .from('lessons')
+      .select('vocabulary_count')
+      .eq('id', lessonId)
+      .single()
+    
+    if (lessonData && (!lessonData.vocabulary_count || lessonData.vocabulary_count === 0)) {
+      // Extract and save vocabulary if not already done
+      console.log('Lesson has no vocabulary count, extracting from slides...')
+      
+      const { data: slidesData } = await supabase
+        .from('slides')
+        .select(`
+          id,
+          slide_type,
+          metadata,
+          slide_elements (
+            id,
+            element_type,
+            content
+          )
+        `)
+        .eq('lesson_id', lessonId)
+      
+      if (slidesData && slidesData.length > 0) {
+        // Transform database slides to match the Slide type
+        const slides = slidesData.map((slide: any) => ({
+          ...slide,
+          slideType: slide.slide_type,
+          elements: slide.slide_elements?.map((element: any) => ({
+            ...element,
+            type: element.element_type,
+            content: element.content
+          })) || []
+        }))
+        
+        const extractedVocabulary = extractDetailedVocabularyFromSlides(slides)
+        
+        if (extractedVocabulary.length > 0) {
+          // Save vocabulary
+          const vocabularyToInsert = extractedVocabulary.map(v => ({
+            lesson_id: lessonId,
+            word: v.word,
+            translation: v.translation || null,
+            category: v.category || null,
+            difficulty_level: v.difficulty_level || null,
+            context_sentence: v.context_sentence || null
+          }))
+          
+          const { error: vocabError } = await supabase
+            .from('lesson_vocabulary')
+            .insert(vocabularyToInsert)
+          
+          if (!vocabError) {
+            // Update vocabulary count
+            await supabase
+              .from('lessons')
+              .update({ vocabulary_count: extractedVocabulary.length })
+              .eq('id', lessonId)
+            
+            console.log(`Extracted and saved ${extractedVocabulary.length} vocabulary words for lesson ${lessonId}`)
+          }
+        }
+      }
+    }
+    
+    return data
+  } catch (error) {
+    console.error('Error assigning lesson to student:', error)
+    throw error
+  }
+}
+
+export async function unassignLessonFromStudent(studentId: string, lessonId: string) {
+  return sessionManager.withSessionCheck(async () => {
+    const { error } = await supabase
+      .from('student_lessons')
+      .delete()
+      .match({ student_id: studentId, lesson_id: lessonId })
+    
+    if (error) throw error
+  })
+}
+
+export async function getStudentLessons(studentId: string) {
+  try {
+    console.log('Fetching lessons for student:', studentId)
+    
+    // First check if the student_lessons table exists
+    const { data: tableCheck, error: tableError } = await supabase
+      .from('student_lessons')
+      .select('id')
+      .limit(0)
+    
+    if (tableError && tableError.code === '42P01') {
+      console.warn('student_lessons table does not exist. Please run the migration.')
+      return []
+    }
+    
+    // Fetch student lessons with basic lesson info
+    const { data, error } = await supabase
+      .from('student_lessons')
+      .select(`
+        *,
+        lessons (
+          id,
+          title,
+          description,
+          lesson_type,
+          difficulty_level,
+          vocabulary_count,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('student_id', studentId)
+      .order('assigned_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching student lessons:', error)
+      return []
+    }
+    
+    // For each lesson, fetch vocabulary separately
+    const lessonsWithVocab = await Promise.all(
+      (data || []).map(async (item) => {
+        const lessonData = item.lessons || item.lesson || null
+        
+        let vocabulary: string[] = []
+        
+        if (lessonData?.id) {
+          // Fetch vocabulary from lesson_vocabulary table
+          const { data: vocabData, error: vocabError } = await supabase
+            .from('lesson_vocabulary')
+            .select('word, translation')
+            .eq('lesson_id', lessonData.id)
+          
+          if (!vocabError && vocabData) {
+            vocabulary = vocabData.map(v => v.word)
+          } else if (vocabError) {
+            console.warn(`Could not fetch vocabulary for lesson ${lessonData.id}:`, vocabError)
+            
+            // Fallback: Try to extract from slides if vocabulary table fails
+            const { data: slidesData } = await supabase
+              .from('slides')
+              .select(`
+                id,
+                slide_type,
+                metadata,
+                slide_elements (
+                  id,
+                  element_type,
+                  content
+                )
+              `)
+              .eq('lesson_id', lessonData.id)
+            
+            if (slidesData) {
+              const slides = slidesData.map((slide: any) => ({
+                ...slide,
+                slideType: slide.slide_type,
+                elements: slide.slide_elements?.map((element: any) => ({
+                  ...element,
+                  type: element.element_type,
+                  content: element.content
+                })) || []
+              }))
+              
+              vocabulary = extractVocabularyFromSlides(slides)
+              
+              // Try to save the extracted vocabulary for next time
+              if (vocabulary.length > 0) {
+                const vocabToInsert = vocabulary.map(word => ({
+                  lesson_id: lessonData.id,
+                  word: word
+                }))
+                
+                await supabase
+                  .from('lesson_vocabulary')
+                  .insert(vocabToInsert)
+                  .select()
+                  .then(() => {
+                    console.log(`Saved ${vocabulary.length} vocabulary words for lesson ${lessonData.id}`)
+                  })
+                  .catch(err => {
+                    console.error('Could not save vocabulary:', err)
+                  })
+              }
+            }
+          }
+        }
+        
+        return {
+          ...item,
+          lesson: lessonData,
+          vocabulary
+        }
+      })
+    )
+    
+    console.log(`Found ${lessonsWithVocab.length} lessons for student ${studentId}`)
+    return lessonsWithVocab
+  } catch (error) {
+    console.error('Failed to get student lessons:', error)
+    return []
+  }
+}
+
+export async function updateLessonProgress(studentId: string, lessonId: string, progress: number) {
+  return sessionManager.withSessionCheck(async () => {
+    const { data, error } = await supabase
+      .from('student_lessons')
+      .update({ 
+        progress,
+        completed_at: progress === 100 ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString()
+      })
+      .match({ student_id: studentId, lesson_id: lessonId })
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  })
+}
+
+// =============================================
+// VOCABULARY MANAGEMENT
+// =============================================
+
+export async function saveLessonVocabulary(lessonId: string, vocabulary: any[]) {
+  return sessionManager.withSessionCheck(async () => {
+    // Delete existing vocabulary for this lesson
+    await supabase
+      .from('lesson_vocabulary')
+      .delete()
+      .eq('lesson_id', lessonId)
+    
+    // Insert new vocabulary
+    if (vocabulary.length > 0) {
+      const { data, error } = await supabase
+        .from('lesson_vocabulary')
+        .insert(
+          vocabulary.map(v => ({
+            lesson_id: lessonId,
+            word: v.word,
+            translation: v.translation,
+            category: v.category,
+            difficulty_level: v.difficulty_level,
+            context_sentence: v.context_sentence
+          }))
+        )
+        .select()
+      
+      if (error) throw error
+      
+      // Update vocabulary count in lessons table
+      await supabase
+        .from('lessons')
+        .update({ vocabulary_count: vocabulary.length })
+        .eq('id', lessonId)
+      
+      return data
+    }
+    
+    return []
+  })
+}
+
+export async function getStudentVocabularyHistory(studentId: string, limit = 100) {
+  return sessionManager.withSessionCheck(async () => {
+    const { data, error } = await supabase
+      .from('student_lessons')
+      .select(`
+        lesson_id,
+        lesson:lessons(
+          vocabulary:lesson_vocabulary(*)
+        )
+      `)
+      .eq('student_id', studentId)
+      .not('completed_at', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(limit)
+    
+    if (error) throw error
+    
+    // Flatten vocabulary from all lessons
+    const allVocabulary = data?.flatMap(sl => 
+      sl.lesson?.vocabulary || []
+    ) || []
+    
+    // Remove duplicates
+    const uniqueVocabulary = Array.from(
+      new Map(allVocabulary.map(v => [v.word, v])).values()
+    )
+    
+    return uniqueVocabulary
+  })
+}
+
+// =============================================
+// ENHANCED LESSON CREATION WITH STUDENT CONTEXT
+// =============================================
+
+export async function createLessonWithStudentContext(
+  presentation: Presentation, 
+  slides: Slide[], 
+  studentId?: string
+) {
+  return sessionManager.withSessionCheck(async () => {
+    try {
+      // Save the lesson (this now includes vocabulary extraction)
+      const { lesson, idMapping } = await saveLesson(presentation, slides)
+      
+      // If student is specified, create association
+      if (studentId) {
+        // Check if student_lessons table exists
+        const { error: tableError } = await supabase
+          .from('student_lessons')
+          .select('id')
+          .limit(0)
+        
+        if (!tableError || tableError.code !== '42P01') {
+          // Table exists, create assignment
+          await assignLessonToStudent(studentId, lesson.id)
+          
+          // Update lesson with student profile ID
+          await supabase
+            .from('lessons')
+            .update({ student_profile_id: studentId })
+            .eq('id', lesson.id)
+        } else {
+          console.warn('student_lessons table does not exist. Skipping student assignment.')
+        }
+      }
+      
+      return { lesson, idMapping }
+    } catch (error) {
+      console.error('Error creating lesson with student context:', error)
+      throw error
+    }
+  })
+}
+
+export async function getAllUserLessons() {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      console.error('No user found when loading lessons')
+      return []
+    }
+    
+    console.log('Fetching lessons for user:', user.id)
+    
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('id, title, description, lesson_type, vocabulary_count, created_at, updated_at, target_language')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching user lessons:', error)
+      throw error
+    }
+    
+    console.log(`Found ${data?.length || 0} lessons for user`)
+    return data || []
+  } catch (error) {
+    console.error('Failed to get all user lessons:', error)
+    throw error
+  }
+}
+
+// =============================================
 // USAGE TRACKING
 // =============================================
 
@@ -656,6 +1137,7 @@ export async function getCurrentMonthUsage(userId: string) {
       console.warn('Usage tracking query failed:', error.message)
       return {
         lessons_generated: 0,
+        genius_generations: 0,
         pdf_exports: 0,
         storage_used_mb: 0,
         student_profiles_count: 0
@@ -664,6 +1146,7 @@ export async function getCurrentMonthUsage(userId: string) {
 
     return data || {
       lessons_generated: 0,
+      genius_generations: 0,
       pdf_exports: 0,
       storage_used_mb: 0,
       student_profiles_count: 0
@@ -672,6 +1155,7 @@ export async function getCurrentMonthUsage(userId: string) {
     console.warn('Usage tracking not available:', error)
     return {
       lessons_generated: 0,
+      genius_generations: 0,
       pdf_exports: 0,
       storage_used_mb: 0,
       student_profiles_count: 0

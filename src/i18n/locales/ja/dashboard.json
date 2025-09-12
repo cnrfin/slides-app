@@ -262,6 +262,36 @@
     "updateSuccess": "生徒を更新しました！",
     "deleteSuccess": "生徒を削除しました",
     "deleteConfirmation": "この生徒を削除してもよろしいですか？この操作は取り消せません。",
+    "assignExistingLesson": "既存のレッスンを割り当てる",
+    "unassign": "割り当てを解除",
+    "createNewLesson": "新しいレッスンを作成",
+    "assignLesson": "レッスンを割り当てる",
+    "assignSuccess": "レッスンを割り当てました！",
+    "unassignSuccess": "レッスンの割り当てを解除しました！",
+    "unassignConfirmation": "このレッスンの割り当てを解除してもよろしいですか？",
+    "loadingLessons": "レッスンを読み込み中...",
+    "completed": "完了",
+    "assignModal": {
+      "title": "レッスンを割り当てる",
+      "subtitle": "{{name}}さんに割り当てるレッスンを選択",
+      "searchPlaceholder": "タイトルまたはタイプでレッスンを検索...",
+      "noLessonsFound": "検索に一致するレッスンが見つかりません",
+      "noLessonsCreated": "まだレッスンを作成していません",
+      "noAvailableLessons": "すべてのレッスンがこの生徒に割り当て済みです",
+      "createLessonHint": "まずダッシュボードからレッスンを作成してください",
+      "vocabularyCount": "{{count}}語",
+      "created": "作成日",
+      "lastUpdated": "最終更新",
+      "oneLesson": "1レッスン利用可能",
+      "lessonsAvailable": "{{count}}レッスン利用可能",
+      "cancel": "キャンセル",
+      "assignLesson": "レッスンを割り当てる",
+      "assignMultipleLessons": "{{count}}レッスンを割り当てる",
+      "assigning": "割り当て中...",
+      "selectedCount": "{{total}}件中{{selected}}件選択中",
+      "selectAll": "すべて選択",
+      "deselectAll": "選択を解除"
+    },
     "table": {
       "name": "名前",
       "level": "レベル",
@@ -304,12 +334,20 @@
       "addStudent": "生徒を追加",
       "updateStudent": "生徒を更新"
     },
+    "vocabularyModal": {
+      "title": "語彙リスト",
+      "totalWords": "このレッスンに{{count}}語"
+    },
+    "clickToViewVocabulary": "クリックしてすべての語彙を表示",
     "errors": {
       "signInRequired": "生徒を表示するにはログインしてください",
       "loadFailed": "生徒の読み込みに失敗しました",
       "addFailed": "生徒の追加に失敗しました",
       "updateFailed": "生徒の更新に失敗しました",
-      "deleteFailed": "生徒の削除に失敗しました"
+      "deleteFailed": "生徒の削除に失敗しました",
+      "assignFailed": "レッスンの割り当てに失敗しました",
+      "unassignFailed": "レッスンの割り当て解除に失敗しました",
+      "loadLessonsFailed": "レッスンの読み込みに失敗しました"
     }
   }
 }
